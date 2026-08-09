@@ -84,7 +84,7 @@ create table if not exists public.products (
   featured      boolean  not null default false,
   active        boolean  not null default true,
   weight        numeric(6,3),
-  shipping_days jsonb    not null default \'{"min":3,"max":7}\',
+  shipping_days jsonb    not null default '{"min":3,"max":7}',
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
@@ -192,7 +192,7 @@ begin
   select count(*) into recent_count
   from public.bookings
   where customer_email = new.customer_email
-    and created_at > now() - interval \'30 seconds\';
+    and created_at > now() - interval '30 seconds';
   if recent_count > 0 then
     raise exception \'Please wait before submitting another booking.\';
   end if;
