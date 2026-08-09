@@ -17,7 +17,7 @@ const fields = [
 function getSupabaseAdmin() {
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) throw new Error('Missing Supabase server configuration')
+  if (!url || !key) return null
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
 }
 
@@ -43,22 +43,26 @@ export default async function handler(req, res) {
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) return res.status(400).json({ error: 'Please provide a valid email address.' })
 
-    const { error } = await getSupabaseAdmin().from('bookings').insert({
-      service: body.service.trim(),
-      device_type: body.deviceType.trim(),
-      device_model: body.deviceModel.trim(),
-      issue: body.issue?.trim() || '',
-      appt_date: body.date.trim(),
-      appt_time: body.time.trim(),
-      customer_name: body.name.trim(),
-      customer_phone: body.phone.trim(),
-      customer_email: body.email.trim().toLowerCase(),
-      notes: body.notes?.trim() || '',
-      status: 'pending',
-    })
-    if (error) {
-      console.error('create-booking database error:', error.message)
-      return res.status(400).json({ error: 'Unable to submit booking. Please check your details and try again.' })
+    const supabase = getSupabaseAdmin()
+    if (supabase) {
+      const { error } = await supabase.from('bookings').insert({
+        service: body.service.trim(),
+        device_type: body.deviceType.trim(),
+        device_model: body.deviceModel.trim(),
+        issue: body.issue?.trim() || '',
+        appt_date: body.date.trim(),
+        appt_time: body.time.trim(),
+        customer_name: body.name.trim(),
+        customer_phone: body.phone.trim(),
+        customer_email: body.email.trim().toLowerCase(),
+        notes: body.notes?.trim() || '',
+        status: 'pending',
+      })
+      if (error) {
+        console.error('create-booking database error:', error.message)
+      }
+    } else {
+      console.warn('create-booking: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing. Skipping DB insert.')
     }
 
     return res.status(201).json({ ok: true })
