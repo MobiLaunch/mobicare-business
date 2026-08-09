@@ -573,6 +573,65 @@ h6 {
   opacity: 0.75;
 }
 
+.site-content-page .grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.site-content-page .field-wrap {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.site-content-page .row {
+  flex-wrap: wrap;
+}
+
+.site-content-page .field-full {
+  grid-column: 1 / -1;
+}
+
+.site-content-page .field-wrap > .row {
+  min-width: 0;
+}
+
+.site-content-page .row > .field-wrap {
+  flex: 1 1 280px;
+  min-width: min(100%, 240px);
+}
+
+.site-content-page .row > .input {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.site-content-page button.primary,
+.site-content-page button.border,
+.site-content-page button.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  gap: 8px;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.site-content-page button.btn-ghost {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--on-surface-variant);
+}
+
+.site-content-page button.btn-ghost:hover {
+  background: color-mix(in srgb, var(--on-surface) 7%, transparent);
+}
+
 .logo-preview {
   background: var(--surface-container-low);
   border: 1px solid var(--outline-variant);
@@ -2228,6 +2287,20 @@ body:has(.admin-shell) {
 
   .site-content-tab-divider {
     display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .site-content-page .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .site-content-page .field-full {
+    grid-column: auto;
+  }
+
+  .site-content-page .row > .field-wrap {
+    min-width: 100%;
   }
 }
 

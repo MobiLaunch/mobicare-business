@@ -20,7 +20,7 @@ const TABS = [
 /* ── Shared field wrapper ─────────────────────────────────────────────────── */
 function Field({ label, hint, children, col }) {
   return (
-    <div className="field-wrap" style={col === 'full' ? { gridColumn: '1/-1' } : {}}>
+    <div className={`field-wrap${col === 'full' ? ' field-full' : ''}`}>
       {label && <label className="field-label">{label}</label>}
       {hint  && <p className="field-hint">{hint}</p>}
       {children}
