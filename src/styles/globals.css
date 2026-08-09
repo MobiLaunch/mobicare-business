@@ -2031,6 +2031,7 @@ body:has(.admin-shell) {
 .site-content-tab-button {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   width: 100%;
   gap: 12px;
   padding: 10px 14px;
@@ -2058,11 +2059,13 @@ body:has(.admin-shell) {
 }
 
 .site-content-tab-icon {
+  order: 2;
   flex-shrink: 0;
   font-size: 18px;
 }
 
 .site-content-tab-label {
+  order: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2079,6 +2082,74 @@ body:has(.admin-shell) {
 .site-content-tab-panel {
   min-width: 0;
   flex: 1;
+}
+
+.site-devices-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.site-device-category-panel,
+.site-device-model-panel {
+  min-width: 0;
+}
+
+.site-device-category-panel {
+  padding: 16px;
+  overflow: hidden;
+}
+
+.site-device-category-header,
+.site-device-model-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.site-device-category-header {
+  margin-bottom: 12px;
+}
+
+.site-device-category-header h3,
+.site-device-model-header h3 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.site-device-add-button {
+  min-height: 36px !important;
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+}
+
+.site-device-model-header {
+  align-items: baseline;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.site-device-model-form {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.site-device-model-form .input {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.site-device-model-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
 }
 
 .admin-stat-card {
@@ -2280,9 +2351,18 @@ body:has(.admin-shell) {
   }
 
   .site-content-tab-button {
+    justify-content: flex-start;
     width: auto;
     flex: 0 0 auto;
     white-space: nowrap;
+  }
+
+  .site-content-tab-icon {
+    order: 1;
+  }
+
+  .site-content-tab-label {
+    order: 2;
   }
 
   .site-content-tab-divider {
@@ -2301,6 +2381,18 @@ body:has(.admin-shell) {
 
   .site-content-page .row > .field-wrap {
     min-width: 100%;
+  }
+
+  .site-devices-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .site-device-model-form {
+    flex-wrap: wrap;
+  }
+
+  .site-device-model-form .input {
+    flex-basis: 100%;
   }
 }
 

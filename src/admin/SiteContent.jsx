@@ -807,11 +807,11 @@ function DevicesTab() {
         <h2>Devices & Models</h2>
         <p>Configure device categories and models shown in the Booking Wizard dropdowns.</p>
       </div>
-      <div className="row">
-        <div className="border round">
-          <div className="row middle-align">
+      <div className="site-devices-layout">
+        <div className="border round site-device-category-panel">
+          <div className="site-device-category-header">
             <h3>Categories</h3>
-            <button className="btn border round" style={{padding:'4px 10px',fontSize:11}} onClick={addType}><i style={{fontSize:12}}>add</i> Add</button>
+            <button className="btn border round site-device-add-button" onClick={addType}><i>add</i> Add</button>
           </div>
           <div className="device-types-list">
             {ld.map(d=>(
@@ -825,18 +825,18 @@ function DevicesTab() {
             ))}
           </div>
         </div>
-        <div className="border round padding">
+        <div className="border round padding site-device-model-panel">
           {cur ? (
             <>
-              <div className="row middle-align" style={{marginBottom:16}}>
+              <div className="site-device-model-header">
                 <h3>Models for {cur.name}</h3>
                 <span className="on-surface-variant-text small-text">{cur.models.length} model{cur.models.length!==1?'s':''}</span>
               </div>
-              <form onSubmit={addModel} className="row">
+              <form onSubmit={addModel} className="site-device-model-form">
                 <input className="input" placeholder="e.g. iPhone 16 Pro Max" value={newModel} onChange={e=>setNewModel(e.target.value)} />
                 <button type="submit" className="primary round">Add</button>
               </form>
-              <div className="row wrap">
+              <div className="site-device-model-chips">
                 {cur.models.length===0
                   ? <p className="on-surface-variant-text italic">No models yet — Booking Wizard will show a text field.</p>
                   : cur.models.map(m=>(
