@@ -59,10 +59,12 @@ export default async function handler(req, res) {
         status: 'pending',
       })
       if (error) {
-        console.error('create-booking database error:', error.message)
+        console.error('create-booking database error:', error.code, error.message, error.details || '', error.hint || '')
+      } else {
+        console.log('create-booking: Booking successfully saved to Supabase!')
       }
     } else {
-      console.warn('create-booking: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing. Skipping DB insert.')
+      console.warn('create-booking: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing in Vercel environment variables. Skipping DB insert.')
     }
 
     return res.status(201).json({ ok: true })

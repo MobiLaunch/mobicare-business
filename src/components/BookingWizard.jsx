@@ -78,20 +78,38 @@ export default function BookingWizard({ onClose, defaultService = null }) {
 
     try {
       const emailjsConfig = getEmailJSConfig()
-      await emailjs.send(
-        emailjsConfig.serviceId,
-        emailjsConfig.bookingTemplateId,
-        {
-          to_email: BUSINESS.email,
-          customer_name: form.name, customer_phone: form.phone, customer_email: form.email,
-          service_type: serviceLabel, device_type: form.deviceType, device_model: form.deviceModel,
-          issue_description: form.issue, appointment_date: form.date, appointment_time: form.time,
-          special_notes: form.notes || 'None',
-        },
-        emailjsConfig.publicKey
-      )
+      if (!emailjsConfig.serviceId || !emailjsConfig.bookingTemplateId || !emailjsConfig.publicKey) {
+        console.warn('[EmailJS] Missing configuration. Missing keys:', {
+          serviceId: !emailjsConfig.serviceId,
+          bookingTemplateId: !emailjsConfig.bookingTemplateId,
+          publicKey: !emailjsConfig.publicKey,
+        })
+      } else {
+        await emailjs.send(
+          emailjsConfig.serviceId,
+          emailjsConfig.bookingTemplateId,
+          {
+            to_email: BUSINESS.email,
+            recipient_email: BUSINESS.email,
+            customer_name: form.name,
+            customer_phone: form.phone,
+            customer_email: form.email,
+            email: form.email,
+            reply_to: form.email,
+            service_type: serviceLabel,
+            device_type: form.deviceType,
+            device_model: form.deviceModel,
+            issue_description: form.issue || 'None',
+            appointment_date: form.date,
+            appointment_time: form.time,
+            special_notes: form.notes || 'None',
+          },
+          emailjsConfig.publicKey
+        )
+      }
     } catch (e) {
-      if (!isSupabaseConfigured()) addToast('Booking submitted! (Configure EmailJS for email alerts)', 'info')
+      console.error('[EmailJS error]:', e?.status || e, e?.text || e?.message || e)
+      if (!isSupabaseConfigured()) addToast('Booking submitted! (Check console for EmailJS configuration)', 'info')
     }
 
     setSending(false)

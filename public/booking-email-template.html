@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Appointment Confirmation</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    .email-container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
+    .header-banner { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 24px; color: #ffffff; }
+    .header-title { margin: 0; font-size: 20px; font-weight: 700; color: #38bdf8; letter-spacing: -0.01em; }
+    .content-body { padding: 28px 24px; }
+    .greeting { font-size: 15px; color: #334155; line-height: 1.6; margin: 0 0 20px 0; }
+    .chip-container { margin: 16px 0 24px 0; }
+    .chip-primary { display: inline-block; background-color: #e0f2fe; color: #0369a1; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-right: 8px; margin-bottom: 8px; }
+    .chip-secondary { display: inline-block; background-color: #f1f5f9; color: #475569; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .divider { border-bottom: 1px solid #e2e8f0; margin: 20px 0; }
+    .card-grid { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 16px; }
+    .card-cell { width: 50%; vertical-align: top; padding: 0 6px 12px 0; }
+    .card-cell:last-child { padding: 0 0 12px 6px; }
+    .info-card { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; height: 100%; box-sizing: border-box; }
+    .card-header { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .card-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .card-text { font-size: 13px; color: #475569; margin: 4px 0; line-height: 1.4; }
+    .notes-box { background-color: #fff8f1; border: 1px solid #ffedd5; border-radius: 12px; padding: 16px; margin-top: 16px; }
+    .notes-header { font-size: 11px; font-weight: 700; color: #c2410c; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .notes-text { font-size: 13px; color: #9a3412; margin: 0; white-space: pre-line; line-height: 1.5; }
+    .footer { text-align: center; padding: 20px 24px; font-size: 12px; color: #94a3b8; line-height: 1.5; }
+    @media only screen and (max-width: 480px) {
+      .card-cell { display: block; width: 100% !important; padding: 0 0 12px 0 !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <div style="padding: 12px;">
+    <div class="email-container" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0;">
+      
+      <!-- Header Banner -->
+      <div class="header-banner" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 24px; color: #ffffff;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+          <tr>
+            <td>
+              <h1 class="header-title" style="margin: 0; font-size: 20px; font-weight: 700; color: #38bdf8; letter-spacing: -0.01em;">Mobicare Device Recovery</h1>
+              <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Appointment Request Received</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Main Body -->
+      <div class="content-body" style="padding: 28px 24px;">
+        <p class="greeting" style="font-size: 15px; color: #334155; line-height: 1.6; margin: 0 0 20px 0;">
+          Hi <strong>{{customer_name}}</strong>,<br>
+          Thank you for scheduling your repair with Mobicare! We have received your appointment request and look forward to getting your device fixed.
+        </p>
+
+        <!-- Date & Time Chips -->
+        <div class="chip-container" style="margin: 16px 0 24px 0;">
+          <span class="chip-primary" style="display: inline-block; background-color: #e0f2fe; color: #0369a1; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-right: 8px; margin-bottom: 8px;">
+            📅 Date: {{appointment_date}}
+          </span>
+          <span class="chip-secondary" style="display: inline-block; background-color: #f1f5f9; color: #475569; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 8px;">
+            ⏰ Time: {{appointment_time}}
+          </span>
+        </div>
+
+        <div class="divider" style="border-bottom: 1px solid #e2e8f0; margin: 20px 0;"></div>
+
+        <!-- Info Cards Grid -->
+        <table class="card-grid" width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+          <tr>
+            <td class="card-cell" style="width: 50%; vertical-align: top; padding: 0 6px 12px 0;">
+              <div class="info-card" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;">
+                <div class="card-header" style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">📱 REPAIR SERVICE</div>
+                <div class="card-title" style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">{{service_type}}</div>
+                <div class="card-text" style="font-size: 13px; color: #475569; margin: 4px 0;"><strong>Device:</strong> {{device_type}}</div>
+                <div class="card-text" style="font-size: 13px; color: #475569; margin: 4px 0;"><strong>Model:</strong> {{device_model}}</div>
+                <div class="card-text" style="font-size: 13px; color: #475569; margin: 4px 0;"><strong>Issue:</strong> {{issue_description}}</div>
+              </div>
+            </td>
+            <td class="card-cell" style="width: 50%; vertical-align: top; padding: 0 0 12px 6px;">
+              <div class="info-card" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;">
+                <div class="card-header" style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">👤 CUSTOMER CONTACT</div>
+                <div class="card-title" style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">{{customer_name}}</div>
+                <div class="card-text" style="font-size: 13px; color: #475569; margin: 4px 0;">📞 {{customer_phone}}</div>
+                <div class="card-text" style="font-size: 13px; color: #475569; margin: 4px 0;">✉️ {{customer_email}}</div>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Special Notes Box -->
+        <div class="notes-box" style="background-color: #fff8f1; border: 1px solid #ffedd5; border-radius: 12px; padding: 16px; margin-top: 8px;">
+          <div class="notes-header" style="font-size: 11px; font-weight: 700; color: #c2410c; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">📝 SPECIAL NOTES</div>
+          <p class="notes-text" style="font-size: 13px; color: #9a3412; margin: 0; white-space: pre-line; line-height: 1.5;">{{special_notes}}</p>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="footer" style="text-align: center; padding: 20px 24px; font-size: 12px; color: #94a3b8; line-height: 1.5; border-top: 1px solid #f1f5f9;">
+        <p style="margin: 0 0 4px 0;">This email was sent to <strong>{{customer_email}}</strong></p>
+        <p style="margin: 0;">Mobicare Device Recovery · Fairfield, IL · Call/Text: 618-204-1497</p>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
