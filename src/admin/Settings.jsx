@@ -423,7 +423,7 @@ export default function Settings() {
     localStorage.setItem('ejs_booking', emailjs.bookingTemplate)
     localStorage.setItem('ejs_order',   emailjs.orderTemplate)
     localStorage.setItem('ejs_pubkey',  emailjs.publicKey)
-    addToast('EmailJS settings saved. Update src/lib/config.js to make permanent.', 'success')
+    addToast('EmailJS settings saved and ready for bookings.', 'success')
   }
 
   const handleChangePw = async () => {

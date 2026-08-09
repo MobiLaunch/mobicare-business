@@ -22,11 +22,20 @@ export const SUPABASE_ANON_KEY = requireEnv('VITE_SUPABASE_ANON_KEY')
 // in this frontend bundle). See .env.example for details.
 
 // ─── EmailJS ──────────────────────────────────────────────────────────────────
-export const EMAILJS_CONFIG = {
-  serviceId:          requireEnv('VITE_EMAILJS_SERVICE_ID'),
-  bookingTemplateId:  requireEnv('VITE_EMAILJS_BOOKING_TEMPLATE_ID'),
-  orderTemplateId:    requireEnv('VITE_EMAILJS_ORDER_TEMPLATE_ID'),
-  publicKey:          requireEnv('VITE_EMAILJS_PUBLIC_KEY'),
+function getEmailJSSetting(envKey, storageKey) {
+  const envValue = import.meta.env[envKey]
+  if (envValue) return envValue
+  if (typeof window !== 'undefined') return localStorage.getItem(storageKey) || ''
+  return ''
+}
+
+export function getEmailJSConfig() {
+  return {
+    serviceId:          getEmailJSSetting('VITE_EMAILJS_SERVICE_ID', 'ejs_service'),
+    bookingTemplateId:  getEmailJSSetting('VITE_EMAILJS_BOOKING_TEMPLATE_ID', 'ejs_booking'),
+    orderTemplateId:    getEmailJSSetting('VITE_EMAILJS_ORDER_TEMPLATE_ID', 'ejs_order'),
+    publicKey:          getEmailJSSetting('VITE_EMAILJS_PUBLIC_KEY', 'ejs_pubkey'),
+  }
 }
 
 // ─── Business info ────────────────────────────────────────────────────────────

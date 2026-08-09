@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import emailjs from '@emailjs/browser'
-import { EMAILJS_CONFIG, BUSINESS } from '../lib/config'
+import { getEmailJSConfig, BUSINESS } from '../lib/config'
 import { useSiteStore } from '../lib/siteStore'
 import { useToastStore } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -60,7 +60,7 @@ export default function BookingWizard({ onClose, defaultService = null }) {
     const service = repairServices.find(s => s.id === form.service)
     const serviceLabel = form.variant ? `${service?.name} (${form.variant})` : (service?.name || form.service)
 
-    if (!import.meta.env.DEV || isSupabaseConfigured()) {
+    if (!import.meta.env.DEV) {
       try {
         const response = await fetch('/api/create-booking', {
           method: 'POST',
@@ -77,9 +77,10 @@ export default function BookingWizard({ onClose, defaultService = null }) {
     }
 
     try {
+      const emailjsConfig = getEmailJSConfig()
       await emailjs.send(
-        EMAILJS_CONFIG.serviceId,
-        EMAILJS_CONFIG.bookingTemplateId,
+        emailjsConfig.serviceId,
+        emailjsConfig.bookingTemplateId,
         {
           to_email: BUSINESS.email,
           customer_name: form.name, customer_phone: form.phone, customer_email: form.email,
@@ -87,7 +88,7 @@ export default function BookingWizard({ onClose, defaultService = null }) {
           issue_description: form.issue, appointment_date: form.date, appointment_time: form.time,
           special_notes: form.notes || 'None',
         },
-        EMAILJS_CONFIG.publicKey
+        emailjsConfig.publicKey
       )
     } catch (e) {
       if (!isSupabaseConfigured()) addToast('Booking submitted! (Configure EmailJS for email alerts)', 'info')
