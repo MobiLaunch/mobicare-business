@@ -13,6 +13,7 @@ function requireEnv(key) {
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 export const SUPABASE_URL      = requireEnv('VITE_SUPABASE_URL')
 export const SUPABASE_ANON_KEY = requireEnv('VITE_SUPABASE_ANON_KEY')
+export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
 
 // ─── Stripe ───────────────────────────────────────────────────────────────────
 // NOTE: No Stripe key lives here. Real payment processing happens entirely

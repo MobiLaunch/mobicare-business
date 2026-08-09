@@ -5,6 +5,7 @@ import { useSiteStore } from '../lib/siteStore'
 import ProductCard from '../components/ProductCard'
 import PageMeta from '../components/PageMeta'
 import BookingWizard from '../components/BookingWizard'
+import { GOOGLE_MAPS_API_KEY } from '../lib/config'
 
 const REPAIR_VISUALS = {
   'screen-repair': { icon: 'smartphone', from: '#1F4E50', to: '#13522B' },
@@ -36,6 +37,89 @@ function useFadeIn() {
     return () => obs.disconnect()
   }, [])
   return [ref, visible]
+}
+
+function GoogleMapFrame() {
+  const mapRef = useRef(null)
+  const [status, setStatus] = useState(GOOGLE_MAPS_API_KEY ? 'loading' : 'missing-key')
+
+  useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY) return undefined
+
+    let cancelled = false
+    const renderMap = () => {
+      if (cancelled || !mapRef.current || !window.google?.maps) return
+      const map = new window.google.maps.Map(mapRef.current, {
+        center: { lat: 38.3742, lng: -88.3595 },
+        zoom: 13,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        styles: [
+          { elementType: 'geometry', stylers: [{ color: '#15221e' }] },
+          { elementType: 'labels.text.stroke', stylers: [{ color: '#15221e' }] },
+          { elementType: 'labels.text.fill', stylers: [{ color: '#b9e8c2' }] },
+          { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2f4e37' }] },
+          { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#526350' }] },
+          { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#003739' }] },
+        ],
+      })
+
+      new window.google.maps.Marker({
+        map,
+        position: { lat: 38.3742, lng: -88.3595 },
+        title: 'Mobicare Device Recovery',
+      })
+      setStatus('ready')
+    }
+
+    const handleError = () => {
+      if (!cancelled) setStatus('error')
+    }
+
+    if (window.google?.maps) {
+      renderMap()
+      return () => { cancelled = true }
+    }
+
+    const existingScript = document.querySelector('script[data-google-maps-loader]')
+    if (existingScript) {
+      existingScript.addEventListener('load', renderMap)
+      existingScript.addEventListener('error', handleError)
+      return () => {
+        cancelled = true
+        existingScript.removeEventListener('load', renderMap)
+        existingScript.removeEventListener('error', handleError)
+      }
+    }
+
+    const script = document.createElement('script')
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&v=weekly`
+    script.async = true
+    script.defer = true
+    script.dataset.googleMapsLoader = 'true'
+    script.addEventListener('load', renderMap)
+    script.addEventListener('error', handleError)
+    document.head.appendChild(script)
+
+    return () => {
+      cancelled = true
+      script.removeEventListener('load', renderMap)
+      script.removeEventListener('error', handleError)
+    }
+  }, [])
+
+  return (
+    <div className={`home-map-frame home-map-${status}`}>
+      <div ref={mapRef} className="home-google-map" aria-label="Map showing Mobicare Device Recovery in Fairfield, Illinois" />
+      {status !== 'ready' && (
+        <div className="home-map-status">
+          <i>{status === 'loading' ? 'map' : 'location_off'}</i>
+          <span>{status === 'loading' ? 'Loading map…' : 'Add a Google Maps API key to load the map.'}</span>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Home() {
