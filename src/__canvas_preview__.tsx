@@ -9,8 +9,8 @@ function toPreviewComponent<P>(component: React.ComponentType<P>): PreviewCompon
   return component as unknown as PreviewComponent;
 }
 
-import Home from './pages\\Home';
-import Footer, { SampleDefault as FooterSampleDefault } from './components\\Footer';
+import Home from './pages/Home.jsx';
+import Footer, { SampleDefault as FooterSampleDefault } from './components/Footer.jsx';
 
 const componentRegistry: Record<string, PreviewComponent> = {
   'src\\pages\\Home.jsx': toPreviewComponent(Home),
@@ -720,4 +720,3 @@ export default function CanvasPreview({ component: componentProp, mode: modeProp
     </ComponentErrorBoundary>
   );
 }
-
