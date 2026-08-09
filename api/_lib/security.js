@@ -44,10 +44,12 @@ export async function limitRequest(req, scope, { limit = 5, windowSeconds = 60, 
   try {
     const sharedResult = await sharedLimit(key, limit, windowSeconds)
     if (sharedResult) return sharedResult
-    if (requireShared) return { success: false, unavailable: true }
+    const hasUpstash = Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+    if (requireShared && hasUpstash) return { success: false, unavailable: true }
   } catch (error) {
     console.error('shared rate limiter unavailable:', error.message)
-    if (requireShared) return { success: false, unavailable: true }
+    const hasUpstash = Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+    if (requireShared && hasUpstash) return { success: false, unavailable: true }
   }
 
   const now = Date.now()
