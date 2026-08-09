@@ -1,0 +1,29 @@
+{
+  "name": "mobicare",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@emailjs/browser": "^4.4.1",
+    "@plasmicapp/react-web": "^1.0.31",
+    "@supabase/supabase-js": "^2.108.1",
+    "beercss": "^4.0.23",
+    "date-fns": "^3.6.0",
+    "framer-motion": "^11.3.30",
+    "micro": "^10.0.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^6.26.1",
+    "stripe": "^22.3.2",
+    "uuid": "^10.0.0",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.2"
+  }
+}

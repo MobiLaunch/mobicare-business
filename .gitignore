@@ -1,0 +1,7 @@
+-e 
+.env
+.env.local
+node_modules/
+dist/
+.antigravity-context.json
+src/New Text Document.txt
