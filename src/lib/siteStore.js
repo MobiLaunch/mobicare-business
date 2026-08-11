@@ -259,6 +259,10 @@ const syncToSupabase = (state) => {
       about: state.about,
       business: state.business,
       appearance: state.appearance,
+      seo: state.seo,
+      social: state.social,
+      footer: state.footer,
+      ctaStrip: state.ctaStrip,
       deviceTypes: state.deviceTypes,
     }
     sbUpsertSiteSettings(cleanState)

@@ -440,239 +440,396 @@ export default function Settings() {
   }
 
   return (
-    <div className="page-content admin-page settings-page">
-      <div className="row middle-align">
-        <h1>Settings</h1>
-        <p>Configure your database, API integrations, and admin access.</p>
+    <div id="admin-settings-page" className="admin-page settings-page">
+      {/* Header Section */}
+      <div id="settings-header-section" className="admin-page-header row wrap middle-align">
+        <div className="admin-page-heading">
+          <span className="chip small primary-container margin-bottom-s">System Configuration</span>
+          <h2 className="admin-page-title">Store & Integration Settings</h2>
+          <p className="admin-page-description on-surface-variant-text">
+            Manage your cloud database credentials, payment webhooks, notification engines, and admin credentials.
+          </p>
+        </div>
       </div>
 
-      {/* ── SUPABASE ── */}
-      <div className="border settings-section">
-        <div className="row">
-          <div className="settings-icon"><i style={{fontSize:18}}>database</i></div>
-          <div>
-            <h2>Supabase Database</h2>
-            <p>
-              All products, categories, orders, and bookings are stored in Supabase.
-              Without this configured, data lives only in this browser's localStorage.
-              Sign up free at <a href="https://supabase.com" target="_blank" rel="noreferrer">supabase.com</a>.
+      {/* ── SUPABASE SECTION ── */}
+      <div
+        id="settings-supabase-card"
+        style={{
+          background: 'var(--surface-container-low)',
+          borderRadius: 28,
+          border: '1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent)',
+          padding: 32,
+          marginBottom: 28,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
+        }}
+      >
+        <div className="row middle-align" style={{ marginBottom: 24, gap: 16 }}>
+          <div
+            className="primary-container"
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}
+          >
+            <i className="primary-text" style={{ fontSize: 26 }}>database</i>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ margin: '0 0 4px', fontWeight: 800, fontSize: '1.3rem' }}>Supabase Cloud Database</h3>
+            <p className="on-surface-variant-text" style={{ margin: 0, fontSize: 14 }}>
+              Persist products, categories, orders, and repair bookings in real-time.
             </p>
           </div>
-          {/* Connection status pill */}
           {connStatus && (
-            <div className={`chip small ${connStatus === 'ok' ? "green-container" : "error-container"}`}>
+            <div className={`chip ${connStatus === 'ok' ? 'green-container' : 'error-container'}`} style={{ fontWeight: 700 }}>
               {connStatus === 'ok'
-                ? <><i style={{fontSize:13}}>check_circle</i> Connected</>
-                : <><i style={{fontSize:13}}>cancel</i> Error</>}
+                ? <><i style={{ fontSize: 16 }}>check_circle</i> Connected</>
+                : <><i style={{ fontSize: 16 }}>cancel</i> Connection Error</>}
             </div>
           )}
           {!connStatus && usingSupabase && (
-            <div className={`chip small green-container`}><i style={{fontSize:13}}>check_circle</i> Live</div>
+            <div className="chip green-container" style={{ fontWeight: 700 }}>
+              <i style={{ fontSize: 16 }}>check_circle</i> Supabase Live
+            </div>
           )}
         </div>
 
-        {/* Step 1 – schema */}
-        <div className="row step-row">
-          <div className="step-num">1</div>
-          <div className="step-body">
-            <h3>Create the database schema</h3>
-            <p>Open your Supabase project → <strong>SQL Editor</strong> → <strong>New query</strong>, paste the SQL below, and click <strong>Run</strong>. This creates all tables, indexes, triggers, and RLS policies.</p>
-            <div className="row settings-action-row">
-              <button className="btn border round" style={{fontSize:13}} onClick={() => setSqlOpen(o=>!o)}>
-                {sqlOpen ? <i style={{fontSize:14}}>expand_less</i> : <i style={{fontSize:14}}>expand_more</i>}
-                {sqlOpen ? 'Collapse SQL' : 'Show SQL'}
+        {/* Step 1 – Schema */}
+        <div className="row gap-m" style={{ marginBottom: 28 }}>
+          <div
+            className="primary-container"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              flexShrink: 0
+            }}
+          >
+            1
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h4 style={{ margin: '0 0 6px', fontWeight: 800 }}>Execute Database Schema SQL</h4>
+            <p className="on-surface-variant-text" style={{ margin: '0 0 12px', fontSize: 14 }}>
+              Copy the SQL migration script below, navigate to your Supabase <strong>SQL Editor</strong>, paste, and click <strong>Run</strong>.
+            </p>
+            <div className="row gap-s" style={{ marginBottom: 12 }}>
+              <button className="border round small" style={{ fontWeight: 700 }} onClick={() => setSqlOpen(o => !o)}>
+                <i>{sqlOpen ? 'expand_less' : 'expand_more'}</i>
+                <span>{sqlOpen ? 'Collapse SQL Schema' : 'View SQL Schema'}</span>
               </button>
-              <button className="primary round" style={{fontSize:13}} onClick={handleCopySQL}>
-                <i style={{fontSize:13}}>content_copy</i> {sqlCopied ? 'Copied!' : 'Copy SQL'}
+              <button className="primary round small" style={{ fontWeight: 700 }} onClick={handleCopySQL}>
+                <i>content_copy</i>
+                <span>{sqlCopied ? 'Copied to Clipboard!' : 'Copy SQL Script'}</span>
               </button>
             </div>
             {sqlOpen && (
-              <pre className="sql-block">{SCHEMA_SQL}</pre>
+              <pre
+                style={{
+                  background: 'var(--surface-container-highest)',
+                  padding: 16,
+                  borderRadius: 16,
+                  fontSize: 12,
+                  maxHeight: 320,
+                  overflowY: 'auto',
+                  border: '1px solid color-mix(in srgb, var(--outline-variant) 40%, transparent)'
+                }}
+              >
+                {SCHEMA_SQL}
+              </pre>
             )}
           </div>
         </div>
 
-        {/* Step 2 – credentials */}
-        <div className="row step-row">
-          <div className="step-num">2</div>
-          <div className="step-body">
-            <h3>Enter your project credentials</h3>
-            <p>Find these in your Supabase project under <strong>Settings → API</strong>.</p>
-            <div className="grid">
-              <div className="field">
-                <label className="label">Project URL</label>
+        {/* Step 2 – Credentials */}
+        <div className="row gap-m" style={{ marginBottom: 28 }}>
+          <div
+            className="primary-container"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              flexShrink: 0
+            }}
+          >
+            2
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h4 style={{ margin: '0 0 6px', fontWeight: 800 }}>Project API Credentials</h4>
+            <p className="on-surface-variant-text" style={{ margin: '0 0 16px', fontSize: 14 }}>
+              Located in your Supabase project under <strong>Project Settings → API</strong>.
+            </p>
+            <div className="grid" style={{ rowGap: 14, columnGap: 14, marginBottom: 16 }}>
+              <div className="s12 m6 field label border round">
                 <input
-                  className="input"
                   value={sbUrl}
                   onChange={e => setSbUrl(e.target.value)}
-                  placeholder="https://xyzxyz.supabase.co"
+                  placeholder=" "
                 />
+                <label>Project URL (https://your-project.supabase.co)</label>
               </div>
-              <div className="field">
-                <label className="label">Anon / Public Key</label>
+              <div className="s12 m6 field label border round">
                 <input
-                  className="input"
                   value={sbAnonKey}
                   onChange={e => setSbAnonKey(e.target.value)}
-                  placeholder="eyJhbGciOiJIUzI1NiIs..."
+                  placeholder=" "
                 />
+                <label>Anon / Public API Key</label>
               </div>
             </div>
-            <div className="row settings-action-row">
-              <button className="btn border round" onClick={handleSaveSupabase}>
-                <i style={{fontSize:14}}>save</i> Save Credentials
+            <div className="row gap-s middle-align">
+              <button className="border round" style={{ fontWeight: 700 }} onClick={handleSaveSupabase}>
+                <i>save</i>
+                <span>Save API Credentials</span>
               </button>
-              <button className="primary round" onClick={handleTestConnection} disabled={testing}>
-                {testing
-                  ? <><i style={{fontSize:14}} className="rotate">refresh</i> Testing…</>
-                  : <><i style={{fontSize:14}}>database</i> Test Connection</>}
+              <button className="primary round" style={{ fontWeight: 700 }} onClick={handleTestConnection} disabled={testing}>
+                <i>{testing ? 'sync' : 'database'}</i>
+                <span>{testing ? 'Testing Connection…' : 'Test Connection'}</span>
               </button>
             </div>
             {connStatus === 'error' && (
-              <div className="error-container padding round">
-                <i style={{fontSize:14}}>warning</i> {connMsg}
+              <div className="error-container row middle-align gap-s" style={{ marginTop: 12, borderRadius: 16, padding: '10px 16px' }}>
+                <i>warning</i>
+                <span style={{ fontSize: 13 }}>{connMsg}</span>
               </div>
             )}
             {connStatus === 'ok' && (
-              <div className="green-container padding round">
-                <i style={{fontSize:14}}>check_circle</i> {connMsg}
+              <div className="green-container row middle-align gap-s" style={{ marginTop: 12, borderRadius: 16, padding: '10px 16px' }}>
+                <i>check_circle</i>
+                <span style={{ fontSize: 13 }}>{connMsg}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Step 3 – seed */}
-        <div className="row step-row">
-          <div className="step-num">3</div>
-          <div className="step-body">
-            <h3>Seed your initial data</h3>
-            <p>Click the button below to push your current local products and categories up to Supabase. This is a safe upsert — it won't duplicate rows if you've already seeded.</p>
-            <div className="row middle-align settings-action-row">
+        {/* Step 3 – Seed Initial Data */}
+        <div className="row gap-m">
+          <div
+            className="primary-container"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              flexShrink: 0
+            }}
+          >
+            3
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h4 style={{ margin: '0 0 6px', fontWeight: 800 }}>Seed Initial Catalog Data</h4>
+            <p className="on-surface-variant-text" style={{ margin: '0 0 16px', fontSize: 14 }}>
+              Push your local products and categories up to Supabase database tables.
+            </p>
+            <div className="row middle-align gap-m">
               <button
                 className="primary round"
+                style={{ fontWeight: 700 }}
                 onClick={handleSeedData}
                 disabled={seeding || !isSupabaseConfigured()}
               >
-                {seeding
-                  ? <><i style={{fontSize:14}} className="rotate">refresh</i> Seeding…</>
-                  : <><i style={{fontSize:14}}>database</i> Seed {storeProducts.length} Products & {storeCategories.length} Categories</>}
+                <i>{seeding ? 'sync' : 'cloud_upload'}</i>
+                <span>
+                  {seeding
+                    ? 'Seeding Catalog…'
+                    : `Seed ${storeProducts.length} Products & ${storeCategories.length} Categories`}
+                </span>
               </button>
               {!isSupabaseConfigured() && (
-                <span className="on-surface-variant-text small-text">Connect Supabase first</span>
+                <span className="on-surface-variant-text" style={{ fontSize: 13 }}>Connect Supabase first</span>
               )}
             </div>
           </div>
         </div>
+      </div>
 
-        {/* RLS warning */}
-        <div className="orange-container padding round rls-note">
-          <i style={{fontSize:14}}>warning</i>
-          <div>
-            <strong>Security note:</strong> The schema above uses permissive RLS policies so your admin panel (which uses the anon key) can write data. For a production store, move all write operations to a backend using your <strong>service role key</strong> and restrict the anon key to reads only.
+      {/* ── EMAILJS NOTIFICATIONS SECTION ── */}
+      <div
+        id="settings-emailjs-card"
+        style={{
+          background: 'var(--surface-container-low)',
+          borderRadius: 28,
+          border: '1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent)',
+          padding: 32,
+          marginBottom: 28,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
+        }}
+      >
+        <div className="row middle-align" style={{ marginBottom: 20, gap: 16 }}>
+          <div
+            className="secondary-container"
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}
+          >
+            <i className="secondary-text" style={{ fontSize: 24 }}>mail</i>
           </div>
+          <div>
+            <h3 style={{ margin: '0 0 4px', fontWeight: 800, fontSize: '1.3rem' }}>EmailJS Notifications</h3>
+            <p className="on-surface-variant-text" style={{ margin: 0, fontSize: 14 }}>
+              Send automated confirmation emails for new repair bookings and store checkout orders.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid" style={{ rowGap: 14, columnGap: 14, marginBottom: 20 }}>
+          <div className="s12 m6 field label border round">
+            <input value={emailjs.serviceId} onChange={e => setEmailjs(s => ({ ...s, serviceId: e.target.value }))} placeholder=" " />
+            <label>EmailJS Service ID</label>
+          </div>
+          <div className="s12 m6 field label border round">
+            <input value={emailjs.publicKey} onChange={e => setEmailjs(s => ({ ...s, publicKey: e.target.value }))} placeholder=" " />
+            <label>Public Key</label>
+          </div>
+          <div className="s12 m6 field label border round">
+            <input value={emailjs.bookingTemplate} onChange={e => setEmailjs(s => ({ ...s, bookingTemplate: e.target.value }))} placeholder=" " />
+            <label>Booking Template ID</label>
+          </div>
+          <div className="s12 m6 field label border round">
+            <input value={emailjs.orderTemplate} onChange={e => setEmailjs(s => ({ ...s, orderTemplate: e.target.value }))} placeholder=" " />
+            <label>Order Template ID</label>
+          </div>
+        </div>
+
+        <button className="primary round" style={{ fontWeight: 700 }} onClick={handleSaveEmailjs}>
+          <i>save</i>
+          <span>Save EmailJS Settings</span>
+        </button>
+      </div>
+
+      {/* ── STRIPE PAYMENTS SECTION ── */}
+      <div
+        id="settings-stripe-card"
+        style={{
+          background: 'var(--surface-container-low)',
+          borderRadius: 28,
+          border: '1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent)',
+          padding: 32,
+          marginBottom: 28,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
+        }}
+      >
+        <div className="row middle-align" style={{ marginBottom: 20, gap: 16 }}>
+          <div
+            className="tertiary-container"
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}
+          >
+            <i className="tertiary-text" style={{ fontSize: 24 }}>credit_card</i>
+          </div>
+          <div>
+            <h3 style={{ margin: '0 0 4px', fontWeight: 800, fontSize: '1.3rem' }}>Stripe Payment Integration</h3>
+            <p className="on-surface-variant-text" style={{ margin: 0, fontSize: 14 }}>
+              Secure checkout sessions via serverless webhooks in <code>/api</code>.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--surface-container-high)', borderRadius: 20, padding: 20 }}>
+          <h5 style={{ margin: '0 0 8px', fontWeight: 800 }}>Stripe Production Checklist</h5>
+          <p style={{ margin: '0 0 6px', fontSize: 13 }}>
+            1. Obtain Secret Key from <strong>dashboard.stripe.com/apikeys</strong> (starts with <code>sk_</code>).
+          </p>
+          <p style={{ margin: '0 0 6px', fontSize: 13 }}>
+            2. Configure environment variable <code>STRIPE_SECRET_KEY</code> in hosting platform.
+          </p>
+          <p style={{ margin: 0, fontSize: 13 }}>
+            3. Point Stripe Webhook to <code>/api/stripe-webhook</code> listening for <code>checkout.session.completed</code>.
+          </p>
         </div>
       </div>
 
-      {/* ── EMAILJS ── */}
-      <div className="border settings-section">
-        <div className="row">
-          <div className="settings-icon"><i style={{fontSize:18}}>mail</i></div>
+      {/* ── SECURITY / PASSWORD SECTION ── */}
+      <div
+        id="settings-password-card"
+        style={{
+          background: 'var(--surface-container-low)',
+          borderRadius: 28,
+          border: '1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent)',
+          padding: 32,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
+        }}
+      >
+        <div className="row middle-align" style={{ marginBottom: 20, gap: 16 }}>
+          <div
+            className="primary-container"
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}
+          >
+            <i className="primary-text" style={{ fontSize: 24 }}>key</i>
+          </div>
           <div>
-            <h2>EmailJS — Booking &amp; Order Notifications</h2>
-            <p>Sign up free at <a href="https://www.emailjs.com" target="_blank" rel="noreferrer">emailjs.com</a>. Create two email templates and paste the IDs below. Also update <code>src/lib/config.js</code> for permanent storage.</p>
+            <h3 style={{ margin: '0 0 4px', fontWeight: 800, fontSize: '1.3rem' }}>Admin Account Security</h3>
+            <p className="on-surface-variant-text" style={{ margin: 0, fontSize: 14 }}>
+              {isSupabaseConfigured()
+                ? 'Update your administrator account password via Supabase Auth.'
+                : 'Local fallback access mode active.'}
+            </p>
           </div>
         </div>
-        <div className="grid">
-          <div className="field">
-            <label className="label">Service ID</label>
-            <input className="input" value={emailjs.serviceId} onChange={e => setEmailjs(s=>({...s,serviceId:e.target.value}))} placeholder="service_abc123"/>
-          </div>
-          <div className="field">
-            <label className="label">Public Key</label>
-            <input className="input" value={emailjs.publicKey} onChange={e => setEmailjs(s=>({...s,publicKey:e.target.value}))} placeholder="your_public_key"/>
-          </div>
-          <div className="field">
-            <label className="label">Booking Template ID</label>
-            <input className="input" value={emailjs.bookingTemplate} onChange={e => setEmailjs(s=>({...s,bookingTemplate:e.target.value}))} placeholder="template_booking"/>
-          </div>
-          <div className="field">
-            <label className="label">Order Template ID</label>
-            <input className="input" value={emailjs.orderTemplate} onChange={e => setEmailjs(s=>({...s,orderTemplate:e.target.value}))} placeholder="template_order"/>
-          </div>
-        </div>
-        <div className="surface-container-low padding round">
-          <h4>Template variables</h4>
-          <p><strong>Booking:</strong> <code>{'{{customer_name}}'}</code> <code>{'{{customer_phone}}'}</code> <code>{'{{customer_email}}'}</code> <code>{'{{service_type}}'}</code> <code>{'{{device_type}}'}</code> <code>{'{{device_model}}'}</code> <code>{'{{appointment_date}}'}</code> <code>{'{{appointment_time}}'}</code> <code>{'{{special_notes}}'}</code></p>
-          <p><strong>Order:</strong> <code>{'{{order_id}}'}</code> <code>{'{{customer_name}}'}</code> <code>{'{{customer_email}}'}</code> <code>{'{{shipping_address}}'}</code> <code>{'{{order_items}}'}</code> <code>{'{{order_total}}'}</code> <code>{'{{estimated_arrival}}'}</code></p>
-        </div>
-        <button className="primary round" onClick={handleSaveEmailjs}><i style={{fontSize:14}}>save</i> Save EmailJS Config</button>
-      </div>
 
-      {/* ── STRIPE ── */}
-      <div className="border settings-section">
-        <div className="row">
-          <div className="settings-icon"><i style={{fontSize:18}}>credit_card</i></div>
-          <div>
-            <h2>Stripe — Payments</h2>
-            <p>Checkout uses real Stripe-hosted payment pages via serverless functions in <code>/api</code>. Card details never touch this app's frontend or database.</p>
-          </div>
-        </div>
-        <div className="surface-container-low padding round">
-          <h4>Setup checklist</h4>
-          <p>1. Get your <strong>secret key</strong> from <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noreferrer">dashboard.stripe.com/apikeys</a> (starts with <code>sk_</code>).</p>
-          <p>2. In your hosting provider (Vercel/Netlify) → Project Settings → Environment Variables, add <code>STRIPE_SECRET_KEY</code>. <strong>Do not</strong> put this in a <code>VITE_</code> variable or anywhere in the frontend — it must stay server-side only.</p>
-          <p>3. Add a webhook endpoint at <code>dashboard.stripe.com/webhooks</code> pointing to <code>https://yourdomain.com/api/stripe-webhook</code>, subscribed to <code>checkout.session.completed</code>. Copy its signing secret into <code>STRIPE_WEBHOOK_SECRET</code>.</p>
-          <p>4. Add your Supabase <strong>service_role</strong> key (Dashboard → Project Settings → API) as <code>SUPABASE_SERVICE_ROLE_KEY</code> — this lets the webhook write orders after RLS locked out public writes. Never expose this key to the browser.</p>
-          <p>See <code>.env.example</code> for the full list of backend-only variables, and the comments in <code>/api/create-checkout-session.js</code> for a note on validating prices server-side before going live.</p>
-        </div>
-        <div className="orange-container padding round rls-note">
-          <i style={{fontSize:16}}>warning</i>
-          <div>
-            Orders are only ever created by the Stripe webhook after payment is confirmed — the database rejects any direct order-creation attempt from the browser. This is intentional and required for real payment integrity.
-          </div>
-        </div>
-      </div>
-
-      {/* ── PASSWORD ── */}
-      <div className="border settings-section">
-        <div className="row">
-          <div className="settings-icon"><i style={{fontSize:18}}>key</i></div>
-          <div>
-            <h2>Change Admin Password</h2>
-            {isSupabaseConfigured()
-              ? <p>Password is managed via <strong>Supabase Auth</strong>. Enter a new password to update your admin account.</p>
-              : <p>Supabase not configured. Set <code>VITE_LOCAL_ADMIN_PW</code> in your <code>.env</code> file to change the local fallback password.</p>
-            }
-          </div>
-        </div>
         {isSupabaseConfigured() ? (
-          <>
-            <div className="grid">
-              <div className="field">
-                <label className="label">New Password</label>
-                <div style={{position:'relative'}}>
-                  <input className="input" type={showPw?'text':'password'} value={newPw} onChange={e=>setNewPw(e.target.value)} placeholder="Min. 12 characters" style={{paddingRight:42}}/>
-                  <button type="button" style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--md-on-surface-variant)',display:'flex'}} onClick={()=>setShowPw(s=>!s)}>
-                    {showPw ? <i style={{fontSize:14}}>visibility_off</i> : <i style={{fontSize:14}}>visibility</i>}
-                  </button>
-                </div>
+          <div>
+            <div className="grid" style={{ rowGap: 14, columnGap: 14, marginBottom: 20 }}>
+              <div className="s12 m6 field label border round">
+                <input type={showPw ? 'text' : 'password'} value={newPw} onChange={e => setNewPw(e.target.value)} placeholder=" " />
+                <label>New Password (min 12 chars)</label>
               </div>
-              <div className="field">
-                <label className="label">Confirm New Password</label>
-                <input className="input" type="password" value={confirmPw} onChange={e=>setConfirmPw(e.target.value)} placeholder="Repeat new password"/>
+              <div className="s12 m6 field label border round">
+                <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder=" " />
+                <label>Confirm New Password</label>
               </div>
             </div>
-            <button className="primary round" onClick={handleChangePw}><i style={{fontSize:14}}>key</i> Update Password</button>
-          </>
+            <button className="primary round" style={{ fontWeight: 700 }} onClick={handleChangePw}>
+              <i>key</i>
+              <span>Update Password</span>
+            </button>
+          </div>
         ) : (
-          <div className="orange-container padding round rls-note">
-            <i style={{fontSize:16}}>warning</i>
-            <div>
-              <strong>Local mode active.</strong> Add <code>VITE_LOCAL_ADMIN_PW=your-password</code> to your <code>.env</code> file and restart the dev server. Configure Supabase for production-grade authentication.
-            </div>
+          <div className="orange-container row middle-align gap-s" style={{ borderRadius: 16, padding: '12px 16px' }}>
+            <i style={{ fontSize: 20 }}>warning</i>
+            <span style={{ fontSize: 13 }}>
+              Local development mode active. Set <code>VITE_LOCAL_ADMIN_PW</code> in your <code>.env</code> file.
+            </span>
           </div>
         )}
       </div>
     </div>
   )
 }
+

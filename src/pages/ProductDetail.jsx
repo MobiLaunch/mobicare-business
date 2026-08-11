@@ -14,7 +14,7 @@ export default function ProductDetail() {
   const addToast = useToastStore(s => s.add)
   const [qty, setQty] = useState(1)
 
-  if (!product) return (
+  if (!product || !product.active) return (
     <div className="page-top center-align" style={{ padding: '80px 0' }}>
       <PageMeta title="Product Not Found | Mobicare" description="The requested product was not found." />
       <h4>Product not found</h4>
@@ -29,8 +29,9 @@ export default function ProductDetail() {
     : null
 
   const handleAddToCart = () => {
-    addItem(product, qty)
-    addToast(`${product.name} added to cart`, 'success')
+    const added = addItem(product, qty)
+    if (added) addToast(`${product.name} added to cart`, 'success')
+    else addToast(`Only ${product.stock} available in stock`, 'error')
   }
 
   return (

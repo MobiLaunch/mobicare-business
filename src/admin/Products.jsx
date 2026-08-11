@@ -55,23 +55,41 @@ export default function Products() {
   const handleSave = () => {
     const { name, category, price, stock, sku, description } = form
     if (!name || !category || !price || !stock || !sku || !description) {
-      addToast('Please fill in all required fields', 'error')
+      addToast('Please fill in all required fields (*)', 'error')
       return
     }
+    const priceNum = parseFloat(price)
+    const stockNum = parseInt(stock, 10)
+    const compareNum = form.comparePrice ? parseFloat(form.comparePrice) : null
+
+    if (!Number.isFinite(priceNum) || priceNum < 0) {
+      addToast('Please enter a valid non-negative price', 'error')
+      return
+    }
+    if (!Number.isInteger(stockNum) || stockNum < 0) {
+      addToast('Please enter a valid stock quantity', 'error')
+      return
+    }
+    if (compareNum != null && (!Number.isFinite(compareNum) || compareNum < 0)) {
+      addToast('Please enter a valid compare-at price', 'error')
+      return
+    }
+
     const data = {
       ...form,
-      price: parseFloat(price),
-      comparePrice: form.comparePrice ? parseFloat(form.comparePrice) : null,
-      stock: parseInt(stock),
+      price: priceNum,
+      comparePrice: compareNum,
+      stock: stockNum,
       tags: typeof form.tags === 'string' ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : form.tags,
       images: form.images.filter(Boolean)
     }
+
     if (editingId) {
       updateProduct(editingId, data)
-      addToast('Product updated successfully', 'success')
+      addToast('Product saved successfully', 'success')
     } else {
       addProduct(data)
-      addToast('Product added successfully', 'success')
+      addToast('New product added to catalog', 'success')
     }
     setModalOpen(false)
   }
@@ -79,12 +97,12 @@ export default function Products() {
   const handleDelete = (id) => {
     deleteProduct(id)
     setDeleteConfirm(null)
-    addToast('Product deleted', 'info')
+    addToast('Product removed from catalog', 'info')
   }
 
   const handleToggleActive = (product) => {
     updateProduct(product.id, { active: !product.active })
-    addToast(`Product ${product.active ? 'hidden' : 'shown'} in store`, 'info')
+    addToast(`Product ${product.active ? 'hidden from' : 'published on'} live store`, 'info')
   }
 
   const handleToggleFeatured = (product) => {
@@ -94,103 +112,177 @@ export default function Products() {
   const updateForm = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const stockChip = (stock) => {
-    if (stock === 0) return <span className="chip small error-container">Out</span>
-    if (stock <= 5)  return <span className="chip small orange-container">Low ({stock})</span>
-    return <span className="chip small green-container">{stock}</span>
+    if (stock === 0) return <span className="chip small error-container" style={{ fontWeight: 700 }}>Out of Stock</span>
+    if (stock <= 5) return <span className="chip small orange-container" style={{ fontWeight: 700 }}>Low ({stock})</span>
+    return <span className="chip small green-container" style={{ fontWeight: 700 }}>{stock} in stock</span>
   }
 
   return (
-    <div className="admin-page products-page">
-      <div className="admin-page-header row middle-align">
-        <div>
-          <h4 style={{ margin: 0 }}>Products</h4>
-          <p className="on-surface-variant-text" style={{ margin: 0, fontSize: 13 }}>
-            {products.length} total · {products.filter(p => p.active).length} active
+    <div id="admin-products-page" className="admin-page products-page">
+      {/* Header Bar */}
+      <div id="products-header-section" className="admin-page-header row wrap middle-align">
+        <div className="admin-page-heading">
+          <span className="chip small primary-container margin-bottom-s">Inventory Catalog</span>
+          <h2 className="admin-page-title">Products Management</h2>
+          <p className="admin-page-description on-surface-variant-text">
+            {products.length} total items · {products.filter(p => p.active).length} currently active on store
           </p>
         </div>
-        <div className="max" />
-        <button className="primary admin-page-action" onClick={openAdd}>
-          <i>add</i><span>Add Product</span>
+        <button id="products-add-btn" className="primary round admin-page-action" onClick={openAdd}>
+          <i>add</i>
+          <span>Add New Product</span>
         </button>
       </div>
 
-      <div className="products-filter-row">
-        <div className="field label prefix border round products-search-field">
+      {/* Filter & Search Bar */}
+      <div id="products-filter-toolbar" className="products-filter-row" style={{ marginBottom: 24, gap: 16 }}>
+        <div className="field label prefix border round products-search-field" style={{ margin: 0 }}>
           <i>search</i>
           <input placeholder=" " value={search} onChange={e => setSearch(e.target.value)} />
-          <label>Search by name or SKU…</label>
+          <label>Search by product name or SKU code…</label>
         </div>
-        <div className="field label border round admin-filter-field products-category-field">
+        <div className="field label border round admin-filter-field products-category-field" style={{ margin: 0 }}>
           <select value={catFilter} onChange={e => setCatFilter(e.target.value)}>
             <option value="all">All Categories</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <label>Category</label>
+          <label>Filter Category</label>
         </div>
       </div>
 
+      {/* Products Data Table */}
       {filtered.length === 0 ? (
-        <article className="center-align padding">
-          <i className="extra on-surface-variant-text">inventory_2</i>
-          <p className="on-surface-variant-text">No products found</p>
-        </article>
+        <div
+          id="products-empty-state"
+          style={{
+            background: 'var(--surface-container-low)',
+            borderRadius: 28,
+            border: '1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent)',
+            padding: 56,
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 12
+          }}
+        >
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--surface-container-high)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <i className="on-surface-variant-text" style={{ fontSize: 32 }}>inventory_2</i>
+          </div>
+          <h4 style={{ margin: 0 }}>No matching products found</h4>
+          <p className="on-surface-variant-text" style={{ margin: 0, fontSize: 14 }}>Try adjusting your search criteria or category filter.</p>
+        </div>
       ) : (
-        <article className="no-padding products-table-surface">
-          <table className="stripes products-table">
-            <thead>
-              <tr>
-                <th>Product</th><th>SKU</th><th>Category</th><th>Price</th>
-                <th>Stock</th><th>Status</th><th>Featured</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(p => (
-                <tr key={p.id}>
-                  <td>
-                    <div className="row middle-align products-product-cell">
-                      <img className="products-product-image" src={p.images?.[0]} alt={p.name} />
-                      <strong className="products-product-name">{p.name}</strong>
-                    </div>
-                  </td>
-                  <td><code className="products-sku">{p.sku}</code></td>
-                  <td className="products-category">{p.category}</td>
-                  <td>
-                    <strong>${p.price.toFixed(2)}</strong>
-                    {p.comparePrice && (
-                      <div className="on-surface-variant-text products-compare-price">
-                        ${p.comparePrice.toFixed(2)}
-                      </div>
-                    )}
-                  </td>
-                  <td>{stockChip(p.stock)}</td>
-                  <td>
-                    <button className="circle transparent small" onClick={() => handleToggleActive(p)} title={p.active ? 'Hide from store' : 'Show in store'}>
-                      <i className={p.active ? 'green-text' : 'on-surface-variant-text'}>
-                        {p.active ? 'toggle_on' : 'toggle_off'}
-                      </i>
-                    </button>
-                  </td>
-                  <td>
-                    <button className="circle transparent small" onClick={() => handleToggleFeatured(p)} title={p.featured ? 'Remove from featured' : 'Add to featured'}>
-                      <i className={p.featured ? 'yellow-text fill' : 'on-surface-variant-text'}>star</i>
-                    </button>
-                  </td>
-                  <td>
-                    <div className="row products-action-group">
-                      <button className="circle transparent small" onClick={() => openEdit(p)}><i>edit</i></button>
-                      <button className="circle transparent small" onClick={() => setDeleteConfirm(p.id)}><i className="error-text">delete</i></button>
-                    </div>
-                  </td>
+        <div
+          id="products-table-container"
+          style={{
+            background: 'var(--surface-container-low)',
+            borderRadius: 28,
+            border: '1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent)',
+            overflow: 'hidden',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
+          }}
+        >
+          <div style={{ overflowX: 'auto', width: '100%' }}>
+            <table className="stripes products-table" style={{ minWidth: 800, width: '100%' }}>
+              <thead>
+                <tr>
+                  <th>Product Details</th>
+                  <th>SKU</th>
+                  <th>Category</th>
+                  <th>Price</th>
+                  <th>Stock State</th>
+                  <th>Visibility</th>
+                  <th>Featured</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </article>
+              </thead>
+              <tbody>
+                {filtered.map(p => (
+                  <tr key={p.id}>
+                    <td>
+                      <div className="row middle-align gap-m" style={{ minWidth: 200 }}>
+                        <div
+                          style={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 12,
+                            overflow: 'hidden',
+                            background: 'var(--surface-container-high)',
+                            flexShrink: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid color-mix(in srgb, var(--outline-variant) 40%, transparent)'
+                          }}
+                        >
+                          {p.images?.[0] ? (
+                            <img src={p.images[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <i className="on-surface-variant-text">image</i>
+                          )}
+                        </div>
+                        <strong style={{ fontSize: 14 }}>{p.name}</strong>
+                      </div>
+                    </td>
+                    <td><code style={{ fontSize: 12, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: 'var(--surface-container)' }}>{p.sku}</code></td>
+                    <td><span className="chip small surface-container-high">{p.category}</span></td>
+                    <td>
+                      <strong style={{ fontSize: 14, color: 'var(--primary)' }}>${p.price.toFixed(2)}</strong>
+                      {p.comparePrice && (
+                        <div className="on-surface-variant-text" style={{ fontSize: 11, textDecoration: 'line-through' }}>
+                          ${p.comparePrice.toFixed(2)}
+                        </div>
+                      )}
+                    </td>
+                    <td>{stockChip(p.stock)}</td>
+                    <td>
+                      <button
+                        className="circle transparent small"
+                        onClick={() => handleToggleActive(p)}
+                        title={p.active ? 'Hide from live store' : 'Show on live store'}
+                      >
+                        <i className={p.active ? 'green-text' : 'on-surface-variant-text'} style={{ fontSize: 24 }}>
+                          {p.active ? 'toggle_on' : 'toggle_off'}
+                        </i>
+                      </button>
+                    </td>
+                    <td>
+                      <button
+                        className="circle transparent small"
+                        onClick={() => handleToggleFeatured(p)}
+                        title={p.featured ? 'Remove from featured homepage list' : 'Highlight on homepage'}
+                      >
+                        <i className={p.featured ? 'yellow-text fill' : 'on-surface-variant-text'}>star</i>
+                      </button>
+                    </td>
+                    <td>
+                      <div className="row middle-align gap-s">
+                        <button className="circle transparent small" onClick={() => openEdit(p)} title="Edit product details">
+                          <i>edit</i>
+                        </button>
+                        <button className="circle transparent small" onClick={() => setDeleteConfirm(p.id)} title="Delete product">
+                          <i className="error-text">delete</i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
-      <dialog className={modalOpen ? 'active' : ''} style={{ maxWidth: 640 }}>
-        <h5>{editingId ? 'Edit Product' : 'Add New Product'}</h5>
-        <div className="grid">
+      {/* Product Edit / Create Modal Dialog */}
+      <dialog id="product-editor-modal" className={modalOpen ? 'active' : ''} style={{ maxWidth: 680, borderRadius: 28, padding: 32 }}>
+        <div className="row middle-align" style={{ marginBottom: 20 }}>
+          <h4 style={{ margin: 0, fontWeight: 800 }}>{editingId ? 'Edit Product Details' : 'Create New Catalog Product'}</h4>
+          <div className="max" />
+          <button className="circle transparent small" onClick={() => setModalOpen(false)}><i>close</i></button>
+        </div>
+
+        <div className="grid" style={{ rowGap: 14, columnGap: 14 }}>
           <div className="s12 field label border round">
             <input value={form.name} onChange={e => updateForm('name', e.target.value)} placeholder=" " />
             <label>Product Name *</label>
@@ -204,31 +296,31 @@ export default function Products() {
           </div>
           <div className="s12 m6 field label border round">
             <input value={form.sku} onChange={e => updateForm('sku', e.target.value)} placeholder=" " />
-            <label>SKU *</label>
+            <label>SKU Code *</label>
           </div>
           <div className="s12 m6 field label border round">
             <input type="number" step="0.01" value={form.price} onChange={e => updateForm('price', e.target.value)} placeholder=" " />
-            <label>Price ($) *</label>
+            <label>Selling Price ($) *</label>
           </div>
           <div className="s12 m6 field label border round">
             <input type="number" step="0.01" value={form.comparePrice} onChange={e => updateForm('comparePrice', e.target.value)} placeholder=" " />
-            <label>Compare Price ($)</label>
+            <label>Original Compare Price ($)</label>
           </div>
           <div className="s12 m6 field label border round">
             <input type="number" value={form.stock} onChange={e => updateForm('stock', e.target.value)} placeholder=" " />
-            <label>Stock *</label>
+            <label>Available Stock Units *</label>
           </div>
           <div className="s6 m3 field label border round">
-            <input type="number" value={form.shippingDays?.min || 3} onChange={e => updateForm('shippingDays', { ...form.shippingDays, min: parseInt(e.target.value) })} placeholder=" " />
-            <label>Ship Days Min</label>
+            <input type="number" value={form.shippingDays?.min || 3} onChange={e => updateForm('shippingDays', { ...form.shippingDays, min: parseInt(e.target.value) || 1 })} placeholder=" " />
+            <label>Est. Min Days</label>
           </div>
           <div className="s6 m3 field label border round">
-            <input type="number" value={form.shippingDays?.max || 7} onChange={e => updateForm('shippingDays', { ...form.shippingDays, max: parseInt(e.target.value) })} placeholder=" " />
-            <label>Ship Days Max</label>
+            <input type="number" value={form.shippingDays?.max || 7} onChange={e => updateForm('shippingDays', { ...form.shippingDays, max: parseInt(e.target.value) || 7 })} placeholder=" " />
+            <label>Est. Max Days</label>
           </div>
           <div className="s12 field label border round">
             <textarea rows={3} value={form.description} onChange={e => updateForm('description', e.target.value)} placeholder=" " />
-            <label>Description *</label>
+            <label>Product Description *</label>
           </div>
           <div className="s12 field label border round">
             <input value={form.images?.[0] || ''} onChange={e => updateForm('images', [e.target.value])} placeholder=" " />
@@ -236,14 +328,15 @@ export default function Products() {
           </div>
           {form.images?.[0] && (
             <div className="s12">
-              <img src={form.images[0]} alt="Preview" style={{ maxHeight: 100, borderRadius: 8, border: '1px solid var(--outline-variant)' }} />
+              <span className="on-surface-variant-text" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>Image Preview:</span>
+              <img src={form.images[0]} alt="Preview" style={{ maxHeight: 110, borderRadius: 12, border: '1px solid var(--outline-variant)' }} />
             </div>
           )}
           <div className="s12 field label border round">
             <input value={form.tags || ''} onChange={e => updateForm('tags', e.target.value)} placeholder=" " />
             <label>Tags (comma separated)</label>
           </div>
-          <div className="s12" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', paddingTop: 4 }}>
+          <div className="s12" style={{ display: 'flex', gap: 32, flexWrap: 'wrap', paddingTop: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <label className="switch icon">
                 <input
@@ -257,8 +350,8 @@ export default function Products() {
                 </span>
               </label>
               <div>
-                <strong style={{ display: 'block', fontSize: 14 }}>Active</strong>
-                <span className="on-surface-variant-text" style={{ fontSize: 12 }}>Visible in store</span>
+                <strong style={{ display: 'block', fontSize: 14 }}>Active Listing</strong>
+                <span className="on-surface-variant-text" style={{ fontSize: 12 }}>Visible to shoppers</span>
               </div>
             </div>
 
@@ -275,28 +368,33 @@ export default function Products() {
                 </span>
               </label>
               <div>
-                <strong style={{ display: 'block', fontSize: 14 }}>Featured</strong>
-                <span className="on-surface-variant-text" style={{ fontSize: 12 }}>Show on homepage</span>
+                <strong style={{ display: 'block', fontSize: 14 }}>Featured Product</strong>
+                <span className="on-surface-variant-text" style={{ fontSize: 12 }}>Highlight on storefront</span>
               </div>
             </div>
           </div>
         </div>
-        <nav className="right-align">
-          <button className="border" onClick={() => setModalOpen(false)}>Cancel</button>
-          <button className="primary" onClick={handleSave}>
-            {editingId ? 'Save Changes' : 'Add Product'}
+
+        <nav className="right-align gap-s" style={{ marginTop: 24 }}>
+          <button className="border round" onClick={() => setModalOpen(false)}>Cancel</button>
+          <button className="primary round" onClick={handleSave}>
+            {editingId ? 'Save Changes' : 'Publish Product'}
           </button>
         </nav>
       </dialog>
 
-      <dialog className={deleteConfirm ? 'active' : ''} style={{ maxWidth: 380 }}>
-        <h5>Delete Product?</h5>
-        <p className="on-surface-variant-text">This action cannot be undone. The product will be permanently removed.</p>
-        <nav className="right-align">
-          <button className="border" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-          <button className="error" onClick={() => handleDelete(deleteConfirm)}>Delete Product</button>
+      {/* Delete Confirmation Modal */}
+      <dialog id="product-delete-modal" className={deleteConfirm ? 'active' : ''} style={{ maxWidth: 400, borderRadius: 24, padding: 24 }}>
+        <h5 style={{ margin: '0 0 8px', fontWeight: 800 }}>Confirm Deletion</h5>
+        <p className="on-surface-variant-text" style={{ margin: '0 0 20px', fontSize: 14 }}>
+          This product will be permanently removed from your catalog store inventory.
+        </p>
+        <nav className="right-align gap-s">
+          <button className="border round" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+          <button className="error round" onClick={() => handleDelete(deleteConfirm)}>Delete Permanently</button>
         </nav>
       </dialog>
     </div>
   )
 }
+

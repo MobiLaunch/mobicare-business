@@ -50,18 +50,24 @@ export const useCartStore = create(
     (set, get) => ({
       items: [],
       addItem: (product, qty = 1) => {
+        if (!product || product.stock < 1 || qty < 1) return false
         const { items } = get()
         const existing = items.find(i => i.id === product.id)
+        const currentQty = existing?.qty || 0
+        const nextQty = Math.min(currentQty + qty, product.stock)
+        if (nextQty <= currentQty) return false
         if (existing) {
-          set({ items: items.map(i => i.id === product.id ? { ...i, qty: i.qty + qty } : i) })
+          set({ items: items.map(i => i.id === product.id ? { ...i, ...product, qty: nextQty } : i) })
         } else {
-          set({ items: [...items, { ...product, qty }] })
+          set({ items: [...items, { ...product, qty: nextQty }] })
         }
+        return true
       },
       removeItem: (id) => set({ items: get().items.filter(i => i.id !== id) }),
-      updateQty: (id, qty) => {
+      updateQty: (id, qty, maxStock) => {
         if (qty <= 0) { get().removeItem(id); return }
-        set({ items: get().items.map(i => i.id === id ? { ...i, qty } : i) })
+        const capped = maxStock != null ? Math.min(qty, maxStock) : qty
+        set({ items: get().items.map(i => i.id === id ? { ...i, qty: capped } : i) })
       },
       clearCart: () => set({ items: [] }),
     }),
@@ -335,8 +341,10 @@ export const useToastStore = create((set, get) => ({
   toasts: [],
   add: (message, type = 'info') => {
     const id = uuidv4()
-    set({ toasts: [...get().toasts, { id, message, type }] })
-    setTimeout(() => set({ toasts: get().toasts.filter(t => t.id !== id) }), 3500)
+    set(state => ({ toasts: [...state.toasts, { id, message, type }] }))
+    setTimeout(() => {
+      set(state => ({ toasts: state.toasts.filter(t => t.id !== id) }))
+    }, 3500)
   },
   remove: (id) => set({ toasts: get().toasts.filter(t => t.id !== id) }),
 }))

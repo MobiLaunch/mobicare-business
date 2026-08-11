@@ -51,7 +51,7 @@ export default function BookingWizard({ onClose, defaultService = null }) {
     if (step === 0) return !!form.service && (!selectedService?.variants?.length || !!form.variant)
     if (step === 1) return !!form.deviceType && !!form.deviceModel
     if (step === 2) return !!form.date && !!form.time
-    if (step === 3) return !!form.name && !!form.phone && !!form.email
+    if (step === 3) return !!form.name && !!form.phone && !!form.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
     return true
   }
 

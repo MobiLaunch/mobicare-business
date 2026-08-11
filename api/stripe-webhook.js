@@ -125,6 +125,24 @@ async function persistOrder(supabase, stripe, session) {
     .upsert(lineItems, { onConflict: 'order_id,product_id' })
   if (itemsError) throw itemsError
 
+  for (const item of items) {
+    const { data: product, error: fetchErr } = await supabase
+      .from('products')
+      .select('stock')
+      .eq('id', item.id)
+      .maybeSingle()
+    if (fetchErr || !product) {
+      console.error('stock decrement fetch failed:', item.id, fetchErr?.message)
+      continue
+    }
+    const { error: stockErr } = await supabase
+      .from('products')
+      .update({ stock: product.stock - item.qty })
+      .eq('id', item.id)
+      .gte('stock', item.qty)
+    if (stockErr) console.error('stock decrement failed:', item.id, stockErr.message)
+  }
+
   return order
 }
 

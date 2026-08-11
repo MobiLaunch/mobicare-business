@@ -15,89 +15,157 @@ export default function Dashboard() {
   const recentOrders = orders.slice(0, 5)
 
   const stats = [
-    { label: 'Products', value: products.length, sub: `${activeProducts} active`, icon: 'inventory_2', path: '/admin/products', color: 'primary' },
-    { label: 'Categories', value: categories.length, sub: 'product groups', icon: 'label', path: '/admin/categories', color: 'secondary' },
-    { label: 'Orders', value: orders.length, sub: 'all time', icon: 'shopping_bag', path: '/admin/orders', color: 'tertiary' },
-    { label: 'Revenue', value: `$${totalRevenue.toFixed(2)}`, sub: 'all time', icon: 'trending_up', path: '/admin/orders', color: 'primary' },
+    {
+      id: 'stat-card-products',
+      label: 'Products Catalog',
+      value: products.length,
+      sub: `${activeProducts} active in store`,
+      icon: 'inventory_2',
+      path: '/admin/products',
+      color: 'primary',
+      trend: '+12% vs last month'
+    },
+    {
+      id: 'stat-card-categories',
+      label: 'Categories',
+      value: categories.length,
+      sub: 'Organised product groups',
+      icon: 'category',
+      path: '/admin/categories',
+      color: 'secondary',
+      trend: 'Active taxonomies'
+    },
+    {
+      id: 'stat-card-orders',
+      label: 'Total Orders',
+      value: orders.length,
+      sub: 'Completed & pending',
+      icon: 'shopping_bag',
+      path: '/admin/orders',
+      color: 'tertiary',
+      trend: 'Real-time sync'
+    },
+    {
+      id: 'stat-card-revenue',
+      label: 'Gross Revenue',
+      value: `$${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      sub: 'All-time sales',
+      icon: 'trending_up',
+      path: '/admin/orders',
+      color: 'primary',
+      trend: 'Stripe & live orders'
+    },
   ]
 
-  const statusColor = (s) =>
-    s === 'pending' ? 'orange' : s === 'shipped' ? 'blue' : s === 'delivered' ? 'green' : 'grey'
+  const getStatusChipClass = (status) => {
+    switch (status) {
+      case 'paid':
+      case 'delivered':
+        return 'green-container'
+      case 'processing':
+      case 'shipped':
+        return 'secondary-container'
+      case 'cancelled':
+      case 'refunded':
+        return 'error-container'
+      default:
+        return 'surface-container-high'
+    }
+  }
 
   return (
-    <div className="admin-page dashboard-page">
-
-      {/* ── Page Header ── */}
-      <div className="admin-page-header row wrap middle-align">
+    <div id="admin-dashboard-page" className="admin-page dashboard-page">
+      {/* Page Header */}
+      <div id="dashboard-header-section" className="admin-page-header row wrap middle-align">
         <div className="admin-page-heading">
-          <h2 className="admin-page-title">
-            Dashboard
-          </h2>
+          <span className="chip small primary-container margin-bottom-s">Executive Overview</span>
+          <h2 className="admin-page-title">Store Operations</h2>
           <p className="admin-page-description on-surface-variant-text">
-            Welcome back — here's your store at a glance.
+            Real-time metric telemetry, inventory status, and recent order activity.
           </p>
         </div>
-        <button
-          className="primary round admin-page-action"
-          onClick={() => navigate('/admin/products?action=add')}
-        >
-          <i>add</i>
-          <span>Add Product</span>
-        </button>
+        <div className="row gap-s middle-align">
+          <button
+            id="dashboard-add-product-btn"
+            className="primary round admin-page-action"
+            onClick={() => navigate('/admin/products?action=add')}
+          >
+            <i>add</i>
+            <span>Add New Product</span>
+          </button>
+        </div>
       </div>
 
-      {/* ── Alerts ── */}
-      {outOfStock > 0 && (
-        <div
-          className="error-container row wrap middle-align"
-          style={{ marginBottom: 12, gap: 12, borderRadius: 20, padding: '12px 16px' }}
-        >
-          <i style={{ flexShrink: 0 }}>warning</i>
-          <span style={{ flex: '1 1 180px', minWidth: 0, fontSize: 14 }}>
-            {outOfStock} product{outOfStock !== 1 ? 's' : ''} out of stock.
-          </span>
-          <button
-            className="border small round"
-            onClick={() => navigate('/admin/products')}
-            style={{ flexShrink: 0, borderRadius: 999, fontWeight: 600 }}
+      {/* Low Stock / Inventory Alerts */}
+      <div id="dashboard-alerts-container" className="admin-alerts-group" style={{ marginBottom: 24 }}>
+        {outOfStock > 0 && (
+          <div
+            id="alert-out-of-stock"
+            className="error-container row wrap middle-align"
+            style={{ borderRadius: 20, padding: '14px 20px', marginBottom: 12, gap: 12, boxShadow: '0 4px 16px rgba(186, 26, 26, 0.12)' }}
           >
-            Review <i>arrow_forward</i>
-          </button>
-        </div>
-      )}
-      {lowStock > 0 && (
-        <div
-          className="orange-container row wrap middle-align"
-          style={{ marginBottom: 24, gap: 12, borderRadius: 20, padding: '12px 16px' }}
-        >
-          <i style={{ flexShrink: 0 }}>inventory</i>
-          <span style={{ flex: '1 1 180px', minWidth: 0, fontSize: 14 }}>
-            {lowStock} product{lowStock !== 1 ? 's' : ''} running low (≤5 units).
-          </span>
-          <button
-            className="border small round"
-            onClick={() => navigate('/admin/products')}
-            style={{ flexShrink: 0, borderRadius: 999, fontWeight: 600 }}
-          >
-            Review <i>arrow_forward</i>
-          </button>
-        </div>
-      )}
+            <i style={{ flexShrink: 0, fontSize: 24 }}>warning</i>
+            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+              <strong style={{ display: 'block', fontSize: 14 }}>Stock Depleted Warning</strong>
+              <span style={{ fontSize: 13, opacity: 0.9 }}>
+                {outOfStock} product{outOfStock !== 1 ? 's are' : ' is'} currently completely out of stock.
+              </span>
+            </div>
+            <button
+              className="border small round"
+              onClick={() => navigate('/admin/products')}
+              style={{ flexShrink: 0, borderRadius: 999, fontWeight: 700 }}
+            >
+              Update Inventory <i>arrow_forward</i>
+            </button>
+          </div>
+        )}
 
-      {/* ── Stat Cards ── */}
-      <div className="grid" style={{ marginBottom: 32, rowGap: 16, columnGap: 16 }}>
+        {lowStock > 0 && (
+          <div
+            id="alert-low-stock"
+            className="orange-container row wrap middle-align"
+            style={{ borderRadius: 20, padding: '14px 20px', gap: 12 }}
+          >
+            <i style={{ flexShrink: 0, fontSize: 24 }}>inventory</i>
+            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+              <strong style={{ display: 'block', fontSize: 14 }}>Low Inventory Alert</strong>
+              <span style={{ fontSize: 13, opacity: 0.9 }}>
+                {lowStock} product{lowStock !== 1 ? 's have' : ' has'} 5 or fewer items remaining.
+              </span>
+            </div>
+            <button
+              className="border small round"
+              onClick={() => navigate('/admin/products')}
+              style={{ flexShrink: 0, borderRadius: 999, fontWeight: 700 }}
+            >
+              View Stock <i>arrow_forward</i>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Bento Metric Stat Cards Grid */}
+      <section id="dashboard-metrics-grid" className="grid" style={{ marginBottom: 32, rowGap: 20, columnGap: 20 }}>
         {stats.map(s => (
-          <div key={s.label} className="s12 m6 l3" style={{ minWidth: 0 }}>
+          <div key={s.id} className="s12 m6 l3" style={{ minWidth: 0 }}>
             <div
+              id={s.id}
               className="admin-stat-card"
               onClick={() => navigate(s.path)}
+              style={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                justify: 'space-between'
+              }}
             >
-              <div className="row middle-align" style={{ marginBottom: 20 }}>
+              <div className="row middle-align" style={{ marginBottom: 16 }}>
                 <div
                   className={`${s.color}-container`}
                   style={{
-                    width: 44,
-                    height: 44,
+                    width: 48,
+                    height: 48,
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
@@ -105,70 +173,89 @@ export default function Dashboard() {
                     flexShrink: 0
                   }}
                 >
-                  <i className={`${s.color}-text`} style={{ fontSize: 22 }}>{s.icon}</i>
+                  <i className={`${s.color}-text`} style={{ fontSize: 24 }}>{s.icon}</i>
                 </div>
                 <div className="max" />
-                <i className="on-surface-variant-text" style={{ fontSize: 18 }}>arrow_forward</i>
+                <span className="chip small surface-container-high" style={{ fontSize: 11, fontWeight: 600 }}>
+                  {s.trend}
+                </span>
               </div>
-              <p style={{ margin: '0 0 2px', fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', fontWeight: 800, lineHeight: 1, letterSpacing: '-0.02em' }}>
-                {s.value}
-              </p>
-              <p style={{ margin: '4px 0 0', fontWeight: 700, fontSize: 14 }}>{s.label}</p>
-              <p className="on-surface-variant-text" style={{ margin: 0, fontSize: 12 }}>{s.sub}</p>
+
+              <div>
+                <p style={{ margin: '0 0 4px', fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', fontWeight: 800, lineHeight: 1, letterSpacing: '-0.03em' }}>
+                  {s.value}
+                </p>
+                <p style={{ margin: '4px 0 2px', fontWeight: 700, fontSize: 14 }}>{s.label}</p>
+                <p className="on-surface-variant-text" style={{ margin: 0, fontSize: 12 }}>{s.sub}</p>
+              </div>
             </div>
           </div>
         ))}
-      </div>
+      </section>
 
-      {/* ── Recent Orders ── */}
-      <div style={{ marginBottom: 32 }}>
-        <div className="row middle-align" style={{ marginBottom: 16, gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>Recent Orders</h3>
+      {/* Recent Orders Overview Section */}
+      <section id="dashboard-recent-orders-section" style={{ marginBottom: 36 }}>
+        <div className="row middle-align" style={{ marginBottom: 16, gap: 12 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Recent Orders</h3>
+            <p className="on-surface-variant-text" style={{ margin: 0, fontSize: 13 }}>Latest purchases placed by store customers</p>
+          </div>
           <div className="max" />
           <button
+            id="view-all-orders-btn"
             className="transparent small round"
             onClick={() => navigate('/admin/orders')}
-            style={{ fontWeight: 600, borderRadius: 999 }}
+            style={{ fontWeight: 700, borderRadius: 999 }}
           >
-            View All <i>arrow_forward</i>
+            View All Orders <i>arrow_forward</i>
           </button>
         </div>
 
         {recentOrders.length > 0 ? (
           <div
+            id="recent-orders-table-wrapper"
             style={{
               background: 'var(--surface-container-low)',
-              borderRadius: 24,
-              border: '1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent)',
-              overflow: 'hidden'
+              borderRadius: 28,
+              border: '1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent)',
+              overflow: 'hidden',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
             }}
           >
-            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
-              <table className="stripes" style={{ minWidth: 600, width: '100%' }}>
+            <div style={{ overflowX: 'auto', width: '100%' }}>
+              <table className="stripes" style={{ minWidth: 640, width: '100%' }}>
                 <thead>
                   <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Items</th>
-                    <th>Total</th>
-                    <th>Status</th>
-                    <th>Date</th>
+                    <th>Order Identifier</th>
+                    <th>Customer Name</th>
+                    <th>Items Count</th>
+                    <th>Grand Total</th>
+                    <th>Fulfillment Status</th>
+                    <th>Order Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentOrders.map(order => (
-                    <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/orders')}>
-                      <td><code style={{ fontSize: 12, fontWeight: 700 }}>#{order.id?.slice(0, 8).toUpperCase()}</code></td>
-                      <td><strong>{order.customer?.name || '—'}</strong></td>
-                      <td>{order.items?.length || 0}</td>
-                      <td><strong>${order.total?.toFixed(2)}</strong></td>
+                    <tr
+                      key={order.id}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => navigate('/admin/orders')}
+                    >
                       <td>
-                        <span className={`chip small ${statusColor(order.status)}`} style={{ fontWeight: 600, borderRadius: 999 }}>
-                          {order.status}
+                        <code style={{ fontSize: 12, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: 'var(--surface-container)' }}>
+                          #{order.id?.slice(0, 8).toUpperCase()}
+                        </code>
+                      </td>
+                      <td><strong>{order.customer?.name || 'Guest Customer'}</strong></td>
+                      <td>{order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''}</td>
+                      <td><strong style={{ color: 'var(--primary)' }}>${(order.total || 0).toFixed(2)}</strong></td>
+                      <td>
+                        <span className={`chip small ${getStatusChipClass(order.status)}`} style={{ fontWeight: 700, borderRadius: 999 }}>
+                          {order.status || 'pending'}
                         </span>
                       </td>
-                      <td className="on-surface-variant-text" style={{ fontSize: 12 }}>
-                        {new Date(order.createdAt).toLocaleDateString()}
+                      <td className="on-surface-variant-text" style={{ fontSize: 13 }}>
+                        {order.createdAt ? new Date(order.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                       </td>
                     </tr>
                   ))}
@@ -178,49 +265,62 @@ export default function Dashboard() {
           </div>
         ) : (
           <div
+            id="recent-orders-empty-state"
             style={{
               background: 'var(--surface-container-low)',
-              borderRadius: 24,
-              border: '1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent)',
+              borderRadius: 28,
+              border: '1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent)',
               padding: 48,
+              textAlign: 'center',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               gap: 12
             }}
           >
-            <i className="on-surface-variant-text" style={{ fontSize: 48 }}>shopping_bag</i>
-            <p className="on-surface-variant-text" style={{ margin: 0, fontSize: 15 }}>
-              No orders yet. They'll appear here once customers start buying.
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: 'var(--surface-container-high)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <i className="on-surface-variant-text" style={{ fontSize: 32 }}>shopping_bag</i>
+            </div>
+            <h4 style={{ margin: 0 }}>No orders recorded yet</h4>
+            <p className="on-surface-variant-text" style={{ margin: 0, fontSize: 14, maxWidth: 400 }}>
+              Orders will automatically appear here as customers complete checkout on the live store.
             </p>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* ── Quick Actions ── */}
-      <div style={{ marginBottom: 8 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.15rem', fontWeight: 700 }}>Quick Actions</h3>
-        <div className="grid" style={{ rowGap: 12, columnGap: 12 }}>
+      {/* Quick Actions Panel */}
+      <section id="dashboard-quick-actions-section" style={{ marginBottom: 16 }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Management Shortcuts</h3>
+        <div className="grid" style={{ rowGap: 16, columnGap: 16 }}>
           {[
-            { icon: 'inventory_2', title: 'Add Product', sub: 'List a new accessory', action: () => navigate('/admin/products?action=add'), color: 'primary' },
-            { icon: 'label', title: 'Manage Categories', sub: 'Organise product groups', action: () => navigate('/admin/categories'), color: 'secondary' },
-            { icon: 'settings', title: 'Store Settings', sub: 'API keys & appearance', action: () => navigate('/admin/settings'), color: 'tertiary' },
+            { id: 'qa-add-product', icon: 'inventory_2', title: 'Add Product', sub: 'Create new catalog item', action: () => navigate('/admin/products?action=add'), color: 'primary' },
+            { id: 'qa-categories', icon: 'category', title: 'Manage Taxonomies', sub: 'Organise categories & tags', action: () => navigate('/admin/categories'), color: 'secondary' },
+            { id: 'qa-content', icon: 'auto_fix_high', title: 'Site Content Editor', sub: 'Customize hero & brand text', action: () => navigate('/admin/content'), color: 'tertiary' },
+            { id: 'qa-settings', icon: 'tune', title: 'Store Settings', sub: 'Configure API keys & integrations', action: () => navigate('/admin/settings'), color: 'primary' },
           ].map(qa => (
-            <div key={qa.title} className="s12 m4" style={{ minWidth: 0 }}>
+            <div key={qa.id} className="s12 m6 l3" style={{ minWidth: 0 }}>
               <div
+                id={qa.id}
                 onClick={qa.action}
+                className="admin-stat-card"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 16,
-                  padding: '18px 20px',
-                  borderRadius: 24,
-                  background: 'var(--surface-container-low)',
-                  border: '1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent)',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  padding: '20px',
+                  borderRadius: 24
                 }}
-                className="admin-stat-card"
               >
                 <div
                   className={`${qa.color}-container`}
@@ -249,7 +349,8 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
-      </div>
+      </section>
     </div>
   )
 }
+

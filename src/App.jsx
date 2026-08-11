@@ -55,6 +55,10 @@ function StoreInit() {
             const defaults = useSiteStore.getState()
             dbContent.deviceTypes = defaults.deviceTypes || []
           }
+          const defaults = useSiteStore.getState()
+          for (const key of ['seo', 'social', 'footer', 'ctaStrip']) {
+            if (!dbContent[key]) dbContent[key] = defaults[key]
+          }
           useSiteStore.setState(dbContent)
           if (dbContent.appearance) {
             applyAppearance(dbContent.appearance)
@@ -71,6 +75,10 @@ function StoreInit() {
             about: current.about,
             business: current.business,
             appearance: current.appearance,
+            seo: current.seo,
+            social: current.social,
+            footer: current.footer,
+            ctaStrip: current.ctaStrip,
             deviceTypes: current.deviceTypes || [],
           }
           await sbUpsertSiteSettings(cleanState)

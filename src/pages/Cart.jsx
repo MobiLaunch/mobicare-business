@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { addDays, format } from 'date-fns'
-import { useCartStore, useToastStore } from '../lib/store'
+import { useCartStore, useToastStore, useProductStore } from '../lib/store'
 import PageMeta from '../components/PageMeta'
 
 function ArrivalEstimate({ shippingDays }) {
@@ -18,6 +18,7 @@ function ArrivalEstimate({ shippingDays }) {
 export default function Cart() {
   const navigate = useNavigate()
   const { items, removeItem, updateQty } = useCartStore()
+  const products = useProductStore(s => s.products)
   const addToast = useToastStore(s => s.add)
 
   const [checkoutStep, setCheckoutStep] = useState('cart')
@@ -168,7 +169,7 @@ export default function Cart() {
                         <div className="row middle-align border round surface-container-high" style={{ padding: '2px 4px', height: 40, flexShrink: 0 }}>
                           <button className="circle transparent small" onClick={() => updateQty(item.id, item.qty - 1)}><i>remove</i></button>
                           <span style={{ minWidth: 24, textAlign: 'center', fontSize: 14, fontWeight: 600 }}>{item.qty}</span>
-                          <button className="circle transparent small" onClick={() => updateQty(item.id, item.qty + 1)}><i>add</i></button>
+                          <button className="circle transparent small" onClick={() => updateQty(item.id, item.qty + 1, products.find(p => p.id === item.id)?.stock ?? item.stock)}><i>add</i></button>
                         </div>
                         <strong style={{ minWidth: 60, textAlign: 'right', fontSize: 16 }}>${(item.price * item.qty).toFixed(2)}</strong>
                         <button className="circle transparent small" onClick={() => removeItem(item.id)}><i>close</i></button>

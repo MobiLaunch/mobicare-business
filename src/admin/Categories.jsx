@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { useProductStore, useToastStore } from '../lib/store'
 
-const ICON_OPTIONS = ['bolt','shield','smartphone','power','star','battery_full','headphones','photo_camera','inventory_2','label','layers','cable']
-const EMPTY = { name: '', description: '', icon: 'star' }
+const ICON_OPTIONS = ['bolt', 'shield', 'smartphone', 'power', 'star', 'battery_full', 'headphones', 'photo_camera', 'inventory_2', 'label', 'layers', 'cable', 'category']
+const EMPTY = { name: '', description: '', icon: 'category' }
 
 export default function Categories() {
   const categories = useProductStore(s => s.categories)
@@ -22,102 +22,158 @@ export default function Categories() {
     if (!form.name) { addToast('Category name is required', 'error'); return }
     if (editingId) {
       updateCategory(editingId, form)
-      addToast('Category updated', 'success')
+      addToast('Category updated successfully', 'success')
     } else {
       addCategory(form)
-      addToast('Category added', 'success')
+      addToast('New category created', 'success')
     }
     setModalOpen(false)
   }
 
   const handleDelete = (id) => {
     const count = products.filter(p => p.category === id).length
-    if (count > 0) { addToast(`Cannot delete — ${count} products use this category`, 'error'); setDeleteConfirm(null); return }
+    if (count > 0) {
+      addToast(`Cannot delete — ${count} products rely on this category`, 'error')
+      setDeleteConfirm(null)
+      return
+    }
     deleteCategory(id)
     setDeleteConfirm(null)
-    addToast('Category deleted', 'info')
+    addToast('Category removed', 'info')
   }
 
   return (
-    <div className="admin-page categories-page">
-      <div className="admin-page-header row middle-align">
-        <div>
-          <h4 style={{ margin: 0 }}>Categories</h4>
-          <p className="on-surface-variant-text" style={{ margin: 0, fontSize: 13 }}>{categories.length} categories</p>
+    <div id="admin-categories-page" className="admin-page categories-page">
+      {/* Header Section */}
+      <div id="categories-header-section" className="admin-page-header row wrap middle-align">
+        <div className="admin-page-heading">
+          <span className="chip small primary-container margin-bottom-s">Taxonomy Structure</span>
+          <h2 className="admin-page-title">Category Management</h2>
+          <p className="admin-page-description on-surface-variant-text">
+            {categories.length} active store categories & product groupings
+          </p>
         </div>
-        <div className="max" />
-        <button className="primary" onClick={openAdd}>
-          <i>add</i><span>Add Category</span>
+        <button id="categories-add-btn" className="primary round admin-page-action" onClick={openAdd}>
+          <i>add</i>
+          <span>Add New Category</span>
         </button>
       </div>
 
-      <div className="grid">
+      {/* Grid of Categories Bento Cards */}
+      <div id="categories-grid-container" className="grid" style={{ rowGap: 20, columnGap: 20 }}>
         {categories.map(cat => {
           const count = products.filter(p => p.category === cat.id && p.active).length
           return (
-            <div key={cat.id} className="s12 m6 l4">
-              <article className="border no-elevate">
-                <div className="padding">
-                  <div className="row middle-align" style={{ marginBottom: 12 }}>
-                    <div className="primary-container padding circle" style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <i className="primary-text">{cat.icon || 'label'}</i>
+            <div key={cat.id} className="s12 m6 l4" style={{ minWidth: 0 }}>
+              <div
+                id={`cat-card-${cat.id}`}
+                className="admin-stat-card"
+                style={{
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justify: 'space-between',
+                  padding: 24,
+                  borderRadius: 28
+                }}
+              >
+                <div>
+                  <div className="row middle-align" style={{ marginBottom: 16 }}>
+                    <div
+                      className="primary-container"
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <i className="primary-text" style={{ fontSize: 24 }}>{cat.icon || 'category'}</i>
                     </div>
                     <div className="max" />
-                    <button className="circle transparent small" onClick={() => openEdit(cat)}><i>edit</i></button>
-                    <button className="circle transparent small" onClick={() => setDeleteConfirm(cat.id)}><i className="error-text">delete</i></button>
+                    <button className="circle transparent small" onClick={() => openEdit(cat)} title="Edit category">
+                      <i>edit</i>
+                    </button>
+                    <button className="circle transparent small" onClick={() => setDeleteConfirm(cat.id)} title="Delete category">
+                      <i className="error-text">delete</i>
+                    </button>
                   </div>
-                  <h6 style={{ margin: '0 0 4px' }}>{cat.name}</h6>
-                  <p className="on-surface-variant-text" style={{ fontSize: 13, margin: '0 0 12px' }}>{cat.description}</p>
-                  <div className="row middle-align">
-                    <span className="chip small primary-container">{count} product{count !== 1 ? 's' : ''}</span>
-                    <div className="max" />
-                    <code className="on-surface-variant-text" style={{ fontSize: 11 }}>{cat.id}</code>
-                  </div>
+
+                  <h5 style={{ margin: '0 0 6px', fontWeight: 800 }}>{cat.name}</h5>
+                  <p className="on-surface-variant-text" style={{ fontSize: 13, margin: '0 0 16px', lineHeight: 1.4 }}>
+                    {cat.description || 'No description specified for this category.'}
+                  </p>
                 </div>
-              </article>
+
+                <div className="row middle-align" style={{ paddingTop: 12, borderTop: '1px solid color-mix(in srgb, var(--outline-variant) 40%, transparent)' }}>
+                  <span className="chip small primary-container" style={{ fontWeight: 700 }}>
+                    {count} active product{count !== 1 ? 's' : ''}
+                  </span>
+                  <div className="max" />
+                  <code style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: 'var(--surface-container)' }}>
+                    {cat.id}
+                  </code>
+                </div>
+              </div>
             </div>
           )
         })}
       </div>
 
-      <dialog className={modalOpen ? 'active' : ''} style={{ maxWidth: 480 }}>
-        <h5>{editingId ? 'Edit Category' : 'New Category'}</h5>
-        <div className="field label border round">
-          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder=" " />
-          <label>Category Name *</label>
+      {/* Editor Modal */}
+      <dialog id="category-editor-modal" className={modalOpen ? 'active' : ''} style={{ maxWidth: 500, borderRadius: 28, padding: 32 }}>
+        <div className="row middle-align" style={{ marginBottom: 20 }}>
+          <h4 style={{ margin: 0, fontWeight: 800 }}>{editingId ? 'Edit Category' : 'Create New Category'}</h4>
+          <div className="max" />
+          <button className="circle transparent small" onClick={() => setModalOpen(false)}><i>close</i></button>
         </div>
-        <div className="field label border round">
-          <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder=" " />
-          <label>Description</label>
-        </div>
-        <div className="field label border round">
-          <select value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))}>
-            {ICON_OPTIONS.map(i => <option key={i} value={i}>{i}</option>)}
-          </select>
-          <label>Icon</label>
-        </div>
-        {!editingId && (
-          <div className="field label border round">
-            <input value={form.id || ''} onChange={e => setForm(f => ({ ...f, id: e.target.value }))} placeholder=" " />
-            <label>ID (auto-generated from name if blank)</label>
+
+        <div className="grid" style={{ rowGap: 14 }}>
+          <div className="s12 field label border round">
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder=" " />
+            <label>Category Name *</label>
           </div>
-        )}
-        <nav className="right-align">
-          <button className="border" onClick={() => setModalOpen(false)}>Cancel</button>
-          <button className="primary" onClick={handleSave}>{editingId ? 'Save Changes' : 'Add Category'}</button>
+          <div className="s12 field label border round">
+            <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder=" " />
+            <label>Description</label>
+          </div>
+          <div className="s12 field label border round">
+            <select value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))}>
+              {ICON_OPTIONS.map(i => <option key={i} value={i}>{i}</option>)}
+            </select>
+            <label>Display Icon</label>
+          </div>
+          {!editingId && (
+            <div className="s12 field label border round">
+              <input value={form.id || ''} onChange={e => setForm(f => ({ ...f, id: e.target.value }))} placeholder=" " />
+              <label>Unique ID (optional, auto-slugify if blank)</label>
+            </div>
+          )}
+        </div>
+
+        <nav className="right-align gap-s" style={{ marginTop: 24 }}>
+          <button className="border round" onClick={() => setModalOpen(false)}>Cancel</button>
+          <button className="primary round" onClick={handleSave}>
+            {editingId ? 'Save Changes' : 'Create Category'}
+          </button>
         </nav>
       </dialog>
 
-      <dialog className={deleteConfirm ? 'active' : ''} style={{ maxWidth: 380 }}>
-        <h5>Delete Category?</h5>
-        <p className="on-surface-variant-text">
-          This will remove the category. Products in this category won't be deleted, but will lose their category assignment.
+      {/* Delete Confirmation Modal */}
+      <dialog id="category-delete-modal" className={deleteConfirm ? 'active' : ''} style={{ maxWidth: 400, borderRadius: 24, padding: 24 }}>
+        <h5 style={{ margin: '0 0 8px', fontWeight: 800 }}>Delete Category?</h5>
+        <p className="on-surface-variant-text" style={{ margin: '0 0 20px', fontSize: 14 }}>
+          Products currently linked to this category will lose their category association.
         </p>
-        <nav className="right-align">
-          <button className="border" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-          <button className="error" onClick={() => handleDelete(deleteConfirm)}>Delete</button>
+        <nav className="right-align gap-s">
+          <button className="border round" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+          <button className="error round" onClick={() => handleDelete(deleteConfirm)}>Delete Permanently</button>
         </nav>
       </dialog>
     </div>
   )
 }
+

@@ -8,8 +8,9 @@ export default function ProductCard({ product, onClick }) {
   const handleAddToCart = (e) => {
     e.stopPropagation()
     if (product.stock < 1) return
-    addItem(product)
-    addToast(`${product.name} added to cart`, 'success')
+    const added = addItem(product)
+    if (added) addToast(`${product.name} added to cart`, 'success')
+    else addToast(`Only ${product.stock} available in stock`, 'error')
   }
 
   const discount = product.comparePrice

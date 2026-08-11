@@ -44,27 +44,27 @@ export default async function handler(req, res) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) return res.status(400).json({ error: 'Please provide a valid email address.' })
 
     const supabase = getSupabaseAdmin()
-    if (supabase) {
-      const { error } = await supabase.from('bookings').insert({
-        service: body.service.trim(),
-        device_type: body.deviceType.trim(),
-        device_model: body.deviceModel.trim(),
-        issue: body.issue?.trim() || '',
-        appt_date: body.date.trim(),
-        appt_time: body.time.trim(),
-        customer_name: body.name.trim(),
-        customer_phone: body.phone.trim(),
-        customer_email: body.email.trim().toLowerCase(),
-        notes: body.notes?.trim() || '',
-        status: 'pending',
-      })
-      if (error) {
-        console.error('create-booking database error:', error.code, error.message, error.details || '', error.hint || '')
-      } else {
-        console.log('create-booking: Booking successfully saved to Supabase!')
-      }
-    } else {
-      console.warn('create-booking: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing in Vercel environment variables. Skipping DB insert.')
+    if (!supabase) {
+      console.error('create-booking: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.')
+      return res.status(503).json({ error: 'Booking is temporarily unavailable. Please call us to schedule.' })
+    }
+
+    const { error } = await supabase.from('bookings').insert({
+      service: body.service.trim(),
+      device_type: body.deviceType.trim(),
+      device_model: body.deviceModel.trim(),
+      issue: body.issue?.trim() || '',
+      appt_date: body.date.trim(),
+      appt_time: body.time.trim(),
+      customer_name: body.name.trim(),
+      customer_phone: body.phone.trim(),
+      customer_email: body.email.trim().toLowerCase(),
+      notes: body.notes?.trim() || '',
+      status: 'pending',
+    })
+    if (error) {
+      console.error('create-booking database error:', error.code, error.message, error.details || '', error.hint || '')
+      return res.status(500).json({ error: 'Unable to save booking. Please try again or call us.' })
     }
 
     return res.status(201).json({ ok: true })

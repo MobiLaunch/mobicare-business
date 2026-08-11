@@ -886,54 +886,82 @@ export default function SiteContent() {
   }
 
   return (
-    <div className="page-content admin-page site-content-page">
-
-      {/* ── Page Header ── */}
-      <div className="admin-page-header row wrap middle-align">
+    <div id="admin-site-content-page" className="admin-page site-content-page">
+      {/* Header Section */}
+      <div id="site-content-header-section" className="admin-page-header row wrap middle-align">
         <div className="admin-page-heading">
-          <h2 className="admin-page-title">
-            Site Content
-          </h2>
+          <span className="chip small primary-container margin-bottom-s">Storefront Customizer</span>
+          <h2 className="admin-page-title">Live Site Content & Branding</h2>
           <p className="admin-page-description on-surface-variant-text">
-            Edit every public-facing piece of text, branding, and styling.
+            Customize hero banners, services, trust badges, business hours, SEO tags, and color palettes.
           </p>
         </div>
         <button
+          id="site-content-reset-btn"
           className="border round admin-page-action"
           onClick={handleReset}
+          style={{ fontWeight: 700 }}
         >
           <i>restart_alt</i>
           <span>Reset to Defaults</span>
         </button>
       </div>
 
-      {/* ── Tab Layout ── */}
-      <div className="site-content-tabs">
-
-        {/* Left tab rail */}
-        <nav className="site-content-tab-rail">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`site-content-tab-button ${activeTab === tab.id ? 'active' : ''}`}
-            >
-              <i className="site-content-tab-icon">{tab.icon}</i>
-              <span className="site-content-tab-label">
-                {tab.label}
-              </span>
-            </button>
-          ))}
+      {/* Tab Layout Container */}
+      <div
+        id="site-content-tabs-container"
+        className="site-content-tabs"
+        style={{
+          background: 'var(--surface-container-low)',
+          borderRadius: 28,
+          border: '1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent)',
+          overflow: 'hidden',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
+        }}
+      >
+        {/* Left Tab Rail Navigation */}
+        <nav id="site-content-tab-rail" className="site-content-tab-rail" style={{ padding: '16px 12px' }}>
+          {TABS.map(tab => {
+            const active = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`site-content-tab-button ${active ? 'active' : ''}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: 999,
+                  border: 0,
+                  background: active ? 'var(--primary-container)' : 'transparent',
+                  color: active ? 'var(--on-primary-container)' : 'var(--on-surface-variant)',
+                  fontWeight: active ? 700 : 600,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s ease',
+                  marginBottom: 2
+                }}
+              >
+                <i className="site-content-tab-icon" style={{ fontSize: 20 }}>{tab.icon}</i>
+                <span className="site-content-tab-label">{tab.label}</span>
+              </button>
+            )
+          })}
         </nav>
 
-        {/* Vertical divider */}
-        <div className="site-content-tab-divider" />
+        {/* Divider */}
+        <div className="site-content-tab-divider" style={{ width: 1, background: 'color-mix(in srgb, var(--outline-variant) 40%, transparent)' }} />
 
-        {/* Tab content */}
-        <div className="site-content-tab-panel">
+        {/* Active Tab Panel Body */}
+        <div id="site-content-tab-panel-body" className="site-content-tab-panel" style={{ flex: 1, padding: '24px 32px' }}>
           {renderTab()}
         </div>
       </div>
     </div>
   )
 }
+
