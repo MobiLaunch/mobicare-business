@@ -27,7 +27,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div id="forgot-password-page-wrapper" className="page min-height-100vh">
+    <div id="forgot-password-page-wrapper" className="min-height-100vh">
       <PageMeta
         title="Reset Password — Mobicare Device Recovery"
         description="Request a secure password reset link for your Mobicare account."
@@ -64,15 +64,15 @@ export default function ForgotPassword() {
               </header>
 
               {error && (
-                <output className="invalid round small-padding margin" role="alert">
-                  <div className="row middle-align no-space">
-                    <i>error</i>
-                    <span>{error}</span>
+                <output className="invalid round small-padding margin" role="alert" style={{ display: 'block' }}>
+                  <div className="row middle-align wrap">
+                    <i style={{ flexShrink: 0 }}>error</i>
+                    <span className="max" style={{ overflowWrap: 'break-word' }}>{error}</span>
                   </div>
                 </output>
               )}
 
-              <form onSubmit={submit} className="grid">
+              <form onSubmit={submit}>
                 <div className="field border round fill">
                   <input
                     id="forgot-password-email"

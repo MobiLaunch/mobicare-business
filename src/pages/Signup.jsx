@@ -58,7 +58,7 @@ export default function Signup() {
 
   if (created) {
     return (
-      <div id="signup-confirmation-page-wrapper" className="page min-height-100vh">
+      <div id="signup-confirmation-page-wrapper" className="min-height-100vh">
         <PageMeta
           title="Verify Your Account — Mobicare Device Recovery"
           description="Verification link sent. Verify your email to access your Mobicare account."

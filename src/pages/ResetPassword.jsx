@@ -59,7 +59,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div id="reset-password-page-wrapper" className="page min-height-100vh">
+    <div id="reset-password-page-wrapper" className="min-height-100vh">
       <PageMeta
         title="Choose New Password — Mobicare Device Recovery"
         description="Set a new secure password for your Mobicare customer account."
@@ -102,17 +102,17 @@ export default function ResetPassword() {
               )}
 
               {error && (
-                <output className="invalid round small-padding margin" role="alert">
-                  <div className="row middle-align no-space">
-                    <i>error</i>
-                    <span>{error}</span>
+                <output className="invalid round small-padding margin" role="alert" style={{ display: 'block' }}>
+                  <div className="row middle-align wrap">
+                    <i style={{ flexShrink: 0 }}>error</i>
+                    <span className="max" style={{ overflowWrap: 'break-word' }}>{error}</span>
                   </div>
                 </output>
               )}
 
               {ready && (
                 <form onSubmit={submit} className="grid">
-                  <div className="field border round fill">
+                  <div className="s12 field border round fill">
                     <input
                       id="reset-password-new"
                       type="password"
@@ -128,7 +128,7 @@ export default function ResetPassword() {
                     <i>lock</i>
                   </div>
 
-                  <div className="field border round fill">
+                  <div className="s12 field border round fill">
                     <input
                       id="reset-password-confirm"
                       type="password"
@@ -144,25 +144,28 @@ export default function ResetPassword() {
                     <i>lock</i>
                   </div>
 
-                  <button
-                    id="reset-password-submit-btn"
-                    className="primary fill round large"
-                    type="submit"
-                    disabled={busy}
-                    aria-busy={busy}
-                  >
-                    {busy ? (
-                      <>
-                        <progress className="circle small" />
-                        <span>Updating password…</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Update Password</span>
-                        <i>arrow_forward</i>
-                      </>
-                    )}
-                  </button>
+                  <div className="s12">
+                    <button
+                      id="reset-password-submit-btn"
+                      className="primary fill round large"
+                      type="submit"
+                      disabled={busy}
+                      aria-busy={busy}
+                      style={{ width: '100%' }}
+                    >
+                      {busy ? (
+                        <>
+                          <progress className="circle small" />
+                          <span>Updating password…</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Update Password</span>
+                          <i>arrow_forward</i>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </form>
               )}
             </>
