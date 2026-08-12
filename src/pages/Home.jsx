@@ -54,6 +54,10 @@ export default function Home() {
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState(null)
   const [selectedTown, setSelectedTown] = useState(null)
   const [copied, setCopied] = useState(false)
+  const mapRef = useRef(null)
+  const mapInstanceRef = useRef(null)
+  const mapMarkerRef = useRef(null)
+  const [mapError, setMapError] = useState(false)
 
   const fadeCls = (visible) => `fade-section${visible ? ' fade-section-visible' : ''}`
 
@@ -68,6 +72,126 @@ export default function Home() {
   }
 
   const googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=Mobicare+Fairfield+IL'
+
+  // Load the Google Maps JavaScript API and render a real Fairfield, IL map.
+  // The API key remains sourced from VITE_GOOGLE_MAPS_API_KEY in ../lib/config.
+  useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY || !mapRef.current) {
+      if (!GOOGLE_MAPS_API_KEY) setMapError(true)
+      return
+    }
+
+    let cancelled = false
+
+    const initializeMap = () => {
+      if (cancelled || !window.google?.maps || !mapRef.current) return
+
+      const fairfield = { lat: 38.378937, lng: -88.359768 }
+
+      mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+        center: fairfield,
+        zoom: 14,
+        mapTypeId: 'roadmap',
+        disableDefaultUI: true,
+        zoomControl: true,
+        zoomControlOptions: {
+          position: window.google.maps.ControlPosition.RIGHT_BOTTOM
+        },
+        gestureHandling: 'cooperative',
+        clickableIcons: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        mapTypeControl: false,
+        styles: [
+          { elementType: 'geometry', stylers: [{ color: '#edf0eb' }] },
+          { elementType: 'labels.text.fill', stylers: [{ color: '#68736b' }] },
+          { elementType: 'labels.text.stroke', stylers: [{ color: '#edf0eb' }] },
+          { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#c8d0c7' }] },
+          { featureType: 'landscape.man_made', elementType: 'geometry', stylers: [{ color: '#e7ebe5' }] },
+          { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#dbe7d7' }] },
+          { featureType: 'poi.park', elementType: 'geometry.fill', stylers: [{ color: '#cfe0ca' }] },
+          { featureType: 'poi.business', stylers: [{ visibility: 'simplified' }] },
+          { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+          { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#d6dbd4' }] },
+          { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+          { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#f5dca0' }] },
+          { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#e6c979' }] },
+          { featureType: 'road.local', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+          { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+          { featureType: 'water', elementType: 'geometry.fill', stylers: [{ color: '#c9dce2' }] },
+          { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#78919a' }] }
+        ]
+      })
+
+      const pinSvg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="52" height="64" viewBox="0 0 52 64">
+          <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".28"/>
+          </filter>
+          <path filter="url(#shadow)" d="M26 2C12.7 2 2 12.7 2 26c0 17.5 24 36 24 36s24-18.5 24-36C50 12.7 39.3 2 26 2z" fill="#13522B"/>
+          <circle cx="26" cy="26" r="9" fill="#fff"/>
+          <circle cx="26" cy="26" r="4" fill="#13522B"/>
+        </svg>
+      `
+
+      mapMarkerRef.current = new window.google.maps.Marker({
+        position: fairfield,
+        map: mapInstanceRef.current,
+        title: 'Mobicare Device Recovery — Fairfield, IL',
+        icon: {
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(pinSvg)}`,
+          scaledSize: new window.google.maps.Size(52, 64),
+          anchor: new window.google.maps.Point(26, 62)
+        },
+        zIndex: 10
+      })
+
+      const infoWindow = new window.google.maps.InfoWindow({
+        content: `
+          <div style="padding:4px 8px 6px;font-family:Arial,sans-serif;color:#26312b">
+            <strong style="font-size:13px">Mobicare Device Recovery</strong>
+            <div style="font-size:11px;margin-top:3px;color:#68736b">Fairfield, IL 62837</div>
+          </div>
+        `
+      })
+
+      mapMarkerRef.current.addListener('click', () => {
+        infoWindow.open({
+          anchor: mapMarkerRef.current,
+          map: mapInstanceRef.current
+        })
+      })
+    }
+
+    if (window.google?.maps) {
+      initializeMap()
+      return () => {
+        cancelled = true
+        if (mapMarkerRef.current) mapMarkerRef.current.setMap(null)
+      }
+    }
+
+    const existingScript = document.querySelector('script[data-google-maps-api="true"]')
+
+    if (existingScript) {
+      existingScript.addEventListener('load', initializeMap, { once: true })
+      existingScript.addEventListener('error', () => setMapError(true), { once: true })
+    } else {
+      const script = document.createElement('script')
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&v=weekly`
+      script.async = true
+      script.defer = true
+      script.dataset.googleMapsApi = 'true'
+      script.onload = initializeMap
+      script.onerror = () => setMapError(true)
+      document.head.appendChild(script)
+    }
+
+    return () => {
+      cancelled = true
+      if (mapMarkerRef.current) mapMarkerRef.current.setMap(null)
+    }
+  }, [])
 
   return (
     <div id="homepage-main-container" style={{ position: 'relative', overflowX: 'hidden', minHeight: '100vh' }}>
@@ -165,67 +289,151 @@ export default function Home() {
                 }}
               >
 
-                {/* Map View Frame */}
-                <div id="map-frame-preview" style={{ position: 'relative', height: 210, background: '#e3e8e2', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {/* Water Feature */}
-                  <div style={{ position: 'absolute', width: '42%', height: '145%', right: '-13%', top: '-22%', background: '#c9dce2', transform: 'rotate(10deg)', borderRadius: '48%', opacity: 0.9 }} />
+                {/* Real Google Map — Fairfield, IL */}
+                <div
+                  id="map-frame-preview"
+                  style={{
+                    position: 'relative',
+                    height: 210,
+                    background: '#e3e8e2',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div
+                    ref={mapRef}
+                    aria-label="Interactive map showing Fairfield, Illinois"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%'
+                    }}
+                  />
 
-                  {/* Park Areas */}
-                  <div style={{ position: 'absolute', width: 125, height: 62, left: 12, top: 18, background: '#c9dcc7', borderRadius: '45% 60% 40% 55%', opacity: 0.85 }} />
-                  <div style={{ position: 'absolute', width: 82, height: 48, right: 95, bottom: 12, background: '#c9dcc7', borderRadius: '55% 45% 60% 40%', opacity: 0.75 }} />
-
-                  {/* Subtle Map Texture */}
-                  <div style={{ position: 'absolute', inset: 0, opacity: 0.12, backgroundImage: 'linear-gradient(45deg, rgba(100,115,105,0.18) 25%, transparent 25%, transparent 75%, rgba(100,115,105,0.18) 75%)', backgroundSize: '28px 28px' }} />
-
-                  {/* Vector Map Roads */}
-                  <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 400 210" preserveAspectRatio="none">
-                    <path d="M -20 35 Q 80 52 175 45 T 420 25" fill="none" stroke="#ffffff" strokeWidth="8" strokeLinecap="round" />
-                    <path d="M -20 162 Q 90 145 185 155 T 420 178" fill="none" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" />
-                    <path d="M 65 -20 Q 80 60 70 230" fill="none" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" />
-                    <path d="M 305 -20 Q 280 65 315 230" fill="none" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" />
-
-                    <path d="M 0 82 L 400 96" fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.9" />
-                    <path d="M 0 124 L 400 137" fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.9" />
-                    <path d="M 115 0 Q 125 90 115 210" fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.85" />
-                    <path d="M 225 0 Q 205 90 230 210" fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.85" />
-                    <path d="M 355 0 Q 340 100 365 210" fill="none" stroke="#ffffff" strokeWidth="2.5" opacity="0.8" />
-
-                    {/* Main Highlighted Route */}
-                    <path d="M -20 112 Q 95 135 200 101 Q 295 68 420 85" fill="none" stroke="#ffffff" strokeWidth="11" strokeLinecap="round" />
-                    <path d="M -20 112 Q 95 135 200 101 Q 295 68 420 85" fill="none" stroke="var(--primary)" strokeWidth="6" strokeLinecap="round" />
-
-                    <path d="M 190 -10 Q 205 65 204 100 Q 205 155 225 220" fill="none" stroke="#ffffff" strokeWidth="2" strokeDasharray="8 7" opacity="0.7" />
-                  </svg>
-
-                  {/* Street Labels */}
-                  <div style={{ position: 'absolute', left: '27%', top: '20%', fontSize: 9, fontWeight: 600, color: '#68736b', transform: 'rotate(-5deg)', letterSpacing: '0.04em' }}>MAPLE ST</div>
-                  <div style={{ position: 'absolute', right: '18%', top: '48%', fontSize: 9, fontWeight: 600, color: '#68736b', transform: 'rotate(8deg)', letterSpacing: '0.04em' }}>RIVER RD</div>
-                  <div style={{ position: 'absolute', left: '10%', bottom: '25%', fontSize: 8, fontWeight: 500, color: '#788279', transform: 'rotate(90deg)' }}>OAK AVE</div>
-
-                  {/* Elevated Map Pin Marker */}
-                  <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateY(-10px)' }}>
-                    <div style={{ background: 'var(--primary)', color: 'var(--on-primary)', padding: '8px 16px', borderRadius: 24, fontSize: 12, fontWeight: 700, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <i style={{ fontSize: 16 }}>storefront</i> Mobicare
+                  {/* Map Loading / Missing-Key State */}
+                  {(!GOOGLE_MAPS_API_KEY || mapError) && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 24,
+                        textAlign: 'center',
+                        background: 'linear-gradient(135deg, #e3e8e2, #d7e1d6)',
+                        color: '#34403a'
+                      }}
+                    >
+                      <div>
+                        <i
+                          className="material-symbols-outlined"
+                          style={{ fontSize: 32, display: 'block', marginBottom: 8 }}
+                        >
+                          map
+                        </i>
+                        <strong style={{ display: 'block', fontSize: 13 }}>
+                          Fairfield, Illinois
+                        </strong>
+                        <span style={{ display: 'block', fontSize: 11, marginTop: 4, opacity: 0.75 }}>
+                          Google Maps is unavailable right now.
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ width: 12, height: 12, background: 'var(--primary)', transform: 'rotate(45deg)', marginTop: -6, boxShadow: '0 4px 8px rgba(0,0,0,0.25)' }} />
+                  )}
+
+                  {/* Mobicare Branding Overlay */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: 12,
+                      top: 12,
+                      zIndex: 3,
+                      pointerEvents: 'none'
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: 'var(--primary)',
+                        color: 'var(--on-primary)',
+                        padding: '8px 14px',
+                        borderRadius: 24,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        boxShadow: '0 6px 18px rgba(0,0,0,0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 7
+                      }}
+                    >
+                      <i style={{ fontSize: 16 }}>storefront</i>
+                      Mobicare
+                    </div>
                   </div>
 
-                  {/* Floating Controls Overlay */}
-                  <div style={{ position: 'absolute', top: 12, right: 12 }}>
-                    <a href={googleMapsUrl} target="_blank" rel="noreferrer" className="chip round" style={{ background: 'rgba(255,255,255,0.88)', color: '#34403a', backdropFilter: 'blur(12px)', border: '1px solid rgba(0,0,0,0.08)', fontSize: 11, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-                      <i style={{ fontSize: 14 }}>open_in_new</i> Large Map
+                  {/* Large Map Link */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                      zIndex: 4
+                    }}
+                  >
+                    <a
+                      href={googleMapsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="chip round"
+                      style={{
+                        background: 'rgba(255,255,255,0.92)',
+                        color: '#34403a',
+                        backdropFilter: 'blur(12px)',
+                        border: '1px solid rgba(0,0,0,0.08)',
+                        fontSize: 11,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
+                      }}
+                    >
+                      <i style={{ fontSize: 14 }}>open_in_new</i>
+                      Large Map
                     </a>
                   </div>
 
-                  {/* Status Overlay */}
-                  <div style={{ position: 'absolute', bottom: 12, left: 12 }}>
-                    <span className="chip round" style={{ background: 'rgba(255,255,255,0.88)', color: 'var(--tertiary)', backdropFilter: 'blur(12px)', fontSize: 11, fontWeight: 700, border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+                  {/* Location Status */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 12,
+                      left: 12,
+                      zIndex: 4
+                    }}
+                  >
+                    <span
+                      className="chip round"
+                      style={{
+                        background: 'rgba(255,255,255,0.92)',
+                        color: 'var(--tertiary)',
+                        backdropFilter: 'blur(12px)',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        border: '1px solid rgba(0,0,0,0.08)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
+                      }}
+                    >
                       ● Open Today • Fairfield, IL
                     </span>
                   </div>
 
-                  {/* Soft Map Vignette */}
-                  <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to bottom, rgba(0,0,0,0.025), transparent 30%, transparent 70%, rgba(0,0,0,0.05))' }} />
+                  {/* Soft Edge Treatment */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      zIndex: 2,
+                      pointerEvents: 'none',
+                      boxShadow: 'inset 0 0 28px rgba(25,45,34,0.08)'
+                    }}
+                  />
                 </div>
 
                 {/* Directions & Details Container */}
