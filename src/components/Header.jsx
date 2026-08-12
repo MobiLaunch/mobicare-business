@@ -13,6 +13,13 @@ export default function Header() {
   const brand = useSiteStore(s => s.brand)
   const appearance = useSiteStore(s => s.appearance)
   const setColorScheme = useSiteStore(s => s.setColorScheme)
+
+  // Cart store integration (falls back safely if structured in siteStore or cart store)
+  const cart = useSiteStore(s => s.cart || s.cartItems || [])
+  const toggleCart = useSiteStore(s => s.toggleCart || s.openCart || (() => {
+    window.dispatchEvent(new CustomEvent('open-cart'))
+  }))
+
   const theme = appearance?.colorScheme || 'dark'
   const logoSrc = appearance?.logoUrl || localLogo
   const { user, loading: authLoading } = useAuth()
@@ -39,6 +46,7 @@ export default function Header() {
 
   const accountPath = user ? '/account' : '/login'
   const accountActive = isActive('/account')
+  const cartItemCount = cart.reduce((total, item) => total + (item.quantity || 1), 0)
 
   return (
     <>
@@ -99,7 +107,7 @@ export default function Header() {
                 color: 'inherit',
                 whiteSpace: 'nowrap',
               }}
-              aria-label={`${brand?.name || 'Home'}`}
+              aria-label={`${brand?.name || 'Mobicare Device Recovery'}`}
             >
               {appearance?.logoType === 'image' ? (
                 <img
@@ -127,8 +135,23 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* ─── RIGHT: Book Appointment CTA + Desktop Account ─────── */}
+          {/* ─── RIGHT: Shopping Cart, Book Appointment & Desktop Account ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifySelf: 'end' }}>
+            {/* Shopping Cart Action Button */}
+            <button
+              id="header-cart-button"
+              type="button"
+              className={`header-cart-action ${cartItemCount > 0 ? 'header-cart-action-filled' : ''}`}
+              onClick={typeof toggleCart === 'function' ? toggleCart : () => { }}
+              title="Open Shopping Cart"
+              aria-label="Open Shopping Cart"
+            >
+              <i>shopping_bag</i>
+              {cartItemCount > 0 && (
+                <span className="badge circle error header-cart-badge">{cartItemCount}</span>
+              )}
+            </button>
+
             {/* Book Appointment CTA */}
             <button
               id="header-book-appointment-btn"

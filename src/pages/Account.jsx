@@ -123,16 +123,16 @@ export default function Account() {
       <main className="responsive medium-padding">
 
         <section className="surface-container round large-padding margin">
-          <div className="s12 m4 l4">
-            <div className="max">
-              <div className="chip surface-container-high">
+          <div className="row middle-align wrap space">
+            <div className="max" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="chip surface-container-high" style={{ width: 'fit-content', margin: 0 }}>
                 <i>badge</i>
-                <span>Customer Portal</span>
+                <span>Repair and Purchase History</span>
               </div>
-              <h1 className="large">
+              <h1 className="large" style={{ margin: 0, lineHeight: 1.2 }}>
                 Hi, {profile?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'there'}
               </h1>
-              <p className="on-surface-variant-text">{user.email}</p>
+              <p className="on-surface-variant-text" style={{ margin: 0 }}>{user.email}</p>
             </div>
 
             <button id="account-signout-btn" className="border round" type="button" onClick={logout}>
