@@ -112,7 +112,7 @@ export default function Account() {
   }
 
   return (
-    <div id="account-page-wrapper" className="page min-height-100vh">
+    <div id="account-page-wrapper" className="min-height-100vh">
       <PageMeta
         title="My Account — Mobicare Device Recovery"
         description="View your repair history, track active orders, and update your Mobicare account profile."
