@@ -97,7 +97,7 @@ export default function Account() {
 
   if (loading) {
     return (
-      <main id="account-loading-container" className="page min-height-100vh">
+      <main id="account-loading-container" className="min-height-100vh">
         <BackgroundCanvas />
         <div className="surface-container round large-padding margin center-align">
           <progress className="circle small" />
