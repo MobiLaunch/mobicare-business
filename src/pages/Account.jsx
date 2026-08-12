@@ -284,23 +284,25 @@ export default function Account() {
 
               {editing ? (
                 <form onSubmit={saveProfile} className="grid">
-                  <div className="field border round fill">
+                  <div className="s12 field border round fill">
                     <input id="account-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder=" " required />
                     <label htmlFor="account-name">Full name</label>
                   </div>
 
-                  <div className="field border round fill">
+                  <div className="s12 field border round fill">
                     <input id="account-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder=" " />
                     <label htmlFor="account-phone">Phone number</label>
                   </div>
 
-                  <div className="row wrap">
-                    <button className="primary fill round" type="submit" disabled={saving}>
-                      {saving ? 'Saving…' : 'Save Changes'}
-                    </button>
-                    <button className="border round" type="button" onClick={() => setEditing(false)}>
-                      Cancel
-                    </button>
+                  <div className="s12">
+                    <div className="row wrap">
+                      <button className="primary fill round" type="submit" disabled={saving}>
+                        {saving ? 'Saving…' : 'Save Changes'}
+                      </button>
+                      <button className="border round" type="button" onClick={() => setEditing(false)}>
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 </form>
               ) : (
