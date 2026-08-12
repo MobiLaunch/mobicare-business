@@ -14,18 +14,14 @@ export function sanitizeInput(str) {
 }
 
 // ─── Supabase client ───────────────────────────────────────────────────────
-// Priority: .env vars → localStorage (set via Settings page) → empty
-// The Settings page lets admins configure credentials post-deployment without
-// redeployment, by storing them in localStorage. Env vars take precedence.
-
 let _client = null
 let _clientUrl = null
 let _clientKey = null
 
 export function getSupabaseConfig() {
-  // Env vars win; fall back to localStorage for settings-page-configured creds
-  const url = SUPABASE_URL || localStorage.getItem('sb_url') || ''
-  const anonKey = SUPABASE_ANON_KEY || localStorage.getItem('sb_anon_key') || ''
+  const isBrowser = typeof window !== 'undefined'
+  const url = SUPABASE_URL || (isBrowser ? localStorage.getItem('sb_url') : '') || ''
+  const anonKey = SUPABASE_ANON_KEY || (isBrowser ? localStorage.getItem('sb_anon_key') : '') || ''
   return { url, anonKey }
 }
 
@@ -38,7 +34,6 @@ export function getClient() {
   if (!isSupabaseConfigured()) return null
   const { url, anonKey } = getSupabaseConfig()
 
-  // Re-create only when credentials actually change
   if (_client && _clientUrl === url && _clientKey === anonKey) return _client
 
   _client = createClient(url, anonKey, {
@@ -59,11 +54,14 @@ export function resetClient() {
   _clientKey = null
 }
 
-// ─── Supabase Auth (General / Admin) ───────────────────────────────────────
+// ─── Supabase Auth (General / Admin & Customer) ────────────────────────────
 export async function signInWithEmail(email, password) {
   const sb = getClient()
   if (!sb) return { error: { message: 'Supabase not configured — enter credentials in Settings first.' } }
-  const { data, error } = await sb.auth.signInWithPassword({ email, password })
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: typeof email === 'string' ? email.trim().toLowerCase() : email,
+    password
+  })
   return { data, error }
 }
 
@@ -83,53 +81,60 @@ export async function getSession() {
 export async function getUser() {
   const sb = getClient()
   if (!sb) return null
-  const { data } = await sb.auth.getUser()
+  const { data, error } = await sb.auth.getUser()
+  if (error) return null
   return data?.user ?? null
 }
 
+// Alias for backwards compatibility across components
+export const getCurrentUser = getUser
+
 export async function updatePassword(newPassword) {
   const sb = getClient()
-  if (!sb) return { error: { message: 'Supabase not configured' } }
+  if (!sb) return { error: { message: 'Supabase not configured.' } }
   const { error } = await sb.auth.updateUser({ password: newPassword })
   return { error }
 }
 
-export async function sendPasswordReset(email) {
+export const updateCustomerPassword = updatePassword
+
+export async function sendPasswordReset(email, isAdmin = false) {
   const sb = getClient()
-  if (!sb) return { error: { message: 'Supabase not configured' } }
-  const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/admin/reset-password`,
-  })
+  if (!sb) return { error: { message: 'Supabase not configured.' } }
+
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const redirectTo = isAdmin ? `${origin}/admin/reset-password` : `${origin}/reset-password`
+
+  const { error } = await sb.auth.resetPasswordForEmail(
+    typeof email === 'string' ? email.trim().toLowerCase() : email,
+    { redirectTo }
+  )
   return { error }
 }
 
-// ─── Customer Auth & Account Management ────────────────────────────────────
+export async function sendCustomerPasswordReset(email) {
+  return sendPasswordReset(email, false)
+}
+
+// ─── Customer Sign Up & Profile Management ─────────────────────────────────
 export async function signUpWithEmail(email, password, metadata = {}) {
   const sb = getClient()
   if (!sb) return { data: null, error: { message: 'Supabase not configured.' } }
 
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const { data, error } = await sb.auth.signUp({
-    email: email.trim().toLowerCase(),
+    email: typeof email === 'string' ? email.trim().toLowerCase() : email,
     password,
     options: {
       data: {
         full_name: metadata.full_name || '',
         phone: metadata.phone || '',
       },
-      emailRedirectTo: `${window.location.origin}/login`,
+      emailRedirectTo: `${origin}/login`,
     },
   })
 
   return { data, error }
-}
-
-export async function getCurrentUser() {
-  const sb = getClient()
-  if (!sb) return null
-
-  const { data, error } = await sb.auth.getUser()
-  if (error) return null
-  return data?.user ?? null
 }
 
 export async function getCustomerProfile(userId) {
@@ -190,31 +195,6 @@ export async function sbFetchCustomerOrders(userId) {
     .order('created_at', { ascending: false })
 
   return { data: data || [], error }
-}
-
-export async function sendCustomerPasswordReset(email) {
-  const sb = getClient()
-  if (!sb) return { error: { message: 'Supabase not configured.' } }
-
-  const { error } = await sb.auth.resetPasswordForEmail(
-    email.trim().toLowerCase(),
-    {
-      redirectTo: `${window.location.origin}/reset-password`,
-    }
-  )
-
-  return { error }
-}
-
-export async function updateCustomerPassword(newPassword) {
-  const sb = getClient()
-  if (!sb) return { error: { message: 'Supabase not configured.' } }
-
-  const { error } = await sb.auth.updateUser({
-    password: newPassword,
-  })
-
-  return { error }
 }
 
 // ─── Connection test ───────────────────────────────────────────────────────
