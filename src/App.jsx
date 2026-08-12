@@ -138,7 +138,9 @@ export default function App() {
           <Route path="/order-success" element={<PublicLayout><OrderSuccess /></PublicLayout>} />
           <Route path="/repairs" element={<PublicLayout><Repairs /></PublicLayout>} />
           <Route path="/about" element={<PublicLayout><About /></PublicLayout>} />
-
+          <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
+          <Route path="/signin" element={<Navigate to="/login" replace />} />
+          <Route path="/sign-in" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
           <Route path="/signup" element={<PublicLayout><Signup /></PublicLayout>} />
           <Route path="/forgot-password" element={<PublicLayout><ForgotPassword /></PublicLayout>} />

@@ -84,7 +84,7 @@ export default function Signup() {
   }
 
   return (
-    <div id="signup-page-wrapper" className="page min-height-100vh">
+    <div id="signup-page-wrapper" className="min-height-100vh">
       <PageMeta
         title="Create Account — Mobicare Device Recovery"
         description="Register for a Mobicare account to track repairs and manage store orders."
@@ -115,7 +115,7 @@ export default function Signup() {
           )}
 
           <form onSubmit={submit} className="grid">
-            <div className="field border round fill">
+            <div className="s12 field border round fill">
               <input
                 id="signup-name"
                 type="text"
@@ -130,7 +130,7 @@ export default function Signup() {
               <i>person</i>
             </div>
 
-            <div className="field border round fill">
+            <div className="s12 field border round fill">
               <input
                 id="signup-phone"
                 type="tel"
@@ -144,7 +144,7 @@ export default function Signup() {
               <i>call</i>
             </div>
 
-            <div className="field border round fill">
+            <div className="s12 field border round fill">
               <input
                 id="signup-email"
                 type="email"
@@ -159,7 +159,7 @@ export default function Signup() {
               <i>mail</i>
             </div>
 
-            <div className="field border round fill">
+            <div className="s12 field border round fill">
               <input
                 id="signup-password"
                 type="password"
@@ -175,7 +175,7 @@ export default function Signup() {
               <i>lock</i>
             </div>
 
-            <div className="field border round fill">
+            <div className="s12 field border round fill">
               <input
                 id="signup-confirm"
                 type="password"
@@ -193,7 +193,7 @@ export default function Signup() {
 
             <button
               id="signup-submit-btn"
-              className="primary fill round large"
+              className="s12 primary fill round large"
               type="submit"
               disabled={busy}
               aria-busy={busy}

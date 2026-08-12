@@ -54,7 +54,7 @@ export default function Login() {
   }
 
   return (
-    <div id="login-page-wrapper" className="page min-height-100vh">
+    <div id="login-page-wrapper" className="min-height-100vh">
       <PageMeta
         title="Sign In — Mobicare Device Recovery"
         description="Sign in to your Mobicare account to track repairs, review orders, and manage appointments."
@@ -78,24 +78,26 @@ export default function Login() {
 
           {notice && (
             <article className="surface-container-high round small-padding margin">
-              <div className="row middle-align no-space">
-                <i className="primary-text">info</i>
-                <span>{notice}</span>
+              {/* Changed no-space to wrap */}
+              <div className="row middle-align wrap">
+                <i className="primary-text" style={{ flexShrink: 0 }}>info</i>
+                <span className="max" style={{ overflowWrap: 'break-word' }}>{notice}</span>
               </div>
             </article>
           )}
 
           {error && (
-            <output className="invalid round small-padding margin" role="alert">
-              <div className="row middle-align no-space">
-                <i>error</i>
-                <span>{error}</span>
+            <output className="invalid round small-padding margin" role="alert" style={{ display: 'block' }}>
+              {/* Changed no-space to wrap */}
+              <div className="row middle-align wrap">
+                <i style={{ flexShrink: 0 }}>error</i>
+                <span className="max" style={{ overflowWrap: 'break-word' }}>{error}</span>
               </div>
             </output>
           )}
 
           <form onSubmit={submit} className="grid">
-            <div className="field border round fill">
+            <div className="s12 field border round fill">
               <input
                 id="login-email"
                 type="email"
@@ -110,7 +112,7 @@ export default function Login() {
               <i>mail</i>
             </div>
 
-            <div className="field border round fill">
+            <div className="s12 field border round fill">
               <input
                 id="login-password"
                 type="password"
@@ -127,7 +129,7 @@ export default function Login() {
 
             <button
               id="login-submit-btn"
-              className="primary fill round large"
+              className="s12 primary fill round large"
               type="submit"
               disabled={busy}
               aria-busy={busy}
