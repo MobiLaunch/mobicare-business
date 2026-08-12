@@ -123,7 +123,7 @@ export default function Account() {
       <main className="responsive medium-padding">
 
         <section className="surface-container round large-padding margin">
-          <div className="row middle-align wrap">
+          <div className="s12 m4 l4">
             <div className="max">
               <div className="chip surface-container-high">
                 <i>badge</i>
