@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { useProductStore } from './lib/store'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useProductStore, useCartStore } from './lib/store'
 import { useSiteStore, applyAppearance } from './lib/siteStore'
 import { sbFetchSiteSettings, isSupabaseConfigured, sbUpsertSiteSettings } from './lib/supabase'
 
@@ -15,7 +15,6 @@ import RequireAdmin from './components/RequireAdmin'
 import Home from './pages/Home'
 import Shop from './pages/Shop'
 import ProductDetail from './pages/ProductDetail'
-import Cart from './pages/Cart'
 import OrderSuccess from './pages/OrderSuccess'
 import Repairs from './pages/Repairs'
 import About from './pages/About'
@@ -33,12 +32,12 @@ import SiteContent from './admin/SiteContent'
 
 function PublicLayout({ children }) {
   return (
-    <>
+    <div className="public-layout-wrapper">
       <Header />
       {children}
       <Footer />
       <BottomNav />
-    </>
+    </div>
   )
 }
 
@@ -108,6 +107,30 @@ function ScrollToTop() {
   return null
 }
 
+// Redirect /cart to home and auto-open the cart drawer
+function CartRedirect() {
+  const navigate = useNavigate()
+  const setCartDrawerOpen = useCartStore(s => s.setCartDrawerOpen)
+  useEffect(() => {
+    setCartDrawerOpen(true)
+    navigate('/', { replace: true })
+  }, [])
+  return null
+}
+
+// Redirect /repairs to homepage repairs bento grid section
+function RepairsRedirect() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    navigate('/', { replace: true })
+    setTimeout(() => {
+      const el = document.getElementById('repairs')
+      if (el) el.scrollIntoView({ behavior: 'smooth' })
+    }, 150)
+  }, [])
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -119,7 +142,7 @@ export default function App() {
         <Route path="/"              element={<PublicLayout><Home /></PublicLayout>} />
         <Route path="/shop"          element={<PublicLayout><Shop /></PublicLayout>} />
         <Route path="/product/:id"   element={<PublicLayout><ProductDetail /></PublicLayout>} />
-        <Route path="/cart"          element={<PublicLayout><Cart /></PublicLayout>} />
+        <Route path="/cart"          element={<PublicLayout><CartRedirect /></PublicLayout>} />
         <Route path="/order-success" element={<PublicLayout><OrderSuccess /></PublicLayout>} />
         <Route path="/repairs"       element={<PublicLayout><Repairs /></PublicLayout>} />
         <Route path="/about"         element={<PublicLayout><About /></PublicLayout>} />

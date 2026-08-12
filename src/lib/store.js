@@ -49,6 +49,8 @@ export const useCartStore = create(
   persist(
     (set, get) => ({
       items: [],
+      cartDrawerOpen: false,
+      setCartDrawerOpen: (open) => set({ cartDrawerOpen: open }),
       addItem: (product, qty = 1) => {
         if (!product || product.stock < 1 || qty < 1) return false
         const { items } = get()
@@ -71,9 +73,13 @@ export const useCartStore = create(
       },
       clearCart: () => set({ items: [] }),
     }),
-    { name: 'mobicare-cart' }
+    {
+      name: 'mobicare-cart',
+      partialize: (s) => ({ items: s.items }),
+    }
   )
 )
+
 
 // ─── Product / order store ─────────────────────────────────────────────────
 // When Supabase is configured:

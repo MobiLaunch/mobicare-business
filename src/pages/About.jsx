@@ -64,13 +64,30 @@ export default function About() {
       </section>
 
       {/* Story & Find Us Section */}
-      <section className="surface-container-low" style={{ borderRadius: 32, margin: '16px 0', border: '1px solid var(--outline-variant)' }}>
-        <div className="grid" style={{ padding: 'clamp(24px, 5vw, 48px)', gap: 32 }}>
+      <section
+        className="surface-container-low"
+        style={{
+          borderRadius: 32,
+          margin: '16px 0',
+          border: '1px solid var(--outline-variant)',
+          overflow: 'hidden'
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 32,
+            padding: 'clamp(20px, 4vw, 48px)',
+            boxSizing: 'border-box',
+            width: '100%'
+          }}
+        >
           {/* Story Content */}
-          <div className="s12 m7" style={{ minWidth: 0 }}>
+          <div style={{ flex: '1 1 300px', minWidth: 0, maxWidth: '100%', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
             <h2 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', fontWeight: 700, margin: '0 0 16px' }}>Our Story</h2>
             {about.story.map((para, i) => (
-              <p key={i} className="on-surface-variant-text" style={{ lineHeight: 1.7, fontSize: 'clamp(14px, 2vw, 16px)', overflowWrap: 'break-word', marginBottom: 16 }}>
+              <p key={i} className="on-surface-variant-text" style={{ lineHeight: 1.7, fontSize: 'clamp(14px, 2vw, 16px)', overflowWrap: 'break-word', wordBreak: 'break-word', marginBottom: 16 }}>
                 {para}
               </p>
             ))}
@@ -85,9 +102,9 @@ export default function About() {
           </div>
 
           {/* Contact Details Card */}
-          <div className="s12 m5" style={{ minWidth: 0 }}>
+          <div style={{ flex: '1 1 240px', minWidth: 0, maxWidth: '100%' }}>
             <article className="surface-container-high" style={{ borderRadius: 24, border: '1px solid var(--outline-variant)' }}>
-              <div className="padding" style={{ padding: '20px 24px' }}>
+              <div style={{ padding: '20px 24px' }}>
                 <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: '1.25rem', fontWeight: 700 }}>Find Us</h3>
                 {[
                   { icon: 'call', label: 'Phone', val: business.phone, href: `tel:${business.phone}` },
@@ -100,9 +117,9 @@ export default function About() {
                       <div className="secondary-container circle" style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <i style={{ fontSize: 18 }}>{row.icon}</i>
                       </div>
-                      <div style={{ marginLeft: 12, minWidth: 0 }}>
-                        <strong style={{ display: 'block', fontSize: 13, overflowWrap: 'break-word' }}>{row.label}</strong>
-                        <span className="on-surface-variant-text" style={{ fontSize: 13, overflowWrap: 'break-word' }}>{row.val}</span>
+                      <div style={{ marginLeft: 12, minWidth: 0, overflow: 'hidden' }}>
+                        <strong style={{ display: 'block', fontSize: 13 }}>{row.label}</strong>
+                        <span className="on-surface-variant-text" style={{ fontSize: 13, display: 'block', overflowWrap: 'break-word', wordBreak: 'break-all' }}>{row.val}</span>
                       </div>
                     </Tag>
                   )
@@ -123,6 +140,7 @@ export default function About() {
           </div>
         </div>
       </section>
+
 
       {/* Services List Preview */}
       <section style={{ padding: 'clamp(32px, 6vw, 48px) 0' }}>

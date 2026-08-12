@@ -5,6 +5,7 @@ import { useSiteStore } from '../lib/siteStore'
 import ProductCard from '../components/ProductCard'
 import PageMeta from '../components/PageMeta'
 import BookingWizard from '../components/BookingWizard'
+import BackgroundCanvas from '../components/BackgroundCanvas'
 import { GOOGLE_MAPS_API_KEY } from '../lib/config'
 
 const REPAIR_VISUALS = {
@@ -39,89 +40,6 @@ function useFadeIn() {
   return [ref, visible]
 }
 
-function GoogleMapFrame() {
-  const mapRef = useRef(null)
-  const [status, setStatus] = useState(GOOGLE_MAPS_API_KEY ? 'loading' : 'missing-key')
-
-  useEffect(() => {
-    if (!GOOGLE_MAPS_API_KEY) return undefined
-
-    let cancelled = false
-    const renderMap = () => {
-      if (cancelled || !mapRef.current || !window.google?.maps) return
-      const map = new window.google.maps.Map(mapRef.current, {
-        center: { lat: 38.3742, lng: -88.3595 },
-        zoom: 13,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        styles: [
-          { elementType: 'geometry', stylers: [{ color: '#15221e' }] },
-          { elementType: 'labels.text.stroke', stylers: [{ color: '#15221e' }] },
-          { elementType: 'labels.text.fill', stylers: [{ color: '#b9e8c2' }] },
-          { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2f4e37' }] },
-          { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#526350' }] },
-          { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#003739' }] },
-        ],
-      })
-
-      new window.google.maps.Marker({
-        map,
-        position: { lat: 38.3742, lng: -88.3595 },
-        title: 'Mobicare Device Recovery',
-      })
-      setStatus('ready')
-    }
-
-    const handleError = () => {
-      if (!cancelled) setStatus('error')
-    }
-
-    if (window.google?.maps) {
-      renderMap()
-      return () => { cancelled = true }
-    }
-
-    const existingScript = document.querySelector('script[data-google-maps-loader]')
-    if (existingScript) {
-      existingScript.addEventListener('load', renderMap)
-      existingScript.addEventListener('error', handleError)
-      return () => {
-        cancelled = true
-        existingScript.removeEventListener('load', renderMap)
-        existingScript.removeEventListener('error', handleError)
-      }
-    }
-
-    const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&v=weekly`
-    script.async = true
-    script.defer = true
-    script.dataset.googleMapsLoader = 'true'
-    script.addEventListener('load', renderMap)
-    script.addEventListener('error', handleError)
-    document.head.appendChild(script)
-
-    return () => {
-      cancelled = true
-      script.removeEventListener('load', renderMap)
-      script.removeEventListener('error', handleError)
-    }
-  }, [])
-
-  return (
-    <div className={`home-map-frame home-map-${status}`}>
-      <div ref={mapRef} className="home-google-map" aria-label="Map showing Mobicare Device Recovery in Fairfield, Illinois" />
-      {status !== 'ready' && (
-        <div className="home-map-status">
-          <i>{status === 'loading' ? 'map' : 'location_off'}</i>
-          <span>{status === 'loading' ? 'Loading map…' : 'Add a Google Maps API key to load the map.'}</span>
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function Home() {
   const navigate = useNavigate()
   const featured = useProductStore(s => s.getFeatured())
@@ -133,6 +51,7 @@ export default function Home() {
   const [ctaRef, ctaVisible] = useFadeIn()
 
   const [bookingOpen, setBookingOpen] = useState(false)
+  const [selectedServiceForBooking, setSelectedServiceForBooking] = useState(null)
   const [selectedTown, setSelectedTown] = useState(null)
   const [copied, setCopied] = useState(false)
 
@@ -151,33 +70,37 @@ export default function Home() {
   const googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=Mobicare+Fairfield+IL'
 
   return (
-    <div style={{ overflowX: 'hidden' }}>
+    <div id="homepage-main-container" style={{ position: 'relative', overflowX: 'hidden', minHeight: '100vh' }}>
       <PageMeta
         title="Mobicare Device Recovery — iPhone & Phone Repair in Fairfield, IL"
-        description="Southern Illinois' premier device repair shop. Same-day iPhone screen repairs, iPad repairs, batteries, and electronic accessories in Fairfield, IL."
+        description="Southern Illinois' preferred device repair shop. Next-Day Repairs for almost everything.* EST. 2022. Four years of helping you love your device, longer."
       />
 
-      <div className="responsive" style={{ paddingTop: 96, paddingLeft: 'clamp(12px, 3vw, 24px)', paddingRight: 'clamp(12px, 3vw, 24px)', maxWidth: '100%', boxSizing: 'border-box' }}>
+      {/* Dynamic Animated Background Canvas with BeerCSS shapes */}
+      <BackgroundCanvas />
 
-        {/* ── Hero + Interactive Google Maps Location Widget ── */}
+      <div id="homepage-content-wrapper" className="responsive" style={{ position: 'relative', zIndex: 1, paddingTop: 96, paddingLeft: 'clamp(12px, 3vw, 24px)', paddingRight: 'clamp(12px, 3vw, 24px)', maxWidth: '100%', boxSizing: 'border-box' }}>
+
+        {/* ── Hero + Interactive Location Bento Card ── */}
         <section
-          className="card surface-container-low"
+          id="hero-bento-section"
+          className="card home-bento-card"
           style={{
             position: 'relative',
             overflow: 'hidden',
             padding: 'clamp(24px, 5vw, 48px)',
             margin: '0 0 32px',
             borderRadius: 32,
-            border: '1px solid var(--outline-variant)'
           }}
         >
-          <div className="grid middle-align">
+          <div id="hero-bento-grid" className="grid middle-align">
 
             {/* Left: Expressive Headline & CTAs */}
-            <div className="s12 m12 l7" style={{ display: 'flex', flexDirection: 'column', gap: 20, zIndex: 1, position: 'relative', minWidth: 0 }}>
+            <div id="hero-text-container" className="s12 m12 l7" style={{ display: 'flex', flexDirection: 'column', gap: 20, zIndex: 1, position: 'relative', minWidth: 0 }}>
 
               {/* M3 Expressive Tonal Badge */}
               <div
+                id="hero-status-chip"
                 className="chip surface-container-high"
                 style={{
                   borderRadius: 16,
@@ -189,6 +112,7 @@ export default function Home() {
               >
                 <i className="tertiary-text" style={{ fontSize: 18 }}>location_on</i>
                 <span
+                  id="hero-status-text"
                   className="on-surface-text"
                   style={{ fontSize: 'clamp(11px, 2.5vw, 12px)', fontWeight: 700, letterSpacing: '.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                 >
@@ -197,107 +121,115 @@ export default function Home() {
               </div>
 
               {/* Expressive Fluid Typography */}
-              <h1 style={{ fontSize: 'clamp(2.2rem, 5.5vw, 3.8rem)', fontWeight: 800, lineHeight: 1.08, margin: 0, letterSpacing: '-0.02em', overflowWrap: 'break-word' }}>
+              <h1 id="hero-primary-headline" style={{ fontSize: 'clamp(2.2rem, 5.5vw, 3.8rem)', fontWeight: 800, lineHeight: 1.08, margin: 0, letterSpacing: '-0.02em', overflowWrap: 'break-word' }}>
                 {hero.headlineLine1}<br />
-                <span className="primary-text">{hero.headlineAccent}</span>
+                <span id="hero-primary-headline-accent" className="primary-text">{hero.headlineAccent}</span>
               </h1>
 
-              <p className="on-surface-variant-text" style={{ fontSize: 'clamp(15px, 2vw, 18px)', lineHeight: 1.55, maxWidth: 520, margin: 0, overflowWrap: 'break-word' }}>
+              <p id="hero-description-paragraph" className="on-surface-variant-text" style={{ fontSize: 'clamp(15px, 2vw, 18px)', lineHeight: 1.55, maxWidth: 520, margin: 0, overflowWrap: 'break-word' }}>
                 {hero.description}
               </p>
 
               {/* Interactive Hero Buttons */}
-              <div className="row wrap" style={{ gap: 12, marginTop: 8, width: '100%', maxWidth: '100%' }}>
+              <div id="hero-action-buttons-row" className="row wrap" style={{ gap: 12, marginTop: 8, width: '100%', maxWidth: '100%' }}>
                 <button
+                  id="hero-book-repair-btn"
                   className="primary fill round"
                   onClick={() => setBookingOpen(true)}
                   style={{ padding: '12px 24px', fontWeight: 600, minHeight: 48, height: 'auto', maxWidth: '100%', boxSizing: 'border-box' }}
                 >
-                  <i>calendar_today</i>
+                  <i className="material-symbols-outlined">calendar_today</i>
                   <span>Book a Repair</span>
                 </button>
                 <button
+                  id="hero-shop-accessories-btn"
                   className="border round surface-container-high"
                   onClick={() => navigate('/shop')}
                   style={{ padding: '12px 24px', fontWeight: 600, minHeight: 48, height: 'auto', maxWidth: '100%', boxSizing: 'border-box' }}
                 >
                   <span>Shop Accessories</span>
-                  <i>arrow_forward</i>
+                  <i className="material-symbols-outlined">arrow_forward</i>
                 </button>
               </div>
             </div>
 
             {/* Right: Interactive Maps & Directions Widget */}
-            <div className="s12 m12 l5" style={{ zIndex: 1, position: 'relative', minWidth: 0, width: '100%' }}>
+            <div id="hero-map-widget-col" className="s12 m12 l5" style={{ zIndex: 1, position: 'relative', minWidth: 0, width: '100%' }}>
               <div
-                className="card surface-container"
+                id="hero-map-glass-card"
+                className="card surface-container home-bento-card"
                 style={{
                   borderRadius: 28,
                   overflow: 'hidden',
-                  border: '1px solid color-mix(in srgb, var(--outline-variant) 40%, transparent)',
-                  boxShadow: 'var(--elevation-2)',
                   padding: 0
                 }}
               >
 
                 {/* Map View Frame */}
-                <div style={{ position: 'relative', height: 210, background: '#121c19', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div id="map-frame-preview" style={{ position: 'relative', height: 210, background: '#e3e8e2', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {/* Water Feature */}
+                  <div style={{ position: 'absolute', width: '42%', height: '145%', right: '-13%', top: '-22%', background: '#c9dce2', transform: 'rotate(10deg)', borderRadius: '48%', opacity: 0.9 }} />
 
-                  {/* Radial Grid Pattern */}
-                  <div style={{ position: 'absolute', inset: 0, opacity: 0.2, backgroundImage: 'radial-gradient(var(--primary) 1.5px, transparent 1.5px)', backgroundSize: '18px 18px' }} />
+                  {/* Park Areas */}
+                  <div style={{ position: 'absolute', width: 125, height: 62, left: 12, top: 18, background: '#c9dcc7', borderRadius: '45% 60% 40% 55%', opacity: 0.85 }} />
+                  <div style={{ position: 'absolute', width: 82, height: 48, right: 95, bottom: 12, background: '#c9dcc7', borderRadius: '55% 45% 60% 40%', opacity: 0.75 }} />
 
-                  {/* Vector Road Paths */}
-                  <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.4 }}>
-                    <path d="M -10 110 Q 150 130 400 70" fill="none" stroke="var(--primary)" strokeWidth="5" strokeLinecap="round" />
-                    <path d="M 190 -10 Q 210 100 230 230" fill="none" stroke="#ffffff" strokeWidth="2" strokeDasharray="6 6" opacity="0.7" />
+                  {/* Subtle Map Texture */}
+                  <div style={{ position: 'absolute', inset: 0, opacity: 0.12, backgroundImage: 'linear-gradient(45deg, rgba(100,115,105,0.18) 25%, transparent 25%, transparent 75%, rgba(100,115,105,0.18) 75%)', backgroundSize: '28px 28px' }} />
+
+                  {/* Vector Map Roads */}
+                  <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 400 210" preserveAspectRatio="none">
+                    <path d="M -20 35 Q 80 52 175 45 T 420 25" fill="none" stroke="#ffffff" strokeWidth="8" strokeLinecap="round" />
+                    <path d="M -20 162 Q 90 145 185 155 T 420 178" fill="none" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" />
+                    <path d="M 65 -20 Q 80 60 70 230" fill="none" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" />
+                    <path d="M 305 -20 Q 280 65 315 230" fill="none" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" />
+
+                    <path d="M 0 82 L 400 96" fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.9" />
+                    <path d="M 0 124 L 400 137" fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.9" />
+                    <path d="M 115 0 Q 125 90 115 210" fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.85" />
+                    <path d="M 225 0 Q 205 90 230 210" fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.85" />
+                    <path d="M 355 0 Q 340 100 365 210" fill="none" stroke="#ffffff" strokeWidth="2.5" opacity="0.8" />
+
+                    {/* Main Highlighted Route */}
+                    <path d="M -20 112 Q 95 135 200 101 Q 295 68 420 85" fill="none" stroke="#ffffff" strokeWidth="11" strokeLinecap="round" />
+                    <path d="M -20 112 Q 95 135 200 101 Q 295 68 420 85" fill="none" stroke="var(--primary)" strokeWidth="6" strokeLinecap="round" />
+
+                    <path d="M 190 -10 Q 205 65 204 100 Q 205 155 225 220" fill="none" stroke="#ffffff" strokeWidth="2" strokeDasharray="8 7" opacity="0.7" />
                   </svg>
+
+                  {/* Street Labels */}
+                  <div style={{ position: 'absolute', left: '27%', top: '20%', fontSize: 9, fontWeight: 600, color: '#68736b', transform: 'rotate(-5deg)', letterSpacing: '0.04em' }}>MAPLE ST</div>
+                  <div style={{ position: 'absolute', right: '18%', top: '48%', fontSize: 9, fontWeight: 600, color: '#68736b', transform: 'rotate(8deg)', letterSpacing: '0.04em' }}>RIVER RD</div>
+                  <div style={{ position: 'absolute', left: '10%', bottom: '25%', fontSize: 8, fontWeight: 500, color: '#788279', transform: 'rotate(90deg)' }}>OAK AVE</div>
 
                   {/* Elevated Map Pin Marker */}
                   <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateY(-10px)' }}>
-                    <div
-                      style={{
-                        background: 'var(--primary)',
-                        color: 'var(--on-primary)',
-                        padding: '8px 16px',
-                        borderRadius: 24,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8
-                      }}
-                    >
+                    <div style={{ background: 'var(--primary)', color: 'var(--on-primary)', padding: '8px 16px', borderRadius: 24, fontSize: 12, fontWeight: 700, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <i style={{ fontSize: 16 }}>storefront</i> Mobicare
                     </div>
-                    <div style={{ width: 12, height: 12, background: 'var(--primary)', transform: 'rotate(45deg)', marginTop: -6, boxShadow: '0 4px 8px rgba(0,0,0,0.3)' }} />
+                    <div style={{ width: 12, height: 12, background: 'var(--primary)', transform: 'rotate(45deg)', marginTop: -6, boxShadow: '0 4px 8px rgba(0,0,0,0.25)' }} />
                   </div>
 
                   {/* Floating Controls Overlay */}
                   <div style={{ position: 'absolute', top: 12, right: 12 }}>
-                    <a
-                      href={googleMapsUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="chip round"
-                      style={{ background: 'rgba(18, 28, 25, 0.75)', color: '#fff', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.15)', fontSize: 11 }}
-                    >
+                    <a href={googleMapsUrl} target="_blank" rel="noreferrer" className="chip round" style={{ background: 'rgba(255,255,255,0.88)', color: '#34403a', backdropFilter: 'blur(12px)', border: '1px solid rgba(0,0,0,0.08)', fontSize: 11, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
                       <i style={{ fontSize: 14 }}>open_in_new</i> Large Map
                     </a>
                   </div>
 
+                  {/* Status Overlay */}
                   <div style={{ position: 'absolute', bottom: 12, left: 12 }}>
-                    <span
-                      className="chip round"
-                      style={{ background: 'rgba(18, 28, 25, 0.75)', color: 'var(--tertiary)', backdropFilter: 'blur(12px)', fontSize: 11, fontWeight: 700, border: '1px solid rgba(255,255,255,0.15)' }}
-                    >
+                    <span className="chip round" style={{ background: 'rgba(255,255,255,0.88)', color: 'var(--tertiary)', backdropFilter: 'blur(12px)', fontSize: 11, fontWeight: 700, border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
                       ● Open Today • Fairfield, IL
                     </span>
                   </div>
+
+                  {/* Soft Map Vignette */}
+                  <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to bottom, rgba(0,0,0,0.025), transparent 30%, transparent 70%, rgba(0,0,0,0.05))' }} />
                 </div>
 
                 {/* Directions & Details Container */}
-                <div style={{ padding: '20px 20px 24px' }}>
+                <div id="map-card-details" style={{ padding: '20px 20px 24px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
                     <div>
                       <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>Visit Mobicare Express</h3>
@@ -307,7 +239,7 @@ export default function Home() {
                     {/* Rating Badge */}
                     <div className="surface-container-high" style={{ padding: '4px 10px', borderRadius: 12, textAlign: 'right', border: '1px solid color-mix(in srgb, var(--outline-variant) 30%, transparent)', flexShrink: 0 }}>
                       <span style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2 }}>
-                        <i>stars</i> 5.0
+                        <i className="material-symbols-outlined">stars</i> 5.0
                       </span>
                       <span className="on-surface-variant-text" style={{ fontSize: 10, fontWeight: 600 }}>Locally Owned</span>
                     </div>
@@ -318,11 +250,12 @@ export default function Home() {
                     Estimated Drive Time:
                   </p>
 
-                  <div className="row wrap" style={{ gap: 8, marginBottom: 20, width: '100%', maxWidth: '100%' }}>
+                  <div id="nearby-towns-chips-row" className="row wrap" style={{ gap: 8, marginBottom: 20, width: '100%', maxWidth: '100%' }}>
                     {NEARBY_TOWNS.map(town => {
                       const isActive = selectedTown === town.name;
                       return (
                         <button
+                          id={`town-chip-${town.name.toLowerCase().replace(/\s+/g, '-')}`}
                           key={town.name}
                           className={`chip round ${isActive ? 'primary' : 'surface-container-high'}`}
                           onClick={() => setSelectedTown(isActive ? null : town.name)}
@@ -342,10 +275,11 @@ export default function Home() {
                     })}
                   </div>
 
-                  {/* Expressive Action Grid - Fixed for Mobile */}
-                  <div className="grid" style={{ rowGap: 10, columnGap: 10 }}>
+                  {/* Action Grid */}
+                  <div id="map-action-grid" className="grid" style={{ rowGap: 10, columnGap: 10 }}>
                     <div className="s12" style={{ minWidth: 0 }}>
                       <a
+                        id="hero-get-directions-link"
                         href={googleMapsUrl}
                         target="_blank"
                         rel="noreferrer"
@@ -364,13 +298,14 @@ export default function Home() {
                           boxSizing: 'border-box'
                         }}
                       >
-                        <i style={{ fontSize: 20, flexShrink: 0 }}>directions</i>
+                        <i className="material-symbols-outlined" style={{ fontSize: 20, flexShrink: 0 }}>directions</i>
                         <span style={{ fontWeight: 600 }}>Get Directions</span>
                       </a>
                     </div>
 
                     <div className="s6" style={{ minWidth: 0 }}>
                       <a
+                        id="hero-call-shop-link"
                         href="tel:6182041497"
                         className="border round surface-container-high"
                         style={{
@@ -387,13 +322,14 @@ export default function Home() {
                           boxSizing: 'border-box'
                         }}
                       >
-                        <i style={{ fontSize: 18, flexShrink: 0 }}>call</i>
+                        <i className="material-symbols-outlined" style={{ fontSize: 18, flexShrink: 0 }}>call</i>
                         <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Call Shop</span>
                       </a>
                     </div>
 
                     <div className="s6" style={{ minWidth: 0 }}>
                       <button
+                        id="hero-copy-address-btn"
                         onClick={handleCopyAddress}
                         className="border round surface-container-high"
                         style={{
@@ -409,7 +345,7 @@ export default function Home() {
                           boxSizing: 'border-box'
                         }}
                       >
-                        <i style={{ fontSize: 18, flexShrink: 0 }}>{copied ? 'check' : 'content_copy'}</i>
+                        <i className="material-symbols-outlined" style={{ fontSize: 18, flexShrink: 0 }}>{copied ? 'check' : 'content_copy'}</i>
                         <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{copied ? 'Copied!' : 'Copy Address'}</span>
                       </button>
                     </div>
@@ -423,102 +359,63 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Trust badges ── */}
-        <section style={{ padding: '16px 0' }}>
-          <div className="grid">
-            {trustItems.map((t, i) => {
-              const iconName = t.icon || 'stars'
-              return (
-                <div key={i} className="s12 m6 l3" style={{ minWidth: 0 }}>
-                  <div className="surface-container-low row middle-align" style={{ borderRadius: 24, padding: '16px 18px', gap: 14, border: '1px solid color-mix(in srgb, var(--outline-variant) 40%, transparent)', height: '100%', minWidth: 0 }}>
-                    <div className="primary-container padding circle" style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <i style={{ fontSize: 20 }}>{iconName}</i>
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <strong style={{ display: 'block', fontSize: 'clamp(15px, 2.5vw, 17px)', overflowWrap: 'break-word' }}>{t.label}</strong>
-                      <span className="on-surface-variant-text" style={{ fontSize: 'clamp(12px, 2vw, 13px)', overflowWrap: 'break-word' }}>{t.desc}</span>
-                    </div>
+        {/* ── Trust Banner Ticker ── */}
+        <section id="trust-banner-section" className="trust-banner-section-wrapper" style={{ padding: '0 0 8px', overflow: 'hidden' }}>
+          <div className="trust-ticker-panel">
+            <div className="trust-ticker-track">
+              {[...trustItems, ...trustItems].map((t, i) => {
+                const iconName = t.icon || 'stars'
+                return (
+                  <div key={i} className="trust-ticker-item">
+                    <i className="material-symbols-outlined primary-text" style={{ fontSize: 20, flexShrink: 0 }}>{iconName}</i>
+                    <strong style={{ fontSize: 15, whiteSpace: 'nowrap' }}>{t.label}</strong>
+                    <span className="on-surface-variant-text" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{t.desc}</span>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-
-        {/* ── Popular Repairs (photo cards) ── */}
-        <section style={{ padding: '24px 0' }}>
-          <div className="row middle-align wrap" style={{ marginBottom: 16, gap: 8, padding: '0 4px' }}>
-            <div style={{ minWidth: 0 }}>
-              <p className="primary-text bold" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', margin: 0 }}>Services</p>
-              <h4 style={{ margin: 0, fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', overflowWrap: 'break-word' }}>Popular Repairs</h4>
+                )
+              })}
             </div>
-            <div className="max" />
-            <button className="transparent" onClick={() => navigate('/repairs')} style={{ padding: '4px 8px' }}>
-              <span>View All Repairs</span><i>arrow_forward</i>
-            </button>
-          </div>
-          <div className="grid">
-            {popularRepairs.map(svc => {
-              const visual = REPAIR_VISUALS[svc.id] || REPAIR_VISUALS['screen-repair']
-              return (
-                <div key={svc.id} className="s12 m4" style={{ minWidth: 0 }}>
-                  <div style={{ cursor: 'pointer' }} onClick={() => navigate('/repairs')}>
-                    <div style={{
-                      position: 'relative', height: 220, borderRadius: 28, overflow: 'hidden', marginBottom: 12,
-                      background: `linear-gradient(135deg, ${visual.from}, ${visual.to})`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <i style={{ position: 'absolute', fontSize: 160, opacity: 0.12, color: '#fff' }}>{visual.icon}</i>
-                      <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, color: '#fff' }}>
-                        <span className="chip small" style={{ background: 'rgba(255,255,255,.18)', color: '#fff', marginBottom: 8, backdropFilter: 'blur(8px)', fontSize: 11 }}>
-                          Starting at {svc.priceRange?.split('–')[0]?.trim() || svc.priceRange}
-                        </span>
-                        <h5 style={{ margin: 0, color: '#fff', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', overflowWrap: 'break-word' }}>{svc.name}</h5>
-                      </div>
-                    </div>
-                    <p className="on-surface-variant-text" style={{ fontSize: 13, padding: '0 4px', margin: 0, overflowWrap: 'break-word' }}>{svc.description}</p>
-                  </div>
-                </div>
-              )
-            })}
           </div>
         </section>
 
-        {/* ── Featured products ── */}
-        <section ref={prodRef} className={fadeCls(prodVisible)} style={{ padding: '24px 0' }}>
-          <div className="row middle-align wrap" style={{ marginBottom: 16, gap: 8, padding: '0 4px' }}>
+
+        {/* ── Featured Products Section ── */}
+        <section id="featured-products-section" ref={prodRef} className={fadeCls(prodVisible)} style={{ padding: '24px 0' }}>
+          <div id="featured-products-header" className="row middle-align wrap" style={{ marginBottom: 16, gap: 8, padding: '0 4px' }}>
             <div style={{ minWidth: 0 }}>
               <p className="primary-text bold" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', margin: 0 }}>Best Sellers</p>
               <h4 style={{ margin: 0, fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', overflowWrap: 'break-word' }}>Featured Products</h4>
             </div>
             <div className="max" />
-            <button className="transparent" onClick={() => navigate('/shop')} style={{ padding: '4px 8px' }}>
-              <span>All Products</span><i>chevron_right</i>
+            <button id="all-products-link-btn" className="transparent" onClick={() => navigate('/shop')} style={{ padding: '4px 8px' }}>
+              <span>All Products</span>
+              <i className="material-symbols-outlined">chevron_right</i>
             </button>
           </div>
-          <div className="grid">
+          <div id="featured-products-grid" className="grid">
             {featured.map(p => (
-              <div key={p.id} className="s12 m6 l3" style={{ minWidth: 0 }}>
+              <div id={`featured-product-col-${p.id}`} key={p.id} className="s12 m6 l3" style={{ minWidth: 0 }}>
                 <ProductCard product={p} onClick={() => navigate(`/product/${p.id}`)} />
               </div>
             ))}
           </div>
         </section>
 
-        {/* ── CTA strip ── */}
-        <section ref={ctaRef} className={fadeCls(ctaVisible)} style={{ padding: '24px 0 48px' }}>
-          <article className="primary-container" style={{ borderRadius: 28, overflow: 'hidden' }}>
+        {/* ── CTA Strip ── */}
+        <section id="cta-banner-section" ref={ctaRef} className={fadeCls(ctaVisible)} style={{ padding: '24px 0 48px' }}>
+          <article className="primary-container home-bento-card" style={{ borderRadius: 28, overflow: 'hidden' }}>
             <div className="cta-strip-inner" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
               <div className="cta-strip-text" style={{ minWidth: 0 }}>
                 <h5 style={{ margin: '0 0 4px', fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)' }}>Ready to get started?</h5>
                 <p style={{ margin: 0, opacity: .85, fontSize: 'clamp(13px, 2vw, 15px)' }}>Walk in or book ahead — we're in Fairfield, IL.</p>
               </div>
               <div className="cta-strip-actions">
-                <a href="tel:6182041497" className="border">
-                  <i>call</i><span>618-204-1497</span>
+                <a id="cta-call-phone-link" href="tel:6182041497" className="border" style={{ borderRadius: 999 }}>
+                  <i className="material-symbols-outlined">call</i>
+                  <span>618-204-1497</span>
                 </a>
-                <button className="primary" onClick={() => navigate('/shop')}>
-                  <span>Shop Now</span><i>arrow_forward</i>
+                <button id="cta-shop-now-btn" className="primary" onClick={() => navigate('/shop')} style={{ borderRadius: 999 }}>
+                  <span>Shop Now</span>
+                  <i className="material-symbols-outlined">arrow_forward</i>
                 </button>
               </div>
             </div>
@@ -528,6 +425,7 @@ export default function Home() {
 
       {bookingOpen && (
         <BookingWizard
+          defaultService={selectedServiceForBooking}
           onClose={() => setBookingOpen(false)}
         />
       )}

@@ -1,284 +1,265 @@
 import React, { useState } from 'react'
-import { useSiteStore } from '../lib/siteStore'
 import BookingWizard from '../components/BookingWizard'
 import PageMeta from '../components/PageMeta'
 
+const REPAIR_CATEGORIES_BENTO = [
+  {
+    id: 'screen-repair',
+    name: 'Screen Repair',
+    icon: 'smartphone',
+    price: '$49 – $249',
+    time: '1–2 hrs',
+    desc: 'Cracked glass, shattered OLED, touch issues, or black display lines. OEM-quality displays backed by a 90-day warranty.'
+  },
+  {
+    id: 'battery-replacement',
+    name: 'Battery Replacement',
+    icon: 'battery_full',
+    price: '$39 – $89',
+    time: '30–60 mins',
+    desc: 'Fast battery drain, overheating, swollen cell, or phone shutting off at 20%. Premium high-capacity battery replacements.'
+  },
+  {
+    id: 'water-damage',
+    name: 'Water Damage Recovery',
+    icon: 'water_drop',
+    price: '$59 – $149',
+    time: 'Same Day',
+    desc: 'Ultrasonic logic board cleaning, corrosion removal, & multi-point liquid damage diagnostics for submerged electronics.'
+  },
+  {
+    id: 'charging-port',
+    name: 'Charging Port Repair',
+    icon: 'ev_station',
+    price: '$29 – $79',
+    time: '30–45 mins',
+    desc: 'Loose cable connection, dirty port, or phone won\'t charge. Debris cleaning or complete port assembly swap.'
+  },
+  {
+    id: 'camera-repair',
+    name: 'Camera & Lens Repair',
+    icon: 'photo_camera',
+    price: '$39 – $119',
+    time: '45–60 mins',
+    desc: 'Cracked camera lens glass, blurry autofocus, black rear/front camera preview screen, or lens vibration.'
+  },
+  {
+    id: 'data-recovery',
+    name: 'Data Recovery & Transfer',
+    icon: 'sd_card',
+    price: '$69 – $199',
+    time: '1–2 Days',
+    desc: 'Extract photos, contacts, texts, and documents from dead, locked, water-damaged, or broken smartphones.'
+  },
+  {
+    id: 'tablet-repair',
+    name: 'iPad & Tablet Repair',
+    icon: 'tablet_mac',
+    price: '$59 – $199',
+    time: 'Same Day',
+    desc: 'Glass digitizer, LCD display, charging port, and battery replacement for all iPad Air, Pro, & Mini models.'
+  },
+  {
+    id: 'back-glass',
+    name: 'Laser Back Glass Repair',
+    icon: 'devices',
+    price: '$49 – $129',
+    time: '2–3 hrs',
+    desc: 'Precision laser rear glass removal and housing replacement for iPhone 12, 13, 14, and 15 series.'
+  }
+]
+
 const FAQS = [
-  { q: 'How long do repairs take?', a: 'Most screen and battery replacements are done same-day, often within 1–2 hours. More complex repairs like water damage or data recovery may take 24–72 hours.' },
-  { q: 'Do you offer a warranty on repairs?', a: 'Yes — all our repairs come with a 90-day warranty covering parts and labor. If the same issue returns within 90 days, we fix it at no charge.' },
-  { q: 'Do you fix all phone brands?', a: 'We repair iPhones, Samsung, Google Pixel, LG, Motorola, OnePlus, and most other Android brands. We also repair tablets and iPads.' },
-  { q: 'Is there a diagnostic fee?', a: "Diagnostics are always free. We'll identify the problem and give you a quote with no obligation to proceed." },
-  { q: 'Do I need an appointment?', a: 'Walk-ins are welcome, but booking ahead guarantees your time slot and lets us have parts ready. Use the "Book Appointment" button anytime.' },
-  { q: "What if my device can't be fixed?", a: "If we can't repair your device, you pay nothing for the diagnostic. We'll also advise on data recovery options if your data is at risk." },
+  { q: 'How long do repairs take?', a: 'Most screen and battery replacements are completed same-day, typically within 1–2 hours. Water damage recovery or data extraction can take 24–48 hours.' },
+  { q: 'Do you offer a warranty on repairs?', a: 'Yes! All repairs include a 90-day warranty covering parts and labor. If the issue persists within 90 days, we service it free of charge.' },
+  { q: 'Do you fix all phone brands?', a: 'We repair iPhones, Samsung Galaxy, Google Pixel, Motorola, LG, OnePlus, as well as iPads and Android tablets.' },
+  { q: 'Is there a diagnostic fee?', a: "Diagnostics are always 100% free. We'll examine your device and provide a zero-obligation quote before starting work." },
+  { q: 'Do I need an appointment?', a: 'Walk-ins are always welcome! However, booking ahead reserves your parts and guarantees immediate service when you arrive.' },
 ]
 
 export default function Repairs() {
   const [bookingOpen, setBookingOpen] = useState(false)
-  const [defaultService, setDefaultService] = useState(null)
+  const [selectedService, setSelectedService] = useState(null)
   const [openFaq, setOpenFaq] = useState(null)
 
-  const repairServices = useSiteStore(s => s.repairServices)
-  const business = useSiteStore(s => s.business)
-
-  const openBooking = (serviceName = null) => {
-    setDefaultService(serviceName)
+  const handleBook = (serviceName = null) => {
+    setSelectedService(serviceName)
     setBookingOpen(true)
   }
 
   return (
-    <div className="page-top" style={{ overflowX: 'hidden' }}>
+    <main
+      className="page-top responsive"
+      style={{
+        paddingLeft: 'clamp(12px, 3vw, 24px)',
+        paddingRight: 'clamp(12px, 3vw, 24px)',
+        paddingBottom: 64,
+        overflowX: 'hidden'
+      }}
+    >
       <PageMeta
         title="Device Repair Services — Screen, Battery & More | Mobicare Fairfield IL"
         description="Professional same-day phone repairs, cracked screens, dead batteries, water damage diagnostics and repairs for iPhones, iPads, Samsung and more in Fairfield, IL."
       />
 
-      {/* ── Hero Section ── */}
-      <section>
-        <div
-          className="responsive center-align"
-          style={{
-            paddingTop: 'clamp(32px, 8vw, 64px)',
-            paddingBottom: 'clamp(40px, 8vw, 64px)',
-            paddingLeft: 'clamp(12px, 3vw, 24px)',
-            paddingRight: 'clamp(12px, 3vw, 24px)'
-          }}
-        >
-          <p className="primary-text bold" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', margin: 0 }}>
-            Device Repair Services
-          </p>
-          <h1 style={{ margin: '8px 0 16px', fontSize: 'clamp(2.2rem, 6vw, 3.5rem)', fontWeight: 800, lineHeight: 1.1, overflowWrap: 'break-word' }}>
-            We Fix What's Broken.
-          </h1>
-          <p className="on-surface-variant-text" style={{ maxWidth: 580, margin: '0 auto 32px', fontSize: 'clamp(15px, 2vw, 18px)', lineHeight: 1.6, overflowWrap: 'break-word' }}>
-            Fast, honest repairs on every major brand. Free diagnostics, 90-day warranty, same-day turnaround on most jobs.
-          </p>
+      {/* ── Hero Header ── */}
+      <section style={{ paddingTop: 'clamp(24px, 5vw, 48px)', paddingBottom: 32, textAlign: 'center' }}>
+        <p className="primary-text bold upper" style={{ fontSize: 11, letterSpacing: '0.12em', margin: '0 0 6px' }}>
+          Device Repair Services
+        </p>
+        <h1 style={{ margin: '0 0 12px', fontSize: 'clamp(2.2rem, 5vw, 3.4rem)', fontWeight: 800, lineHeight: 1.15 }}>
+          We Fix What's Broken.
+        </h1>
+        <p className="on-surface-variant-text" style={{ maxWidth: 640, margin: '0 auto 28px', fontSize: 'clamp(15px, 2vw, 18px)', lineHeight: 1.6 }}>
+          Fast, honest repairs on every major device brand. Free diagnostics, 90-day warranty, same-day turnaround on most jobs.
+        </p>
 
-          <div className="row wrap" style={{ justifyContent: 'center', gap: 12, marginBottom: 40 }}>
-            <button className="primary fill round" onClick={() => openBooking()} style={{ padding: '8px 24px', fontWeight: 600 }}>
-              <i>build</i>
-              <span>Book a Repair</span>
-            </button>
-            <a href={`tel:${business.phone}`} className="button border round surface-container-high" style={{ textDecoration: 'none', padding: '8px 24px', fontWeight: 600 }}>
-              <i>call</i>
-              <span>{business.phone}</span>
-            </a>
-          </div>
-
-          <div className="row wrap" style={{ justifyContent: 'center', gap: 'clamp(16px, 4vw, 32px)' }}>
-            {[['Free', 'Diagnostics'], ['90-Day', 'Warranty'], ['Same-Day', 'Most Repairs'], ['Walk-Ins', 'Welcome']].map(([a, b]) => (
-              <div key={a} className="center-align" style={{ minWidth: 120 }}>
-                <strong style={{ display: 'block', fontSize: 'clamp(16px, 2.5vw, 20px)' }}>{a}</strong>
-                <span className="on-surface-variant-text" style={{ fontSize: 'clamp(12px, 1.5vw, 14px)' }}>{b}</span>
-              </div>
-            ))}
-          </div>
+        {/* Feature Badges */}
+        <div className="row wrap center-align" style={{ gap: 12, justifyContent: 'center', marginBottom: 32 }}>
+          {['Free Diagnostics', '90-Day Warranty', 'Same-Day Repairs', 'Walk-Ins Welcome'].map((badge, idx) => (
+            <span key={idx} className="chip surface-container-high" style={{ fontSize: 12, fontWeight: 600, border: '1px solid var(--outline-variant)' }}>
+              ✓ {badge}
+            </span>
+          ))}
         </div>
       </section>
 
-      {/* ── Services Grid ── */}
-      <section className="surface-container-low">
-        <div
-          className="responsive"
-          style={{
-            paddingTop: 'clamp(40px, 6vw, 64px)',
-            paddingBottom: 'clamp(40px, 6vw, 64px)',
-            paddingLeft: 'clamp(12px, 3vw, 24px)',
-            paddingRight: 'clamp(12px, 3vw, 24px)'
-          }}
-        >
-          <div style={{ textAlign: 'center', marginBottom: 40 }}>
-            <p className="primary-text bold" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', margin: 0 }}>What We Fix</p>
-            <h2 style={{ margin: '8px 0 0', fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 700 }}>Repair Services</h2>
-          </div>
-
-          <div className="grid">
-            {repairServices.map(svc => (
-              <div key={svc.id} id={svc.id} className="s12 m6 l4" style={{ minWidth: 0 }}>
-                <article
-                  className="surface-container-lowest"
-                  style={{
-                    height: '100%',
-                    borderRadius: 28,
-                    border: '1px solid var(--outline-variant)',
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}
-                >
-                  <div className="padding" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                    <div className="row middle-align wrap" style={{ marginBottom: 16, gap: 12 }}>
-                      <div className="primary-container padding circle" style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <i className="primary-text">build</i>
-                      </div>
-                      <div className="max" />
-                      <div style={{ textAlign: 'right' }}>
-                        <strong style={{ display: 'block', fontSize: 15 }}>{svc.priceRange}</strong>
-                        <span className="on-surface-variant-text" style={{ fontSize: 12 }}>
-                          <i style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 2 }}>schedule</i>
-                          {svc.duration}
-                        </span>
-                      </div>
+      {/* ── Repairs Categories Bento Grid ── */}
+      <section id="repairs-grid-section" style={{ marginBottom: 56 }}>
+        <div className="grid">
+          {REPAIR_CATEGORIES_BENTO.map(svc => (
+            <div id={`repair-card-${svc.id}`} key={svc.id} className="s12 m6 l3" style={{ minWidth: 0 }}>
+              <div
+                className="home-bento-card"
+                style={{
+                  padding: 24,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: 20
+                }}
+              >
+                <div>
+                  {/* Icon + Price & Time Chips */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                    <div
+                      className="primary-container circle"
+                      style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                    >
+                      <i className="material-symbols-outlined" style={{ fontSize: 24 }}>{svc.icon}</i>
                     </div>
-
-                    <h3 style={{ margin: '0 0 8px', fontSize: '1.25rem', fontWeight: 700, overflowWrap: 'break-word' }}>
-                      {svc.name}
-                    </h3>
-                    <p className="on-surface-variant-text" style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 20, flexGrow: 1, overflowWrap: 'break-word' }}>
-                      {svc.description}
-                    </p>
-
-                    {svc.variants?.length > 0 && (
-                      <div className="surface-container-low" style={{ marginBottom: 16, borderRadius: 16, padding: '8px 12px' }}>
-                        {svc.variants.map((v, idx) => (
-                          <div key={idx} className="row wrap" style={{ justifyContent: 'space-between', fontSize: 13, padding: '4px 0', gap: 8 }}>
-                            <span className="on-surface-variant-text" style={{ overflowWrap: 'break-word', flex: 1, minWidth: 100 }}>{v.name}</span>
-                            <strong style={{ whiteSpace: 'nowrap' }}>{v.price}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <button className="responsive border round" onClick={() => openBooking(svc.name)} style={{ fontWeight: 600, width: '100%', justifyContent: 'center' }}>
-                      <span>Book This Repair</span>
-                      <i>arrow_forward</i>
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                      <span className="chip small primary-container" style={{ fontSize: 11, fontWeight: 700 }}>
+                        {svc.price}
+                      </span>
+                      <span className="on-surface-variant-text" style={{ fontSize: 11, fontWeight: 600 }}>
+                        ⏱ {svc.time}
+                      </span>
+                    </div>
                   </div>
-                </article>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* ── Why Mobicare / Walk-in Section ── */}
-      <section>
-        <div
-          className="responsive grid"
-          style={{
-            paddingTop: 'clamp(48px, 8vw, 80px)',
-            paddingBottom: 'clamp(48px, 8vw, 80px)',
-            paddingLeft: 'clamp(12px, 3vw, 24px)',
-            paddingRight: 'clamp(12px, 3vw, 24px)',
-            gap: 32
-          }}
-        >
-          <div className="s12 m6" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <p className="primary-text bold" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', margin: 0 }}>Why Mobicare</p>
-            <h2 style={{ margin: '8px 0 16px', fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 700 }}>Repair Done Right.</h2>
-            <p className="on-surface-variant-text" style={{ fontSize: 'clamp(15px, 2vw, 16px)', lineHeight: 1.7, marginBottom: 24, overflowWrap: 'break-word' }}>
-              We're a local shop — not a chain. Every repair is done by an experienced technician
-              who cares about getting it right the first time. We use quality parts and stand behind
-              our work with a real warranty.
-            </p>
-
-            <div style={{ marginBottom: 24 }}>
-              {[
-                { icon: 'shield', text: '90-day parts & labor warranty on every job' },
-                { icon: 'bolt', text: 'Most repairs completed same-day or faster' },
-                { icon: 'schedule', text: 'Free diagnostic — know the cost before you commit' },
-                { icon: 'smartphone', text: 'OEM-quality parts for iPhones & major Android brands' },
-              ].map((item, i) => (
-                <div key={i} className="row middle-align wrap" style={{ gap: 12, marginBottom: 12 }}>
-                  <div className="primary-container circle" style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <i className="primary-text" style={{ fontSize: 16 }}>{item.icon}</i>
-                  </div>
-                  <span style={{ fontSize: 14, flex: 1, minWidth: 200, overflowWrap: 'break-word' }}>{item.text}</span>
-                </div>
-              ))}
-            </div>
-
-            <div>
-              <button className="primary round fill" onClick={() => openBooking()} style={{ fontWeight: 600 }}>
-                <span>Schedule Repair</span><i>arrow_forward</i>
-              </button>
-            </div>
-          </div>
-
-          <div className="s12 m6" style={{ minWidth: 0 }}>
-            <article className="surface-container-high" style={{ borderRadius: 32, border: '1px solid var(--outline-variant)' }}>
-              <div className="padding" style={{ padding: 'clamp(24px, 4vw, 32px)' }}>
-                <h3 style={{ marginTop: 0, fontSize: '1.5rem', fontWeight: 700 }}>Walk In or Call First</h3>
-                <p className="on-surface-variant-text" style={{ fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-                  No appointment required for diagnostics. Drop in anytime during business hours.
-                </p>
-
-                <a href={`tel:${business.phone}`} className="row middle-align surface-container-low" style={{ textDecoration: 'none', color: 'inherit', marginBottom: 16, padding: '12px 16px', borderRadius: 16, border: '1px solid var(--outline-variant)' }}>
-                  <i className="primary-text" style={{ fontSize: 24 }}>call</i>
-                  <div style={{ marginLeft: 16, minWidth: 0 }}>
-                    <strong style={{ display: 'block', fontSize: 14 }}>Call Us</strong>
-                    <span className="on-surface-variant-text" style={{ fontSize: 13 }}>{business.phone}</span>
-                  </div>
-                </a>
-
-                <div className="row middle-align surface-container-low" style={{ marginBottom: 24, padding: '12px 16px', borderRadius: 16, border: '1px solid var(--outline-variant)' }}>
-                  <i className="primary-text" style={{ fontSize: 24 }}>schedule</i>
-                  <div style={{ marginLeft: 16, minWidth: 0 }}>
-                    <strong style={{ display: 'block', fontSize: 14 }}>Hours</strong>
-                    {business.hours.map(h => (
-                      <span key={h.days} className="on-surface-variant-text" style={{ fontSize: 13, display: 'block' }}>{h.days}: {h.hours}</span>
-                    ))}
-                  </div>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px', overflowWrap: 'break-word' }}>
+                    {svc.name}
+                  </h3>
+                  <p className="on-surface-variant-text" style={{ fontSize: 13, margin: 0, lineHeight: 1.5, overflowWrap: 'break-word' }}>
+                    {svc.desc}
+                  </p>
                 </div>
 
-                <button className="responsive primary round fill" onClick={() => openBooking()} style={{ fontWeight: 600, width: '100%', justifyContent: 'center' }}>
-                  Book Appointment
+                <button
+                  id={`repairs-page-book-btn-${svc.id}`}
+                  type="button"
+                  className="primary fill round"
+                  style={{
+                    width: '100%',
+                    margin: 0,
+                    boxSizing: 'border-box',
+                    padding: '7px 12px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 5,
+                    lineHeight: 1.2
+                  }}
+                  onClick={() => handleBook(svc.name)}
+                >
+                  <i className="material-symbols-outlined" style={{ fontSize: 14 }}>calendar_month</i>
+                  <span>Book Repair</span>
                 </button>
               </div>
-            </article>
-          </div>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* ── FAQ Section ── */}
-      <section className="surface-container-low">
-        <div
-          className="responsive center-align"
-          style={{
-            maxWidth: 720,
-            margin: '0 auto',
-            paddingTop: 'clamp(48px, 8vw, 80px)',
-            paddingBottom: 'clamp(48px, 8vw, 80px)',
-            paddingLeft: 'clamp(12px, 3vw, 24px)',
-            paddingRight: 'clamp(12px, 3vw, 24px)'
-          }}
-        >
-          <p className="primary-text bold" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', margin: 0 }}>FAQ</p>
-          <h2 style={{ margin: '8px 0 32px', fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 700 }}>Common Questions</h2>
+      <section style={{ maxWidth: 840, margin: '0 auto 56px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <p className="primary-text bold upper" style={{ fontSize: 11, letterSpacing: '0.1em', margin: '0 0 4px' }}>
+            Got Questions?
+          </p>
+          <h2 style={{ margin: 0, fontSize: 'clamp(1.5rem, 3.5vw, 2.2rem)', fontWeight: 800 }}>
+            Frequently Asked Questions
+          </h2>
+        </div>
 
-          <div style={{ textAlign: 'left' }}>
-            {FAQS.map((faq, i) => (
-              <article
-                key={i}
-                className="surface-container-highest"
-                style={{
-                  marginBottom: 12,
-                  cursor: 'pointer',
-                  borderRadius: 20,
-                  border: '1px solid var(--outline-variant)',
-                  transition: 'all 0.2s ease'
-                }}
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {FAQS.map((faq, index) => {
+            const isOpen = openFaq === index
+            return (
+              <div
+                key={index}
+                className="home-bento-card"
+                style={{ borderRadius: 18, overflow: 'hidden', transition: 'all 0.2s ease' }}
               >
-                <div className="row middle-align padding wrap" style={{ gap: 12 }}>
-                  <strong style={{ flex: 1, fontSize: 15, minWidth: 200, overflowWrap: 'break-word', lineHeight: 1.4 }}>{faq.q}</strong>
-                  <i className="primary-text" style={{ fontSize: 20 }}>{openFaq === i ? 'remove' : 'add'}</i>
-                </div>
-                {openFaq === i && (
-                  <p className="on-surface-variant-text" style={{ margin: '0 16px 20px', fontSize: 14, lineHeight: 1.6, overflowWrap: 'break-word' }}>
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(isOpen ? null : index)}
+                  style={{
+                    width: '100%',
+                    margin: 0,
+                    boxSizing: 'border-box',
+                    padding: '16px 20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    background: 'transparent',
+                    border: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    color: 'var(--on-surface)',
+                    fontFamily: 'inherit',
+                    fontWeight: 700,
+                    fontSize: 15
+                  }}
+                >
+                  <span>{faq.q}</span>
+                  <i className="material-symbols-outlined" style={{ transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'none', color: 'var(--primary)' }}>
+                    expand_more
+                  </i>
+                </button>
+                {isOpen && (
+                  <div style={{ padding: '0 20px 18px', fontSize: 14, color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>
                     {faq.a}
-                  </p>
+                  </div>
                 )}
-              </article>
-            ))}
-          </div>
+              </div>
+            )
+          })}
         </div>
       </section>
 
+      {/* Booking Modal */}
       {bookingOpen && (
         <BookingWizard
-          defaultService={defaultService}
-          onClose={() => { setBookingOpen(false); setDefaultService(null) }}
+          defaultService={selectedService}
+          onClose={() => setBookingOpen(false)}
         />
       )}
-    </div>
+    </main>
   )
 }

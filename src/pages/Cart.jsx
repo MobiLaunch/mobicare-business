@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { addDays, format } from 'date-fns'
 import { useCartStore, useToastStore, useProductStore } from '../lib/store'
 import PageMeta from '../components/PageMeta'
@@ -17,11 +17,14 @@ function ArrivalEstimate({ shippingDays }) {
 
 export default function Cart() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { items, removeItem, updateQty } = useCartStore()
   const products = useProductStore(s => s.products)
   const addToast = useToastStore(s => s.add)
 
-  const [checkoutStep, setCheckoutStep] = useState('cart')
+  const isDirectCheckout = new URLSearchParams(location.search).get('checkout') === 'true' && items.length > 0
+  const [checkoutStep, setCheckoutStep] = useState(isDirectCheckout ? 'shipping' : 'cart')
+
   const [shippingInfo, setShippingInfo] = useState({
     name: '', email: '', phone: '', address: '', city: '', state: '', zip: ''
   })

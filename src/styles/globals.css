@@ -102,6 +102,10 @@ body.dark {
 }
 
 /* ── Base ──────────────────────────────────────────────────────────── */
+html {
+  overflow-y: scroll;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -111,6 +115,29 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
+
+/* ── Prevent BeerCSS layout grid from hijacking root container ───── */
+:has(> main),
+body:has(main),
+#root:has(main),
+.public-layout-wrapper:has(main) {
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template-columns: none !important;
+  grid-template-areas: none !important;
+}
+
+.public-layout-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+
 
 .site-logo-link {
   display: flex;
@@ -218,7 +245,7 @@ body {
   display: block;
 }
 
-.shop-search-menu > li:first-child {
+.shop-search-menu>li:first-child {
   padding: 8px;
 }
 
@@ -592,16 +619,16 @@ h6 {
   grid-column: 1 / -1;
 }
 
-.site-content-page .field-wrap > .row {
+.site-content-page .field-wrap>.row {
   min-width: 0;
 }
 
-.site-content-page .row > .field-wrap {
+.site-content-page .row>.field-wrap {
   flex: 1 1 280px;
   min-width: min(100%, 240px);
 }
 
-.site-content-page .row > .input {
+.site-content-page .row>.input {
   flex: 1 1 240px;
   min-width: 0;
 }
@@ -1024,6 +1051,11 @@ h6 {
     display: flex !important;
     position: fixed !important;
     bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
   }
 
   /* Push page content up so the bottom nav never covers it */
@@ -1122,21 +1154,28 @@ h6 {
   flex-shrink: 0;
 }
 
+@media (max-width: 700px) {
+  .cta-strip-actions {
+    width: 100%;
+  }
+
+  .cta-strip-actions>* {
+    flex: 1 1 180px;
+    min-width: 0;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 380px) {
   .grid>.s6 {
     grid-column: span 12;
     /* Take full width */
     width: 100%;
   }
-}
 
-.cta-strip-actions {
-  width: 100%;
-}
-
-.cta-strip-actions>* {
-  flex: 1;
-  justify-content: center;
+  .cta-strip-actions>* {
+    flex-basis: 100%;
+  }
 }
 
 dialog {
@@ -1956,7 +1995,7 @@ body:has(.admin-shell) {
   letter-spacing: -0.03em;
 }
 
-.admin-page-header > div:first-child p {
+.admin-page-header>div:first-child p {
   margin-top: 5px !important;
 }
 
@@ -1964,8 +2003,8 @@ body:has(.admin-shell) {
   max-width: 100%;
 }
 
-.admin-page > article.no-padding,
-.admin-page > .grid article,
+.admin-page>article.no-padding,
+.admin-page>.grid article,
 .admin-page .admin-table-surface {
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--outline-variant) 55%, transparent);
@@ -1973,7 +2012,7 @@ body:has(.admin-shell) {
   background: var(--surface-container-low);
 }
 
-.admin-page > article.no-padding {
+.admin-page>article.no-padding {
   overflow-x: auto;
   max-width: 100%;
 }
@@ -2006,8 +2045,8 @@ body:has(.admin-shell) {
   background: color-mix(in srgb, var(--primary-container) 18%, transparent);
 }
 
-.admin-page > article.center-align,
-.admin-page > article:not(.no-padding) {
+.admin-page>article.center-align,
+.admin-page>article:not(.no-padding) {
   border: 1px solid color-mix(in srgb, var(--outline-variant) 55%, transparent);
   border-radius: 28px;
   background: var(--surface-container-low);
@@ -2047,19 +2086,19 @@ dialog nav.right-align {
   border-radius: 999px;
 }
 
-.settings-page > .row:first-child {
+.settings-page>.row:first-child {
   display: block;
   margin-bottom: 24px;
 }
 
-.settings-page > .row:first-child h1 {
+.settings-page>.row:first-child h1 {
   margin: 0 0 5px;
   font-size: clamp(1.5rem, 2.4vw, 2rem);
   font-weight: 800;
   letter-spacing: -0.03em;
 }
 
-.settings-page > .row:first-child p {
+.settings-page>.row:first-child p {
   margin: 0;
   color: var(--on-surface-variant);
   font-size: 14px;
@@ -2072,13 +2111,13 @@ dialog nav.right-align {
   border-radius: 24px;
 }
 
-.settings-section > .row {
+.settings-section>.row {
   min-width: 0;
   flex-wrap: wrap;
   gap: 16px;
 }
 
-.settings-section > .row > div:nth-child(2),
+.settings-section>.row>div:nth-child(2),
 .settings-section .step-body {
   min-width: 0;
   flex: 1 1 260px;
@@ -2123,7 +2162,7 @@ dialog nav.right-align {
   gap: 12px;
 }
 
-.settings-action-row > button {
+.settings-action-row>button {
   max-width: 100%;
   white-space: normal;
 }
@@ -2134,7 +2173,7 @@ dialog nav.right-align {
   overflow: auto;
 }
 
-.settings-section .rls-note > div {
+.settings-section .rls-note>div {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -2539,7 +2578,7 @@ dialog nav.right-align {
     grid-column: auto;
   }
 
-  .site-content-page .row > .field-wrap {
+  .site-content-page .row>.field-wrap {
     min-width: 100%;
   }
 
@@ -2583,18 +2622,18 @@ dialog nav.right-align {
     gap: 14px;
   }
 
-  .admin-page-header > div:first-child {
+  .admin-page-header>div:first-child {
     width: 100%;
     flex: 1 1 100%;
   }
 
-  .admin-page-header > .max {
+  .admin-page-header>.max {
     display: none;
   }
 
-  .admin-page-header > button,
-  .admin-page-header > .primary,
-  .admin-page-header > .border {
+  .admin-page-header>button,
+  .admin-page-header>.primary,
+  .admin-page-header>.border {
     flex-shrink: 0;
   }
 
@@ -2621,7 +2660,7 @@ dialog nav.right-align {
     flex: 1 1 auto;
   }
 
-  .admin-page > article.no-padding {
+  .admin-page>article.no-padding {
     margin-right: -2px;
   }
 
@@ -2629,7 +2668,7 @@ dialog nav.right-align {
     padding: 18px 16px;
   }
 
-  .settings-action-row > button {
+  .settings-action-row>button {
     flex: 1 1 180px;
   }
 
@@ -2652,5 +2691,1079 @@ dialog nav.right-align {
 
   .admin-login-submit {
     width: 100%;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   HOMEPAGE & HEADER NAVIGATION — Redesign & Background Canvas
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Background Canvas Container ───────────────────────────────────── */
+.bg-canvas-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-canvas-element {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── Header Brand Dot & Wordmark ────────────────────────────────────── */
+.header-inner-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+  height: 64px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.header-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.header-book-cta {
+  border-radius: 999px !important;
+  min-height: 40px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  background: var(--primary) !important;
+  color: var(--on-primary) !important;
+  border: none;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 25%, transparent);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.header-book-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+@media (max-width: 1024px) {
+  .book-cta-label {
+    display: none;
+  }
+
+  .header-book-cta {
+    padding: 0 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .theme-toggle-text {
+    display: none;
+  }
+
+  .theme-toggle-btn {
+    padding: 0 8px;
+    width: 40px;
+  }
+}
+
+.site-logo-icon-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 20%, transparent);
+  transition: transform 0.2s ease;
+}
+
+.site-logo-link:hover .site-logo-icon-dot {
+  transform: scale(1.08) rotate(6deg);
+}
+
+.site-logo-icon-dot i {
+  font-size: 20px;
+}
+
+
+/* ── Desktop Glass Pill Navigation ──────────────────────────────────── */
+.glass-nav-pill-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: color-mix(in srgb, var(--surface-container-low) 75%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 4px 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 45%, transparent);
+}
+
+.glass-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.glass-nav-item i {
+  font-size: 18px;
+  color: var(--on-surface-variant);
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.glass-nav-item:hover {
+  background: color-mix(in srgb, var(--primary-container) 35%, transparent);
+  color: var(--on-surface);
+}
+
+.glass-nav-item:hover i {
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.glass-nav-item.active {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font-weight: 600;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+.glass-nav-item.active i {
+  color: var(--on-primary-container);
+}
+
+/* ── Custom Capsule Theme Toggle Button ─────────────────────────────── */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 55%, transparent);
+  background: color-mix(in srgb, var(--surface-container-high) 80%, transparent);
+  backdrop-filter: blur(12px);
+  color: var(--on-surface);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--surface-container-highest);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 15%, transparent);
+}
+
+.theme-toggle-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+  transition: transform 0.3s ease;
+}
+
+.theme-toggle-btn:hover .theme-toggle-icon-wrap {
+  transform: rotate(20deg) scale(1.1);
+}
+
+.theme-toggle-icon-wrap i {
+  font-size: 16px;
+}
+
+/* ── Bento Cards for Homepage ────────────────────────────────────────── */
+.home-bento-card {
+  background: color-mix(in srgb, var(--surface-container-low) 88%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 28px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease;
+}
+
+.home-bento-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+/* ── Background Canvas Blur Overlay ───────────────────────────────── */
+/* Frosted-glass overlay — tones down blobs so page content is easy to read.
+   Dark mode uses a deeper tint; light mode stays airy. */
+.bg-canvas-blur-overlay {
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(32px) saturate(120%);
+  -webkit-backdrop-filter: blur(32px) saturate(120%);
+  pointer-events: none;
+}
+
+body.dark .bg-canvas-blur-overlay {
+  background: rgba(10, 18, 14, 0.55);
+}
+
+body.light .bg-canvas-blur-overlay,
+:root .bg-canvas-blur-overlay {
+  background: rgba(240, 248, 242, 0.52);
+}
+
+/* ── BeerCSS-Compliant Button Tap / Active States ─────────────────────
+   BeerCSS handles the ripple via its JS bundle. These rules add a subtle
+   scale-down "press" on :active that matches M3 Expressive pressed states
+   without overriding BeerCSS's own transform pipeline.
+   We use will-change: transform so browsers pre-composite the layer. ── */
+button,
+a.button,
+[role="button"] {
+  will-change: transform;
+  /* Smooth snap back after release */
+  transition: transform 80ms cubic-bezier(0.2, 0, 0, 1), opacity 80ms ease;
+}
+
+/* Pressed state — M3 specifies a slight scale reduction for tactile feel */
+button:active,
+a.button:active,
+[role="button"]:active {
+  transform: scale(0.96);
+  opacity: 0.92;
+}
+
+/* Chip-sized buttons press even more subtly (they're smaller targets) */
+button.chip:active,
+.chip[role="button"]:active {
+  transform: scale(0.94);
+  opacity: 0.9;
+}
+
+/* Icon-only / FAB buttons: M3 specifies a 0.9 scale for FABs on press */
+button.circle:active,
+button.square:active {
+  transform: scale(0.90);
+}
+
+/* Don't apply scale to disabled buttons or nav items that already animate */
+button:disabled:active,
+a:disabled:active,
+.no-press:active {
+  transform: none;
+  opacity: 1;
+}
+
+/* ── Trust Ticker Banner ───────────────────────────────────────────── */
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Glassmorphism panel wrapping the ticker — gives it a solid visual base */
+.trust-ticker-panel {
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface-container-low) 90%, transparent);
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  border-top: 1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent);
+  padding: 4px 0;
+  /* Subtle inner glow for depth */
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--primary) 8%, transparent),
+              0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+body.dark .trust-ticker-panel {
+  background: color-mix(in srgb, var(--surface-container) 85%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--primary) 12%, transparent),
+              0 2px 16px rgba(0, 0, 0, 0.18);
+}
+
+.trust-ticker-track {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: max-content;
+  animation: ticker-scroll 28s linear infinite;
+}
+
+.trust-ticker-track:hover {
+  animation-play-state: paused;
+}
+
+.trust-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 32px;
+  border-right: 1px solid color-mix(in srgb, var(--outline-variant) 45%, transparent);
+  white-space: nowrap;
+}
+
+.trust-ticker-item:last-child {
+  border-right: none;
+}
+
+/* ── Desktop Pop-out Cart → Now uses Cart Drawer ──────────────────── */
+.header-cart-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── Desktop-only nav visibility ──────────────────────────────────── */
+.desktop-only-nav {
+  display: flex;
+}
+
+@media (max-width: 900px) {
+  .desktop-only-nav {
+    display: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CART DRAWER — Full Checkout Slide-Over
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Overlay ─────────────────────────────────────────────────────── */
+.cart-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  z-index: 1099;
+  pointer-events: none;
+  transition: background 0.3s ease;
+}
+
+.cart-drawer-overlay-visible {
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+
+/* ── Panel ────────────────────────────────────────────────────────── */
+.cart-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 400px;
+  max-width: 100vw;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-container-lowest);
+  border-left: 1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent);
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.2);
+  transform: translateX(100%);
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), width 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.cart-drawer-open {
+  transform: translateX(0);
+}
+
+/* Morph wider for shipping/payment steps */
+.cart-drawer-wide {
+  width: 540px;
+}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+.cart-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--outline-variant) 40%, transparent);
+  background: color-mix(in srgb, var(--surface-container-low) 90%, transparent);
+  flex-shrink: 0;
+}
+
+/* ── Stepper ──────────────────────────────────────────────────────── */
+.cart-drawer-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 14px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--outline-variant) 30%, transparent);
+  flex-shrink: 0;
+}
+
+.cart-drawer-step-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cart-drawer-step-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  border: 1px solid var(--outline-variant);
+  transition: all 0.25s ease;
+}
+
+.cart-drawer-step-active {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
+
+.cart-drawer-step-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  transition: color 0.25s ease;
+}
+
+.cart-drawer-step-label-active {
+  color: var(--on-surface);
+}
+
+.cart-drawer-step-line {
+  width: 32px;
+  height: 2px;
+  background: var(--outline-variant);
+  margin: 0 8px;
+  border-radius: 1px;
+  transition: background 0.25s ease;
+}
+
+.cart-drawer-step-line-done {
+  background: var(--primary);
+}
+
+/* ── Body ─────────────────────────────────────────────────────────── */
+.cart-drawer-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.cart-drawer-form-body {
+  overflow: hidden;
+}
+
+/* ── Empty state ──────────────────────────────────────────────────── */
+.cart-drawer-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+/* ── Items list ───────────────────────────────────────────────────── */
+.cart-drawer-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cart-drawer-item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-container-low) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 30%, transparent);
+  transition: border-color 0.2s ease;
+}
+
+.cart-drawer-item-row:hover {
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+.cart-drawer-thumb {
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant);
+  flex-shrink: 0;
+}
+
+.cart-drawer-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cart-drawer-item-name {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--on-surface);
+}
+
+.cart-drawer-item-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.cart-drawer-qty-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.cart-drawer-qty-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cart-drawer-qty-btn:hover {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.cart-drawer-qty-num {
+  font-size: 13px;
+  font-weight: 700;
+  min-width: 18px;
+  text-align: center;
+}
+
+.cart-drawer-remove-btn {
+  background: transparent;
+  border: none;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.cart-drawer-remove-btn:hover {
+  color: var(--error);
+  background: color-mix(in srgb, var(--error-container) 40%, transparent);
+}
+
+/* ── Footer (sticky bottom) ───────────────────────────────────────── */
+.cart-drawer-footer {
+  padding: 16px 20px;
+  border-top: 1px solid color-mix(in srgb, var(--outline-variant) 40%, transparent);
+  background: color-mix(in srgb, var(--surface-container-low) 90%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.cart-drawer-subtotal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+  color: var(--on-surface);
+}
+
+.cart-drawer-shipping-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  text-align: center;
+}
+
+.cart-drawer-main-btn {
+  width: 100%;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  background: var(--primary) !important;
+  color: var(--on-primary) !important;
+  border-radius: 999px !important;
+  border: none !important;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 35%, transparent);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.cart-drawer-main-btn i {
+  color: var(--on-primary) !important;
+  font-size: 20px;
+}
+
+.cart-drawer-main-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 45%, transparent);
+  filter: brightness(1.08);
+}
+
+.cart-drawer-secondary-btn {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 13px;
+  background: transparent !important;
+  color: var(--on-surface) !important;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 70%, transparent) !important;
+  border-radius: 999px !important;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.cart-drawer-secondary-btn:hover {
+  background: var(--surface-container-high) !important;
+}
+
+/* ── Form scroll area ─────────────────────────────────────────────── */
+.cart-drawer-form-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.cart-drawer-section-title {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ── Form grid ────────────────────────────────────────────────────── */
+.cart-drawer-form-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.cart-drawer-field {
+  min-width: 0;
+}
+
+.cart-drawer-field .field {
+  width: 100%;
+}
+
+.cart-drawer-field-full {
+  flex: 1 1 100%;
+}
+
+.cart-drawer-field-half {
+  flex: 1 1 calc(50% - 6px);
+  min-width: 140px;
+}
+
+.cart-drawer-field-third {
+  flex: 1 1 calc(33.333% - 8px);
+  min-width: 100px;
+}
+
+/* ── Order Summary ────────────────────────────────────────────────── */
+.cart-drawer-order-summary {
+  background: color-mix(in srgb, var(--surface-container-low) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 40%, transparent);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cart-drawer-summary-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--on-surface-variant);
+}
+
+.cart-drawer-summary-item em {
+  font-weight: 600;
+  font-style: normal;
+}
+
+.cart-drawer-summary-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 12px;
+}
+
+.cart-drawer-summary-price {
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.cart-drawer-summary-divider {
+  height: 1px;
+  background: var(--outline-variant);
+  margin: 4px 0;
+  opacity: 0.5;
+}
+
+.cart-drawer-summary-total {
+  font-size: 16px;
+  color: var(--on-surface);
+}
+
+/* ── Stripe info ──────────────────────────────────────────────────── */
+.cart-drawer-stripe-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  margin-bottom: 16px;
+}
+
+.cart-drawer-pay-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--error-container);
+  color: var(--on-error-container);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.cart-drawer-shipping-review {
+  padding: 16px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-container-low) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 40%, transparent);
+  margin-bottom: 16px;
+}
+
+.cart-drawer-payment-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-container-high) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 40%, transparent);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ── Processing ───────────────────────────────────────────────────── */
+.cart-drawer-processing {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+/* ── Security footer ──────────────────────────────────────────────── */
+.cart-drawer-security-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* ── Bottom nav cart button ───────────────────────────────────────── */
+.bottom-nav-cart-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Mobile: full-screen drawer ───────────────────────────────────── */
+@media (max-width: 600px) {
+  .cart-drawer-panel {
+    width: 100vw !important;
+    border-left: none;
+    border-radius: 0;
+  }
+
+  .cart-drawer-field-half,
+  .cart-drawer-field-third {
+    flex: 1 1 100%;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOBICARE — Button consistency / final overrides
+   Keep BeerCSS responsible for component styling, but give custom
+   actions the same sizing, alignment, focus treatment, and interaction
+   language. These rules intentionally come last so they win over earlier
+   one-off overrides in this file.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Shared custom-button baseline */
+.site-content-page button.primary,
+.site-content-page button.border,
+.site-content-page button.btn,
+.site-content-page button.btn-ghost,
+.admin-page-action,
+.admin-page dialog nav button,
+.settings-action-row>button,
+.site-device-add-button,
+.header-book-cta,
+.theme-toggle-btn,
+.cart-drawer-main-btn,
+.cart-drawer-secondary-btn,
+.cart-drawer-qty-btn,
+.cart-drawer-remove-btn,
+.bottom-nav-cart-btn {
+  box-sizing: border-box;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Primary / outlined actions use one consistent M3-style control height. */
+.site-content-page button.primary,
+.site-content-page button.border,
+.site-content-page button.btn,
+.admin-page-action,
+.admin-page dialog nav button,
+.settings-action-row>button,
+.site-device-add-button {
+  min-height: 44px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Prevent icons from changing the apparent button height. */
+.site-content-page button.primary i,
+.site-content-page button.border i,
+.site-content-page button.btn i,
+.admin-page-action i,
+.admin-page dialog nav button i,
+.settings-action-row>button i,
+.site-device-add-button i,
+.header-book-cta i,
+.theme-toggle-btn i {
+  flex: 0 0 auto;
+}
+
+/* Ghost controls should still feel like buttons, not unstyled text. */
+.site-content-page button.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Consistent keyboard focus across custom actions. */
+.site-content-page button.primary:focus-visible,
+.site-content-page button.border:focus-visible,
+.site-content-page button.btn:focus-visible,
+.site-content-page button.btn-ghost:focus-visible,
+.admin-page-action:focus-visible,
+.admin-page dialog nav button:focus-visible,
+.settings-action-row>button:focus-visible,
+.site-device-add-button:focus-visible,
+.header-book-cta:focus-visible,
+.theme-toggle-btn:focus-visible,
+.cart-drawer-main-btn:focus-visible,
+.cart-drawer-secondary-btn:focus-visible,
+.cart-drawer-qty-btn:focus-visible,
+.cart-drawer-remove-btn:focus-visible,
+.bottom-nav-cart-btn:focus-visible,
+.header-cart-action:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  outline-offset: 2px;
+}
+
+/* Disabled actions should share one visual treatment. */
+.site-content-page button:disabled,
+.admin-page button:disabled,
+.header-book-cta:disabled,
+.theme-toggle-btn:disabled,
+.cart-drawer-main-btn:disabled,
+.cart-drawer-secondary-btn:disabled,
+.cart-drawer-qty-btn:disabled,
+.cart-drawer-remove-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* Admin header action: same visual language as the other pill controls. */
+.admin-header-link {
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+/* Header cart button: keep its 44px hit target while matching the pill family. */
+.header-cart-action {
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+/* Header booking CTA and theme toggle share a stable height. */
+.header-book-cta,
+.theme-toggle-btn {
+  min-height: 40px;
+  height: 40px;
+}
+
+/* Cart drawer quantity/remove controls stay compact and circular. */
+.cart-drawer-qty-btn {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.cart-drawer-remove-btn {
+  min-width: 34px;
+  min-height: 34px;
+}
+
+/* Do not let BeerCSS add unexpected inline-button margins to the drawer CTA. */
+.cart-drawer-main-btn,
+.cart-drawer-secondary-btn {
+  margin: 0;
+}
+
+/* CTA strip: equal visual weight on desktop, full-width stacked actions on mobile. */
+.cta-strip-actions>* {
+  min-height: 44px;
+  box-sizing: border-box;
+  border-radius: 999px;
+}
+
+@media (max-width: 700px) {
+  .cta-strip-inner {
+    gap: 18px;
+    padding: 24px;
+  }
+
+  .cta-strip-actions {
+    width: 100%;
+  }
+
+  .cta-strip-actions>* {
+    flex: 1 1 180px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cta-strip-inner {
+    padding: 20px;
+  }
+
+  .cta-strip-actions {
+    flex-direction: column;
+  }
+
+  .cta-strip-actions>* {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .admin-page-action,
+  .settings-action-row>button,
+  .site-device-add-button {
+    max-width: 100%;
   }
 }
