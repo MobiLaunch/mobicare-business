@@ -66,7 +66,7 @@ export default function Home() {
     .filter(Boolean)
 
   const handleCopyAddress = () => {
-    navigator.clipboard.writeText('Fairfield, IL 62837')
+    navigator.clipboard.writeText('920 Commerce Drive, Suite 3, Fairfield, IL 62837')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -86,11 +86,12 @@ export default function Home() {
     const initializeMap = () => {
       if (cancelled || !window.google?.maps || !mapRef.current) return
 
+      const businessAddress = '920 Commerce Drive, Suite 3, Fairfield, IL 62837'
       const fairfield = { lat: 38.378937, lng: -88.359768 }
 
       mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
         center: fairfield,
-        zoom: 14,
+        zoom: 15,
         mapTypeId: 'roadmap',
         disableDefaultUI: true,
         zoomControl: true,
@@ -144,6 +145,21 @@ export default function Home() {
           anchor: new window.google.maps.Point(26, 62)
         },
         zIndex: 10
+      })
+
+      const geocoder = new window.google.maps.Geocoder()
+      geocoder.geocode({ address: businessAddress }, (results, status) => {
+        if (cancelled) return
+        if (status === 'OK' && results?.[0]?.geometry?.location) {
+          const location = results[0].geometry.location
+          mapInstanceRef.current.setCenter(location)
+          mapInstanceRef.current.setZoom(16)
+          if (mapMarkerRef.current) {
+            mapMarkerRef.current.setPosition(location)
+          }
+        } else {
+          console.warn('Could not geocode Mobicare business address:', status)
+        }
       })
 
       const infoWindow = new window.google.maps.InfoWindow({
