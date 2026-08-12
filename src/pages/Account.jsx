@@ -120,10 +120,10 @@ export default function Account() {
 
       <BackgroundCanvas />
 
-      <main className="responsive medium-padding">
+      <main className="responsive medium-padding" style={{ paddingTop: 'clamp(5.5rem, 10vw, 7rem)' }}>
 
         <section className="surface-container round large-padding margin">
-          <div className="row middle-align wrap space">
+          <div className="row middle-align wrap space" style={{ gap: '1rem' }}>
             <div className="max" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div className="chip surface-container-high" style={{ width: 'fit-content', margin: 0 }}>
                 <i>badge</i>
@@ -135,7 +135,7 @@ export default function Account() {
               <p className="on-surface-variant-text" style={{ margin: 0 }}>{user.email}</p>
             </div>
 
-            <button id="account-signout-btn" className="border round" type="button" onClick={logout}>
+            <button id="account-signout-btn" className="border round no-margin" type="button" onClick={logout} style={{ flexShrink: 0 }}>
               <i>logout</i>
               <span>Sign Out</span>
             </button>
@@ -160,7 +160,7 @@ export default function Account() {
           </output>
         )}
 
-        <section className="grid margin">
+        <section className="grid" style={{ marginBottom: '1rem' }}>
           <div className="s12 m4 l4">
             <article className="surface-container round large-padding">
               <div className="row middle-align no-space">
@@ -193,12 +193,12 @@ export default function Account() {
         <div className="grid">
           <div className="s12 m12 l8">
             <section className="surface-container round large-padding margin">
-              <div className="row middle-align wrap">
-                <div className="max">
+              <div className="row middle-align wrap" style={{ gap: '0.75rem' }}>
+                <div className="max" style={{ minWidth: 0 }}>
                   <h2 className="medium">Repair History</h2>
                   <p className="on-surface-variant-text small">Your scheduled service and diagnostic appointments.</p>
                 </div>
-                <Link className="button primary fill round" to="/repairs">
+                <Link className="button primary round" to="/repairs" style={{ flexShrink: 0 }}>
                   <i>add</i>
                   <span>Book a Repair</span>
                 </Link>
@@ -216,13 +216,13 @@ export default function Account() {
                 <div className="grid">
                   {bookings.map((booking) => (
                     <div key={booking.id} className="s12">
-                      <article className="surface-container-high round medium-padding row middle-align space-between wrap">
-                        <div className="max">
+                      <article className="surface-container-high round medium-padding" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                        <div className="max" style={{ minWidth: 0 }}>
                           <strong>{booking.device || booking.device_type || 'Device repair'}</strong>
                           <div className="on-surface-variant-text small">{booking.repair || booking.service || 'Repair appointment'}</div>
                           <div className="on-surface-variant-text small">{formatDate(booking.appointment_date || booking.scheduled_at || booking.created_at)}</div>
                         </div>
-                        <span className="chip primary round">{booking.status || 'Pending'}</span>
+                        <span className="chip primary round" style={{ flexShrink: 0 }}>{booking.status || 'Pending'}</span>
                       </article>
                     </div>
                   ))}
@@ -247,7 +247,7 @@ export default function Account() {
                   {orders.map((order) => (
                     <div key={order.id} className="s12">
                       <article className="surface-container-high round medium-padding">
-                        <div className="row middle-align space-between wrap">
+                        <div className="row middle-align space-between wrap" style={{ gap: '0.5rem' }}>
                           <strong>Order #{order.id}</strong>
                           <strong className="primary-text">{money(order.total)}</strong>
                         </div>
@@ -268,10 +268,10 @@ export default function Account() {
             </section>
           </div>
 
-          <aside className="s12 m12 l4">
+          <aside className="s12 m12 l4" style={{ minWidth: 0 }}>
             <section className="surface-container round large-padding">
-              <div className="row middle-align space-between">
-                <div>
+              <div className="row middle-align space-between" style={{ gap: '0.75rem' }}>
+                <div style={{ minWidth: 0 }}>
                   <h2 className="medium">Profile Details</h2>
                   <p className="on-surface-variant-text small">Personal contact details.</p>
                 </div>
@@ -283,7 +283,7 @@ export default function Account() {
               </div>
 
               {editing ? (
-                <form onSubmit={saveProfile} className="grid">
+                <form onSubmit={saveProfile} className="grid" style={{ marginTop: '0.5rem' }}>
                   <div className="s12 field border round fill">
                     <input id="account-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder=" " required />
                     <label htmlFor="account-name">Full name</label>
@@ -295,8 +295,8 @@ export default function Account() {
                   </div>
 
                   <div className="s12">
-                    <div className="row wrap">
-                      <button className="primary fill round" type="submit" disabled={saving}>
+                    <div className="row wrap" style={{ gap: '0.5rem' }}>
+                      <button className="primary round" type="submit" disabled={saving}>
                         {saving ? 'Saving…' : 'Save Changes'}
                       </button>
                       <button className="border round" type="button" onClick={() => setEditing(false)}>
