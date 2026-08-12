@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCartStore, useToastStore, useProductStore } from '../lib/store'
+import { getClient } from '../lib/supabase'
 
 /**
  * CartDrawer – Full checkout experience in a slide-over drawer.
@@ -86,9 +87,19 @@ export default function CartDrawer() {
     setPayError('')
     try {
       checkoutRequestIdRef.current ||= crypto.randomUUID()
+      const sb = getClient()
+      const { data: { session } } = sb?.auth
+        ? await sb.auth.getSession()
+        : { data: { session: null } }
+
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {}),
+        },
         body: JSON.stringify({
           items: items.map(i => ({ id: i.id, qty: i.qty })),
           shipping: shippingInfo,

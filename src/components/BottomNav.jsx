@@ -1,15 +1,14 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useCartStore } from '../lib/store'
+import { useAuth } from '../lib/AuthContext'
 
-// Google-apps-style bottom nav (Gmail/Meet pattern):
-// - Fixed to viewport bottom, only visible on small screens (≤600px)
-// - Active tab: pill-shaped highlight capsule behind the icon
-// - Cart tab opens the CartDrawer instead of navigating to /cart
 export default function BottomNav() {
   const location = useLocation()
   const cartCount = useCartStore(s => s.items.reduce((n, i) => n + i.qty, 0))
+  const cartDrawerOpen = useCartStore(s => s.cartDrawerOpen)
   const setCartDrawerOpen = useCartStore(s => s.setCartDrawerOpen)
+  const { user } = useAuth()
 
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
@@ -21,8 +20,13 @@ export default function BottomNav() {
     { to: '/about', label: 'About', icon: 'info' },
   ]
 
+  const accountPath = user ? '/account' : '/login'
+  const accountActive = isActive('/account') || isActive('/login')
+  const accountLabel = user ? 'Account' : 'Sign In'
+
   return (
     <div role="navigation" className="bottom-nav-google" aria-label="Primary">
+      {/* Route Links */}
       {LINK_TABS.map(tab => {
         const active = isActive(tab.to)
         return (
@@ -44,15 +48,22 @@ export default function BottomNav() {
         )
       })}
 
-      {/* Cart tab — opens drawer instead of navigating */}
+      {/* Cart Drawer Trigger */}
       <button
         type="button"
         className="bottom-nav-item bottom-nav-cart-btn"
-        onClick={() => setCartDrawerOpen(true)}
+        onClick={() => setCartDrawerOpen(!cartDrawerOpen)}
         aria-label={`Cart${cartCount > 0 ? `, ${cartCount} items` : ''}`}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: 0,
+          color: 'inherit',
+          cursor: 'pointer',
+        }}
       >
-        <span className={`bottom-nav-pill ${cartCount > 0 ? 'bottom-nav-pill-active' : ''}`}>
-          <i className={cartCount > 0 ? 'primary-text' : 'on-surface-variant-text'}>
+        <span className={`bottom-nav-pill ${cartDrawerOpen ? 'bottom-nav-pill-active' : ''}`}>
+          <i className={cartDrawerOpen ? 'primary-text' : 'on-surface-variant-text'}>
             shopping_cart
           </i>
           {cartCount > 0 && (
@@ -61,10 +72,26 @@ export default function BottomNav() {
             </span>
           )}
         </span>
-        <span className={`bottom-nav-label ${cartCount > 0 ? 'primary-text' : 'on-surface-variant-text'}`}>
+        <span className={`bottom-nav-label ${cartDrawerOpen ? 'primary-text' : 'on-surface-variant-text'}`}>
           Cart
         </span>
       </button>
+
+      {/* Account Route Link */}
+      <Link
+        to={accountPath}
+        className="bottom-nav-item"
+        aria-current={accountActive ? 'page' : undefined}
+      >
+        <span className={`bottom-nav-pill ${accountActive ? 'bottom-nav-pill-active' : ''}`}>
+          <i className={accountActive ? 'primary-text' : 'on-surface-variant-text'}>
+            account_circle
+          </i>
+        </span>
+        <span className={`bottom-nav-label ${accountActive ? 'primary-text' : 'on-surface-variant-text'}`}>
+          {accountLabel}
+        </span>
+      </Link>
     </div>
   )
 }

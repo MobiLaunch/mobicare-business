@@ -3,10 +3,11 @@ import emailjs from '@emailjs/browser'
 import { getEmailJSConfig, BUSINESS } from '../lib/config'
 import { useSiteStore } from '../lib/siteStore'
 import { useToastStore } from '../lib/store'
-import { isSupabaseConfigured } from '../lib/supabase'
+import { isSupabaseConfigured, getClient } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 
 const STEPS = ['Service', 'Device', 'Schedule', 'Contact', 'Confirm']
-const TIMES = ['9:00 AM','10:00 AM','11:00 AM','12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM']
+const TIMES = ['9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM']
 
 function getNextDays(n = 14) {
   const days = []; const today = new Date()
@@ -19,6 +20,7 @@ function getNextDays(n = 14) {
 }
 
 export default function BookingWizard({ onClose, defaultService = null }) {
+  const { user, profile } = useAuth()
   const repairServices = useSiteStore(s => s.repairServices)
   const deviceTypes = useSiteStore(s => s.deviceTypes) || []
 
@@ -28,11 +30,39 @@ export default function BookingWizard({ onClose, defaultService = null }) {
   const addToast = useToastStore(s => s.add)
 
   const [form, setForm] = useState(() => {
+    const initialContact = {
+      name: profile?.full_name || '',
+      phone: profile?.phone || '',
+      email: user?.email || '',
+    }
+
     if (defaultService) {
       const match = repairServices.find(s => s.name.toLowerCase() === defaultService.toLowerCase())
-      if (match) return { service: match.id, variant: '', deviceType: '', deviceModel: '', issue: '', date: '', time: '', name: '', phone: '', email: '', notes: '' }
+      if (match) {
+        return {
+          service: match.id,
+          variant: '',
+          deviceType: '',
+          deviceModel: '',
+          issue: '',
+          date: '',
+          time: '',
+          ...initialContact,
+          notes: '',
+        }
+      }
     }
-    return { service: '', variant: '', deviceType: '', deviceModel: '', issue: '', date: '', time: '', name: '', phone: '', email: '', notes: '' }
+    return {
+      service: '',
+      variant: '',
+      deviceType: '',
+      deviceModel: '',
+      issue: '',
+      date: '',
+      time: '',
+      ...initialContact,
+      notes: '',
+    }
   })
 
   useEffect(() => {
@@ -62,9 +92,17 @@ export default function BookingWizard({ onClose, defaultService = null }) {
 
     if (!import.meta.env.DEV) {
       try {
+        const sb = getClient()
+        const { data: { session } } = sb?.auth ? await sb.auth.getSession() : { data: { session: null } }
+
         const response = await fetch('/api/create-booking', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token
+              ? { Authorization: `Bearer ${session.access_token}` }
+              : {}),
+          },
           body: JSON.stringify({ ...form, service: serviceLabel }),
         })
         const data = await response.json()

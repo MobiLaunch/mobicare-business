@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useProductStore, useCartStore } from './lib/store'
 import { useSiteStore, applyAppearance } from './lib/siteStore'
@@ -170,4 +170,3 @@ export default function App() {
     </BrowserRouter>
   )
 }
-

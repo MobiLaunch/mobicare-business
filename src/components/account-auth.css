@@ -1,0 +1,47 @@
+
+/* ─── Customer Account ─────────────────────────────────────────────────── */
+
+.header-account-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--text);
+  text-decoration: none;
+  transition: background .2s ease, color .2s ease, transform .2s ease;
+}
+
+.header-account-action:hover {
+  background: var(--surface-2);
+  color: var(--primary);
+}
+
+.header-account-action.active {
+  background: var(--surface-2);
+  color: var(--primary);
+}
+
+.header-account-action .material-symbols-outlined {
+  font-size: 21px;
+}
+
+.account-label {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .account-label {
+    display: none;
+  }
+
+  .header-account-action {
+    width: 40px;
+    min-width: 40px;
+    padding: 0;
+  }
+}

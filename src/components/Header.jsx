@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useCartStore } from '../lib/store'
 import { useSiteStore } from '../lib/siteStore'
+import { useAuth } from '../lib/AuthContext'
 import BookingWizard from './BookingWizard'
 import CartDrawer from './CartDrawer'
 import localLogo from '../assets/mobicare-logo.svg'
@@ -9,19 +9,14 @@ import localLogo from '../assets/mobicare-logo.svg'
 export default function Header() {
   const [bookingOpen, setBookingOpen] = useState(false)
 
-  const items = useCartStore(s => s.items)
-  const cartDrawerOpen = useCartStore(s => s.cartDrawerOpen)
-  const setCartDrawerOpen = useCartStore(s => s.setCartDrawerOpen)
-  const cartCount = items.reduce((n, i) => n + i.qty, 0)
-
   const location = useLocation()
   const brand = useSiteStore(s => s.brand)
   const appearance = useSiteStore(s => s.appearance)
   const setColorScheme = useSiteStore(s => s.setColorScheme)
   const theme = appearance?.colorScheme || 'dark'
   const logoSrc = appearance?.logoUrl || localLogo
+  const { user, loading: authLoading } = useAuth()
 
-  // Keep <body> class in sync with theme
   useEffect(() => {
     document.body.className = theme
   }, [theme])
@@ -29,11 +24,6 @@ export default function Header() {
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
 
-  const handleCartClick = () => {
-    setCartDrawerOpen(!cartDrawerOpen)
-  }
-
-  // Desktop navigation items
   const navLinks = [
     { to: '/', label: 'Home', icon: 'home' },
     { to: '/shop', label: 'Shop', icon: 'storefront' },
@@ -41,127 +31,134 @@ export default function Header() {
     { to: '/about', label: 'About', icon: 'info' },
   ]
 
+  const accountLabel = authLoading
+    ? 'Account'
+    : user
+      ? (user.user_metadata?.full_name?.split(' ')[0] || 'Account')
+      : 'Sign In'
+
+  const accountPath = user ? '/account' : '/login'
+  const accountActive = isActive('/account')
+
   return (
-    <div id="main-header-wrapper" className="header-wrapper">
-      {/* Glassmorphism header — translucent over page background */}
-      <header id="site-main-header" className="fixed glass-header" style={{ zIndex: 900 }}>
-        <div id="header-inner-nav" className="header-inner-container">
-
-          {/* 1. Left: Brand Logo */}
-          <Link id="header-brand-logo-link" to="/" className="no-margin site-logo-link" aria-label={`${brand.name} home`}>
-            {appearance?.logoType === 'image' ? (
-              <img className="site-logo-image" src={logoSrc} alt={appearance.logoAlt || brand.name} />
-            ) : (
-              <div id="header-brand-icon-dot" className="site-logo-icon-dot">
-                <i className="material-symbols-outlined">bolt</i>
-              </div>
-            )}
-            <strong id="header-brand-wordmark" className="primary-text site-logo-wordmark">
-              {brand.name}
-            </strong>
-          </Link>
-
-          {/* 2. Center: Desktop Nav Capsule */}
-          <div id="desktop-header-nav-group" className="glass-nav-pill-group desktop-only-nav">
-            {navLinks.map(({ to, label, icon }) => {
-              const active = isActive(to)
-              return (
-                <Link
-                  id={`desktop-nav-link-${label.toLowerCase()}`}
-                  key={to}
-                  to={to}
-                  className={`glass-nav-item ${active ? 'active' : ''}`}
-                >
-                  <i className="material-symbols-outlined">{icon}</i>
-                  <span>{label}</span>
-                </Link>
-              )
-            })}
-          </div>
-
-          {/* 3. Right: Header Action Controls */}
-          <div id="header-right-actions-group" className="header-actions-right">
-            {/* Theme Toggle Button */}
+    <>
+      <header
+        className="fixed top left right surface-container-highest z-50 glass-header"
+        style={{ padding: '0.5rem 1.25rem' }}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
+            alignItems: 'center',
+            width: '100%',
+          }}
+        >
+          {/* ─── LEFT: Theme Toggle + Desktop Nav Links ────────────── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifySelf: 'start' }}>
             <button
               id="theme-toggle-button"
               type="button"
-              className="theme-toggle-btn"
+              className="circle transparent no-margin"
               onClick={() => setColorScheme(theme === 'dark' ? 'light' : 'dark')}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
               aria-label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             >
-              <span
-                id="theme-toggle-icon-container"
-                className="theme-toggle-icon-wrap"
-                aria-hidden="true"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 24,
-                  height: 24,
-                  minWidth: 24,
-                  padding: 0,
-                  margin: 0,
-                  background: 'transparent',
-                  border: 0,
-                  borderRadius: 0,
-                  boxShadow: 'none',
-                  lineHeight: 1,
-                  overflow: 'visible',
-                }}
-              >
-                <i
-                  className="material-symbols-outlined"
-                  style={{
-                    display: 'block',
-                    width: '1em',
-                    height: '1em',
-                    margin: 0,
-                    lineHeight: 1,
-                    fontSize: 20,
-                  }}
-                >
-                  {theme === 'dark' ? 'dark_mode' : 'light_mode'}
-                </i>
-              </span>
-              <span id="theme-toggle-label" className="theme-toggle-text">{theme === 'dark' ? 'Dark' : 'Light'}</span>
+              <i>{theme === 'dark' ? 'light_mode' : 'dark_mode'}</i>
             </button>
 
-            {/* Cart Button */}
-            <button
-              id="header-cart-button"
-              onClick={handleCartClick}
-              title="Cart"
-              aria-label={`Cart${cartCount > 0 ? `, ${cartCount} items` : ''}`}
-              className={`header-cart-action${cartCount > 0 ? ' header-cart-action-filled' : ''}`}
+            {/* Desktop Navigation Links (Desktop Only) */}
+            <div className="surface-variant round small-padding l" style={{ display: 'flex', gap: '0.25rem' }}>
+              {navLinks.map(({ to, label, icon }) => {
+                const active = isActive(to)
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    className={`button ${active ? 'primary' : 'transparent'} round no-margin`}
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <i>{icon}</i>
+                    <span>{label}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* ─── CENTER: Logo & Wordmark ───────────────────────────── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0 }}>
+            <Link
+              id="header-brand-logo-link"
+              to="/"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                textDecoration: 'none',
+                color: 'inherit',
+                whiteSpace: 'nowrap',
+              }}
+              aria-label={`${brand?.name || 'Home'}`}
             >
-              <i className="material-symbols-outlined primary-text">shopping_cart</i>
-              {cartCount > 0 && (
-                <span id="header-cart-count-badge" className="bottom-nav-badge header-cart-badge">
-                  {cartCount > 99 ? '99+' : cartCount}
-                </span>
+              {appearance?.logoType === 'image' ? (
+                <img
+                  className="circle small"
+                  src={logoSrc}
+                  alt={appearance.logoAlt || brand?.name || 'Logo'}
+                  style={{ height: '32px', width: '32px', minWidth: '32px', objectFit: 'contain' }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="circle small primary no-margin"
+                  tabIndex={-1}
+                  style={{ pointerEvents: 'none' }}
+                >
+                  <i>bolt</i>
+                </button>
               )}
-            </button>
+              <strong
+                className="primary-text bold large-text m l"
+                style={{ letterSpacing: '-0.02em' }}
+              >
+                {brand?.name || 'Mobicare Device Recovery'}
+              </strong>
+            </Link>
+          </div>
 
+          {/* ─── RIGHT: Book Appointment CTA + Desktop Account ─────── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifySelf: 'end' }}>
             {/* Book Appointment CTA */}
             <button
               id="header-book-appointment-btn"
-              className="primary round header-book-cta"
+              type="button"
+              className="primary button round no-margin bold shadow"
               onClick={() => setBookingOpen(true)}
+              title="Book Appointment"
             >
-              <i className="material-symbols-outlined">calendar_today</i>
-              <span className="book-cta-label">Book Appointment</span>
+              <i>calendar_today</i>
+              <span className="l">Book Appointment</span>
             </button>
-          </div>
 
+            {/* Desktop Account Button (Hidden on Mobile/Tablet since it is in BottomNav) */}
+            <Link
+              id="header-account-button"
+              to={accountPath}
+              className={`button ${accountActive ? 'secondary-container' : 'transparent'} round no-margin l`}
+              title={user ? 'My Account' : 'Sign in'}
+              aria-label={user ? 'My Account' : 'Sign in'}
+              style={{ textDecoration: 'none' }}
+            >
+              <i>account_circle</i>
+              <span>{accountLabel}</span>
+            </Link>
+          </div>
         </div>
       </header>
 
-      {/* Cart Drawer */}
       <CartDrawer />
-
       {bookingOpen && <BookingWizard onClose={() => setBookingOpen(false)} />}
-    </div>
+    </>
   )
 }
