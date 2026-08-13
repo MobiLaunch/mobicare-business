@@ -120,22 +120,240 @@ export default function Account() {
 
       <BackgroundCanvas />
 
-      <main className="responsive medium-padding">
+      <style>{`
+        #account-page-wrapper {
+          --account-max-width: 1180px;
+        }
 
-        <section className="surface-container round large-padding margin">
-          <div className="row middle-align wrap space">
-            <div className="max" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div className="chip surface-container-high" style={{ width: 'fit-content', margin: 0 }}>
+        #account-page-wrapper .account-main {
+          width: min(100%, var(--account-max-width));
+          margin-inline: auto;
+          box-sizing: border-box;
+        }
+
+        #account-page-wrapper .account-hero,
+        #account-page-wrapper .account-section,
+        #account-page-wrapper .account-profile {
+          min-width: 0;
+          overflow: hidden;
+        }
+
+        #account-page-wrapper .account-hero {
+          padding: clamp(1rem, 2.5vw, 2rem);
+        }
+
+        #account-page-wrapper .account-hero-copy {
+          min-width: 0;
+        }
+
+        #account-page-wrapper .account-hero h1 {
+          margin-block: .55rem .15rem;
+          line-height: 1.05;
+          overflow-wrap: anywhere;
+        }
+
+        #account-page-wrapper .account-email {
+          max-width: 100%;
+          margin: 0;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        #account-page-wrapper .account-signout {
+          flex: 0 0 auto;
+        }
+
+        #account-page-wrapper .account-stat {
+          min-width: 0;
+          padding: clamp(1rem, 2vw, 1.35rem);
+        }
+
+        #account-page-wrapper .account-stat h2 {
+          margin: .45rem 0 0;
+          line-height: 1;
+        }
+
+        #account-page-wrapper .account-stat-label {
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+
+        #account-page-wrapper .account-section,
+        #account-page-wrapper .account-profile {
+          padding: clamp(1rem, 2vw, 1.5rem);
+        }
+
+        #account-page-wrapper .account-section-header {
+          gap: .85rem;
+        }
+
+        #account-page-wrapper .account-section-header > .max {
+          min-width: 0;
+        }
+
+        #account-page-wrapper .account-section-header h2,
+        #account-page-wrapper .account-profile h2 {
+          margin-block: 0 .2rem;
+        }
+
+        #account-page-wrapper .account-section-header p {
+          margin: 0;
+        }
+
+        #account-page-wrapper .account-action {
+          flex: 0 0 auto;
+        }
+
+        #account-page-wrapper .account-record {
+          min-width: 0;
+          gap: .75rem;
+        }
+
+        #account-page-wrapper .account-record-main {
+          min-width: 0;
+          flex: 1 1 12rem;
+        }
+
+        #account-page-wrapper .account-record-main strong,
+        #account-page-wrapper .account-order-id,
+        #account-page-wrapper .account-value {
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        #account-page-wrapper .account-status {
+          flex: 0 0 auto;
+          white-space: nowrap;
+        }
+
+        #account-page-wrapper .account-order-top {
+          gap: .75rem;
+        }
+
+        #account-page-wrapper .account-items {
+          overflow-wrap: anywhere;
+          word-break: break-word;
+          line-height: 1.5;
+        }
+
+        #account-page-wrapper .account-profile-head {
+          gap: .75rem;
+        }
+
+        #account-page-wrapper .account-profile-head > div:first-child {
+          min-width: 0;
+        }
+
+        #account-page-wrapper .account-field {
+          min-width: 0;
+        }
+
+        #account-page-wrapper .account-field input {
+          min-width: 0;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        #account-page-wrapper .account-profile-value {
+          min-width: 0;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        #account-page-wrapper .account-actions {
+          gap: .6rem;
+        }
+
+        @media (max-width: 600px) {
+          #account-page-wrapper .account-main {
+            padding-inline: .75rem;
+          }
+
+          #account-page-wrapper .account-hero {
+            padding: 1rem;
+          }
+
+          #account-page-wrapper .account-hero-row,
+          #account-page-wrapper .account-section-header,
+          #account-page-wrapper .account-profile-head {
+            align-items: flex-start;
+          }
+
+          #account-page-wrapper .account-signout {
+            width: 100%;
+          }
+
+          #account-page-wrapper .account-signout span {
+            display: inline;
+          }
+
+          #account-page-wrapper .account-action {
+            width: 100%;
+          }
+
+          #account-page-wrapper .account-record {
+            align-items: flex-start;
+          }
+
+          #account-page-wrapper .account-status {
+            margin-left: auto;
+          }
+
+          #account-page-wrapper .account-section,
+          #account-page-wrapper .account-profile {
+            padding: 1rem;
+          }
+
+          #account-page-wrapper .account-actions {
+            width: 100%;
+          }
+
+          #account-page-wrapper .account-actions button,
+          #account-page-wrapper .account-actions a {
+            flex: 1 1 0;
+          }
+        }
+
+        @media (max-width: 420px) {
+          #account-page-wrapper .account-status {
+            font-size: .78rem;
+            padding-inline: .65rem;
+          }
+
+          #account-page-wrapper .account-record {
+            flex-direction: column;
+          }
+
+          #account-page-wrapper .account-status {
+            margin-left: 0;
+          }
+
+          #account-page-wrapper .account-actions {
+            flex-direction: column;
+          }
+
+          #account-page-wrapper .account-actions button {
+            width: 100%;
+          }
+        }
+      `}</style>
+
+      <main className="responsive medium-padding account-main">
+
+        <section className="surface-container round account-hero margin">
+          <div className="row middle-align wrap account-hero-row">
+            <div className="max">
+              <div className="chip surface-container-high">
                 <i>badge</i>
-                <span>Repair and Purchase History</span>
+                <span>Repair and Purchase</span>
               </div>
-              <h1 className="large" style={{ margin: 0, lineHeight: 1.2 }}>
+              <h1 className="large">
                 Hi, {profile?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'there'}
               </h1>
-              <p className="on-surface-variant-text" style={{ margin: 0 }}>{user.email}</p>
+              <p className="on-surface-variant-text account-email">{user.email}</p>
             </div>
 
-            <button id="account-signout-btn" className="border round" type="button" onClick={logout}>
+            <button id="account-signout-btn" className="border round account-signout" type="button" onClick={logout}>
               <i>logout</i>
               <span>Sign Out</span>
             </button>
@@ -160,30 +378,30 @@ export default function Account() {
           </output>
         )}
 
-        <section className="grid margin">
+        <section className="grid margin account-stats">
           <div className="s12 m4 l4">
-            <article className="surface-container round large-padding">
+            <article className="surface-container round account-stat">
               <div className="row middle-align no-space">
                 <i className="primary-text">schedule</i>
-                <span className="on-surface-variant-text small">Upcoming Repairs</span>
+                <span className="on-surface-variant-text small account-stat-label">Upcoming Repairs</span>
               </div>
               <h2 className="large">{upcoming.length}</h2>
             </article>
           </div>
           <div className="s12 m4 l4">
-            <article className="surface-container round large-padding">
+            <article className="surface-container round account-stat">
               <div className="row middle-align no-space">
                 <i className="tertiary-text">build</i>
-                <span className="on-surface-variant-text small">Total Appointments</span>
+                <span className="on-surface-variant-text small account-stat-label">Total Appointments</span>
               </div>
               <h2 className="large">{bookings.length}</h2>
             </article>
           </div>
           <div className="s12 m4 l4">
-            <article className="surface-container round large-padding">
+            <article className="surface-container round account-stat">
               <div className="row middle-align no-space">
                 <i className="primary-text">shopping_bag</i>
-                <span className="on-surface-variant-text small">Orders</span>
+                <span className="on-surface-variant-text small account-stat-label">Orders</span>
               </div>
               <h2 className="large">{orders.length}</h2>
             </article>
@@ -192,13 +410,13 @@ export default function Account() {
 
         <div className="grid">
           <div className="s12 m12 l8">
-            <section className="surface-container round large-padding margin">
-              <div className="row middle-align wrap">
+            <section className="surface-container round account-hero margin">
+              <div className="row middle-align wrap account-hero-row">
                 <div className="max">
                   <h2 className="medium">Repair History</h2>
                   <p className="on-surface-variant-text small">Your scheduled service and diagnostic appointments.</p>
                 </div>
-                <Link className="button primary fill round" to="/repairs">
+                <Link className="button primary fill round account-action" to="/repairs">
                   <i>add</i>
                   <span>Book a Repair</span>
                 </Link>
@@ -216,13 +434,13 @@ export default function Account() {
                 <div className="grid">
                   {bookings.map((booking) => (
                     <div key={booking.id} className="s12">
-                      <article className="surface-container-high round medium-padding row middle-align space-between wrap">
+                      <article className="surface-container-high round medium-padding row middle-align space-between wrap account-record">
                         <div className="max">
                           <strong>{booking.device || booking.device_type || 'Device repair'}</strong>
                           <div className="on-surface-variant-text small">{booking.repair || booking.service || 'Repair appointment'}</div>
                           <div className="on-surface-variant-text small">{formatDate(booking.appointment_date || booking.scheduled_at || booking.created_at)}</div>
                         </div>
-                        <span className="chip primary round">{booking.status || 'Pending'}</span>
+                        <span className="chip primary round account-status">{booking.status || 'Pending'}</span>
                       </article>
                     </div>
                   ))}
@@ -230,9 +448,9 @@ export default function Account() {
               )}
             </section>
 
-            <section className="surface-container round large-padding">
+            <section className="surface-container round account-section">
               <h2 className="medium">Purchase History</h2>
-              <p className="on-surface-variant-text small">Orders and purchases linked to your account.</p>
+              <p className="on-surface-variant-text small account-stat-label">Orders and purchases linked to your account.</p>
 
               {loadingData ? (
                 <p className="on-surface-variant-text center-align">Loading orders…</p>
@@ -246,16 +464,16 @@ export default function Account() {
                 <div className="grid">
                   {orders.map((order) => (
                     <div key={order.id} className="s12">
-                      <article className="surface-container-high round medium-padding">
-                        <div className="row middle-align space-between wrap">
-                          <strong>Order #{order.id}</strong>
-                          <strong className="primary-text">{money(order.total)}</strong>
+                      <article className="surface-container-high round medium-padding account-record">
+                        <div className="row middle-align space-between wrap account-order-top">
+                          <strong className="account-order-id">Order #{order.id}</strong>
+                          <strong className="primary-text account-value">{money(order.total)}</strong>
                         </div>
                         <div className="on-surface-variant-text small">{formatDate(order.created_at)}</div>
                         {order.order_items?.length > 0 && (
                           <>
                             <hr />
-                            <div className="on-surface-variant-text small">
+                            <div className="on-surface-variant-text small account-items">
                               {order.order_items.map((item) => `${item.name} × ${item.qty}`).join(' • ')}
                             </div>
                           </>
@@ -269,8 +487,8 @@ export default function Account() {
           </div>
 
           <aside className="s12 m12 l4">
-            <section className="surface-container round large-padding">
-              <div className="row middle-align space-between">
+            <section className="surface-container round account-profile">
+              <div className="row middle-align space-between account-profile-head">
                 <div>
                   <h2 className="medium">Profile Details</h2>
                   <p className="on-surface-variant-text small">Personal contact details.</p>
@@ -284,12 +502,12 @@ export default function Account() {
 
               {editing ? (
                 <form onSubmit={saveProfile} className="grid">
-                  <div className="s12 field border round fill">
+                  <div className="s12 field border round fill account-field">
                     <input id="account-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder=" " required />
                     <label htmlFor="account-name">Full name</label>
                   </div>
 
-                  <div className="s12 field border round fill">
+                  <div className="s12 field border round fill account-field">
                     <input id="account-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder=" " />
                     <label htmlFor="account-phone">Phone number</label>
                   </div>

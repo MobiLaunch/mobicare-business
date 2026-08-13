@@ -1,28 +1,29 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useSiteStore } from '../lib/siteStore'
+import { useCartStore } from '../lib/store'
 import { useAuth } from '../lib/AuthContext'
 import BookingWizard from './BookingWizard'
 import CartDrawer from './CartDrawer'
 import localLogo from '../assets/mobicare-logo.svg'
 
+// Stable fallback reference to prevent infinite re-render loops in Zustand
+const EMPTY_CART = []
+
 export default function Header() {
   const [bookingOpen, setBookingOpen] = useState(false)
 
   const location = useLocation()
-  const brand = useSiteStore((s) => s.brand)
-  const appearance = useSiteStore((s) => s.appearance)
-  const setColorScheme = useSiteStore((s) => s.setColorScheme)
+  const siteStore = useSiteStore()
 
-  const cart = useSiteStore((s) => s.cart || s.cartItems || [])
-  const toggleCart = useSiteStore(
-    (s) =>
-      s.toggleCart ||
-      s.openCart ||
-      (() => {
-        window.dispatchEvent(new CustomEvent('open-cart'))
-      }),
-  )
+  const brand = siteStore?.brand
+  const appearance = siteStore?.appearance
+  const setColorScheme = siteStore?.setColorScheme
+
+  // Cart state comes from the same store used by BottomNav and CartDrawer.
+  const cart = useCartStore(s => s.items) || EMPTY_CART
+  const cartDrawerOpen = useCartStore(s => s.cartDrawerOpen)
+  const setCartDrawerOpen = useCartStore(s => s.setCartDrawerOpen)
 
   const theme = appearance?.colorScheme || 'dark'
   const logoSrc = appearance?.logoUrl || localLogo
@@ -55,9 +56,14 @@ export default function Header() {
   const accountActive = isActive('/account')
 
   const cartItemCount = cart.reduce(
-    (total, item) => total + (item.quantity || 1),
+    (total, item) => total + (item?.quantity || 1),
     0,
   )
+
+  // Use the same cart state/action as BottomNav and CartDrawer.
+  const handleCartClick = () => {
+    setCartDrawerOpen(!cartDrawerOpen)
+  }
 
   return (
     <>
@@ -77,7 +83,7 @@ export default function Header() {
             minWidth: 0,
           }}
         >
-          {/* LEFT */}
+          {/* LEFT: Theme Toggle & Desktop Nav */}
           <div
             style={{
               display: 'flex',
@@ -92,8 +98,20 @@ export default function Header() {
               id="theme-toggle-button"
               type="button"
               className="circle transparent no-margin"
+              style={{
+                width: '44px',
+                height: '44px',
+                minWidth: '44px',
+                padding: 0,
+                margin: 0,
+                display: 'grid',
+                placeItems: 'center',
+                alignSelf: 'center',
+                flexShrink: 0,
+                lineHeight: 1,
+              }}
               onClick={() =>
-                setColorScheme(theme === 'dark' ? 'light' : 'dark')
+                setColorScheme && setColorScheme(theme === 'dark' ? 'light' : 'dark')
               }
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
               aria-label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
@@ -101,7 +119,7 @@ export default function Header() {
               <i>{theme === 'dark' ? 'light_mode' : 'dark_mode'}</i>
             </button>
 
-            {/* Desktop Navigation */}
+            {/* Desktop Navigation (including Cart button) */}
             <nav
               className="surface-variant round small-padding l"
               aria-label="Primary navigation"
@@ -132,10 +150,52 @@ export default function Header() {
                   </Link>
                 )
               })}
+
+              {/* Desktop Cart Button embedded in Nav */}
+              <button
+                id="header-cart-button"
+                type="button"
+                className="button transparent round no-margin"
+                onClick={handleCartClick}
+                style={{
+                  position: 'relative',
+                  whiteSpace: 'nowrap',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                }}
+                title="Open Shopping Cart"
+                aria-label={`Open Shopping Cart${cartItemCount > 0 ? `, ${cartItemCount} items` : ''
+                  }`}
+              >
+                <i>shopping_bag</i>
+                <span>Cart</span>
+                {cartItemCount > 0 && (
+                  <span
+                    className="badge circle error"
+                    style={{
+                      position: 'absolute',
+                      top: '0.1rem',
+                      left: '0.1rem',
+                      minWidth: '1.1rem',
+                      height: '1.1rem',
+                      padding: '0 0.2rem',
+                      fontSize: '0.7rem',
+                      lineHeight: 1,
+                      margin: 0,
+                      display: 'grid',
+                      placeItems: 'center',
+                      zIndex: 2,
+                    }}
+                  >
+                    {cartItemCount}
+                  </span>
+                )}
+              </button>
             </nav>
           </div>
 
-          {/* CENTER */}
+          {/* CENTER: Logo */}
           <div
             style={{
               display: 'flex',
@@ -204,7 +264,7 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* RIGHT */}
+          {/* RIGHT: Actions */}
           <div
             style={{
               display: 'flex',
@@ -215,43 +275,6 @@ export default function Header() {
               minWidth: 0,
             }}
           >
-            {/* Cart */}
-            <div style={{ position: 'relative', flexShrink: 0 }}>
-              <button
-                id="header-cart-button"
-                type="button"
-                className="circle transparent no-margin"
-                onClick={
-                  typeof toggleCart === 'function' ? toggleCart : () => { }
-                }
-                title="Open Shopping Cart"
-                aria-label={`Open Shopping Cart${cartItemCount > 0 ? `, ${cartItemCount} items` : ''
-                  }`}
-              >
-                <i>shopping_bag</i>
-              </button>
-
-              {cartItemCount > 0 && (
-                <span
-                  className="badge circle error"
-                  style={{
-                    position: 'absolute',
-                    top: '-0.2rem',
-                    right: '-0.2rem',
-                    minWidth: '1.1rem',
-                    height: '1.1rem',
-                    padding: '0 0.2rem',
-                    fontSize: '0.7rem',
-                    lineHeight: 1,
-                    pointerEvents: 'none',
-                  }}
-                  aria-hidden="true"
-                >
-                  {cartItemCount}
-                </span>
-              )}
-            </div>
-
             {/* Book Appointment */}
             <button
               id="header-book-appointment-btn"
@@ -268,7 +291,7 @@ export default function Header() {
               <span className="l">Book Appointment</span>
             </button>
 
-            {/* Account */}
+            {/* Account Link */}
             <Link
               id="header-account-button"
               to={accountPath}
