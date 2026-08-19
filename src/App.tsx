@@ -72,11 +72,14 @@ function StoreInit() {
               ctaStrip: dbContent.ctaStrip || defaults.ctaStrip,
             };
 
-            useSiteStore.setState(mergedContent);
+            useSiteStore.setState(
+              mergedContent as Partial<ReturnType<typeof useSiteStore.getState>>,
+            );
             if (mergedContent.appearance) {
               applyAppearance(mergedContent.appearance);
             }
           } else {
+
             const current = useSiteStore.getState();
             const cleanState = {
               brand: current.brand,
