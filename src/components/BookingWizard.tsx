@@ -163,10 +163,7 @@ export default function BookingWizard({
       ? `${service?.name} (${form.variant})`
       : service?.name || form.service;
 
-    // Skip the real /api/create-booking call in local dev (that serverless
-    // endpoint isn't available under `vite dev`) — matches the original's
-    // behavior exactly, only calling it in production.
-    if (!import.meta.env.DEV) {
+    if (!import.meta.env.DEV || isSupabaseConfigured()) {
       try {
         await sbInsertBooking({ ...form, service: serviceLabel });
       } catch (bookingError) {
@@ -248,8 +245,12 @@ export default function BookingWizard({
 
   return (
     <Modal>
-      <Modal.Backdrop isOpen onOpenChange={(open) => !open && onClose()}>
-        <Modal.Container scroll="inside" size="lg">
+      <Modal.Backdrop
+        isOpen
+        className="z-[100]"
+        onOpenChange={(open) => !open && onClose()}
+      >
+        <Modal.Container className="pb-24 lg:pb-0" scroll="inside" size="lg">
           <Modal.Dialog>
             {done ? (
               <>

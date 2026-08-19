@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@heroui/react";
+import { useShallow } from "zustand/react/shallow";
 
 import { useProductStore } from "@/lib/store";
-import { useShallow } from "zustand/react/shallow";
 import ProductCard from "@/components/ProductCard";
 
 export default function FeaturedProducts() {

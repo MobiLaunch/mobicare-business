@@ -345,7 +345,10 @@ export default function Bookings() {
 
       {/* Inspector / Editor modal */}
       <Modal>
-        <Modal.Backdrop isOpen={!!selected} onOpenChange={(open) => !open && closeModal()}>
+        <Modal.Backdrop
+          isOpen={!!selected}
+          onOpenChange={(open) => !open && closeModal()}
+        >
           <Modal.Container scroll="inside" size="lg">
             <Modal.Dialog>
               {selected && (

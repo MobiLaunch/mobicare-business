@@ -622,10 +622,9 @@ export const useProductStore = create<ProductState>()(
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== "object")
           return persistedState;
-        const { orders: _orders, ...safeState } = persistedState as Record<
-          string,
-          unknown
-        >;
+        const safeState = { ...(persistedState as Record<string, unknown>) };
+
+        delete safeState.orders;
 
         return safeState;
       },

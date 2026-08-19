@@ -1,25 +1,23 @@
 import { FC, useCallback } from "react";
-import { useTheme } from "@heroui/react";
 import clsx from "clsx";
 
 import { SunFilledIcon, MoonFilledIcon } from "@/components/icons";
+import { useSiteStore } from "@/lib/siteStore";
 
 export interface ThemeSwitchProps {
   className?: string;
 }
 
 export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
-  const { resolvedTheme, setTheme } = useTheme("light");
+  const appearance = useSiteStore((s) => s.appearance);
+  const setColorScheme = useSiteStore((s) => s.setColorScheme);
 
-  const isLight = resolvedTheme === "light";
+  const theme = appearance?.colorScheme || "dark";
+  const isLight = theme === "light";
 
   const toggleTheme = useCallback(() => {
-    setTheme(isLight ? "dark" : "light");
-  }, [isLight, setTheme]);
-
-  if (!resolvedTheme) {
-    return <div aria-hidden className="h-6 w-6" />;
-  }
+    setColorScheme?.(isLight ? "dark" : "light");
+  }, [isLight, setColorScheme]);
 
   return (
     <button
@@ -30,6 +28,7 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
         "w-auto h-auto bg-transparent border-none rounded-lg",
         className,
       )}
+      type="button"
       onClick={toggleTheme}
     >
       {isLight ? <MoonFilledIcon size={22} /> : <SunFilledIcon size={22} />}

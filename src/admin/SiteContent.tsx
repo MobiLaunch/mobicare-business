@@ -290,9 +290,7 @@ function BrandTab() {
           <InputGroup>
             <InputGroup.Input />
           </InputGroup>
-          <Description>
-            Short slogan used in meta and SEO contexts.
-          </Description>
+          <Description>Short slogan used in meta and SEO contexts.</Description>
         </TextField>
       </div>
 
@@ -539,12 +537,16 @@ function TrustTab() {
 
 // ─── CTA Strip Tab ──────────────────────────────────────────────────────
 function CtaTab() {
-  const ctaStrip = useSiteStore((s) => s.ctaStrip) || DEFAULT_SITE_CONTENT.ctaStrip;
+  const ctaStrip =
+    useSiteStore((s) => s.ctaStrip) || DEFAULT_SITE_CONTENT.ctaStrip;
   const updateCtaStrip = useSiteStore((s) => s.updateCtaStrip);
   const repairBanner = useSiteStore((s) => s.repairBanner);
   const updateRepairBanner = useSiteStore((s) => s.updateRepairBanner);
   const addToast = useToastStore((s) => s.add);
-  const [lc, setLc] = useState({ ...DEFAULT_SITE_CONTENT.ctaStrip, ...ctaStrip });
+  const [lc, setLc] = useState({
+    ...DEFAULT_SITE_CONTENT.ctaStrip,
+    ...ctaStrip,
+  });
   const [lr, setLr] = useState({ ...repairBanner });
   const save = () => {
     updateCtaStrip(lc);
@@ -632,7 +634,9 @@ function CtaTab() {
             id="repair-banner-description"
             rows={3}
             value={lr.description}
-            onChange={(e) => setLr((r) => ({ ...r, description: e.target.value }))}
+            onChange={(e) =>
+              setLr((r) => ({ ...r, description: e.target.value }))
+            }
           />
         </div>
         <TextField
@@ -719,7 +723,10 @@ function ServicesTab() {
       a.map((l) =>
         l.id !== sid
           ? l
-          : { ...l, variants: [...(l.variants || []), { name: "", price: "" }] },
+          : {
+              ...l,
+              variants: [...(l.variants || []), { name: "", price: "" }],
+            },
       ),
     );
 
@@ -860,7 +867,9 @@ function ServicesTab() {
                       <TextField
                         className="flex-1"
                         value={v.name}
-                        onChange={(val) => updateVariant(svc.id, vi, "name", val)}
+                        onChange={(val) =>
+                          updateVariant(svc.id, vi, "name", val)
+                        }
                       >
                         <InputGroup>
                           <InputGroup.Input placeholder="e.g. OEM Premium" />
@@ -869,7 +878,9 @@ function ServicesTab() {
                       <TextField
                         className="flex-1"
                         value={v.price}
-                        onChange={(val) => updateVariant(svc.id, vi, "price", val)}
+                        onChange={(val) =>
+                          updateVariant(svc.id, vi, "price", val)
+                        }
                       >
                         <InputGroup>
                           <InputGroup.Input placeholder="e.g. $149" />
@@ -950,7 +961,9 @@ function ServicesTab() {
               id="new-svc-desc"
               rows={2}
               value={newSvc.desc}
-              onChange={(e) => setNewSvc((f) => ({ ...f, desc: e.target.value }))}
+              onChange={(e) =>
+                setNewSvc((f) => ({ ...f, desc: e.target.value }))
+              }
             />
           </div>
         </div>
@@ -1083,10 +1096,8 @@ function BusinessTab() {
     ...business,
     hours: business.hours.map((h) => ({ ...h })),
   });
-  const set = (
-    k: "name" | "phone" | "email" | "address" | "city",
-    v: string,
-  ) => setL((p) => ({ ...p, [k]: v }));
+  const set = (k: "name" | "phone" | "email" | "address" | "city", v: string) =>
+    setL((p) => ({ ...p, [k]: v }));
   const setHour = (i: number, k: "days" | "hours", v: string) =>
     setL((p) => {
       const h = [...p.hours];
@@ -1235,9 +1246,15 @@ function FooterTab() {
       return { ...p, extraLinks: el };
     });
   const addLink = () =>
-    setL((p) => ({ ...p, extraLinks: [...p.extraLinks, { label: "", href: "" }] }));
+    setL((p) => ({
+      ...p,
+      extraLinks: [...p.extraLinks, { label: "", href: "" }],
+    }));
   const delLink = (i: number) =>
-    setL((p) => ({ ...p, extraLinks: p.extraLinks.filter((_, idx) => idx !== i) }));
+    setL((p) => ({
+      ...p,
+      extraLinks: p.extraLinks.filter((_, idx) => idx !== i),
+    }));
   const save = () => {
     updateFooter(l);
     addToast("Footer saved", "success");
@@ -1272,15 +1289,16 @@ function FooterTab() {
           <InputGroup>
             <InputGroup.Input />
           </InputGroup>
-          <Description>
-            e.g. &ldquo;Mobicare Device Recovery&rdquo;
-          </Description>
+          <Description>e.g. &ldquo;Mobicare Device Recovery&rdquo;</Description>
         </TextField>
       </div>
 
       <div className="mt-6 flex flex-col gap-4">
         <div className="flex items-center gap-3.5">
-          <Switch isSelected={l.showHours} onChange={(v) => set("showHours", v)}>
+          <Switch
+            isSelected={l.showHours}
+            onChange={(v) => set("showHours", v)}
+          >
             <Switch.Content>
               <Switch.Control>
                 <Switch.Thumb />
@@ -1297,7 +1315,10 @@ function FooterTab() {
           </div>
         </div>
         <div className="flex items-center gap-3.5">
-          <Switch isSelected={l.showSocial} onChange={(v) => set("showSocial", v)}>
+          <Switch
+            isSelected={l.showSocial}
+            onChange={(v) => set("showSocial", v)}
+          >
             <Switch.Content>
               <Switch.Control>
                 <Switch.Thumb />
@@ -1365,14 +1386,46 @@ function FooterTab() {
 }
 
 // ─── Social Links Tab ───────────────────────────────────────────────────
-const SOCIAL_PLATFORMS: { key: keyof Social; label: string; placeholder: string }[] = [
-  { key: "facebook", label: "Facebook", placeholder: "https://facebook.com/yourpage" },
-  { key: "instagram", label: "Instagram", placeholder: "https://instagram.com/yourhandle" },
-  { key: "twitter", label: "X / Twitter", placeholder: "https://x.com/yourhandle" },
-  { key: "tiktok", label: "TikTok", placeholder: "https://tiktok.com/@yourhandle" },
-  { key: "youtube", label: "YouTube", placeholder: "https://youtube.com/@yourchannel" },
-  { key: "yelp", label: "Yelp", placeholder: "https://yelp.com/biz/your-business" },
-  { key: "google", label: "Google Business Profile", placeholder: "https://g.page/..." },
+const SOCIAL_PLATFORMS: {
+  key: keyof Social;
+  label: string;
+  placeholder: string;
+}[] = [
+  {
+    key: "facebook",
+    label: "Facebook",
+    placeholder: "https://facebook.com/yourpage",
+  },
+  {
+    key: "instagram",
+    label: "Instagram",
+    placeholder: "https://instagram.com/yourhandle",
+  },
+  {
+    key: "twitter",
+    label: "X / Twitter",
+    placeholder: "https://x.com/yourhandle",
+  },
+  {
+    key: "tiktok",
+    label: "TikTok",
+    placeholder: "https://tiktok.com/@yourhandle",
+  },
+  {
+    key: "youtube",
+    label: "YouTube",
+    placeholder: "https://youtube.com/@yourchannel",
+  },
+  {
+    key: "yelp",
+    label: "Yelp",
+    placeholder: "https://yelp.com/biz/your-business",
+  },
+  {
+    key: "google",
+    label: "Google Business Profile",
+    placeholder: "https://g.page/...",
+  },
 ];
 
 function SocialTab() {
@@ -1565,11 +1618,27 @@ const COLOR_FIELDS: {
   label: string;
   hint: string;
 }[] = [
-  { key: "accentColor", label: "Accent (Primary)", hint: "Active links, badges, buttons" },
-  { key: "accentColorDeep", label: "Accent Deep (CTAs)", hint: "Solid backgrounds on primary buttons" },
+  {
+    key: "accentColor",
+    label: "Accent (Primary)",
+    hint: "Active links, badges, buttons",
+  },
+  {
+    key: "accentColorDeep",
+    label: "Accent Deep (CTAs)",
+    hint: "Solid backgrounds on primary buttons",
+  },
   { key: "bgBase", label: "Page Background", hint: "Whole-screen base color" },
-  { key: "bgSurface", label: "Card Surface", hint: "Cards, header, floating elements" },
-  { key: "bgElevated", label: "Elevated Surface", hint: "Nested cards and panels" },
+  {
+    key: "bgSurface",
+    label: "Card Surface",
+    hint: "Cards, header, floating elements",
+  },
+  {
+    key: "bgElevated",
+    label: "Elevated Surface",
+    hint: "Nested cards and panels",
+  },
 ];
 
 function AppearanceTab() {
@@ -1827,7 +1896,9 @@ function DevicesTab() {
       setLd((a) => [...a, { id, name, models: [] }]);
       setSelId(id);
     } else if (catModalTargetId) {
-      setLd((a) => a.map((x) => (x.id === catModalTargetId ? { ...x, name } : x)));
+      setLd((a) =>
+        a.map((x) => (x.id === catModalTargetId ? { ...x, name } : x)),
+      );
     }
     setCatModalOpen(false);
   };
@@ -1862,7 +1933,9 @@ function DevicesTab() {
   const delModel = (m: string) =>
     setLd((a) =>
       a.map((d) =>
-        d.id === cur?.id ? { ...d, models: d.models.filter((x) => x !== m) } : d,
+        d.id === cur?.id
+          ? { ...d, models: d.models.filter((x) => x !== m) }
+          : d,
       ),
     );
   const save = () => {
@@ -1995,7 +2068,9 @@ function DevicesTab() {
             <Modal.Dialog>
               <Modal.Header>
                 <Modal.Heading>
-                  {catModalMode === "add" ? "New Device Category" : "Rename Category"}
+                  {catModalMode === "add"
+                    ? "New Device Category"
+                    : "Rename Category"}
                 </Modal.Heading>
                 <Modal.CloseTrigger />
               </Modal.Header>
@@ -2012,7 +2087,10 @@ function DevicesTab() {
                 </TextField>
               </Modal.Body>
               <Modal.Footer className="justify-end gap-2">
-                <Button variant="outline" onPress={() => setCatModalOpen(false)}>
+                <Button
+                  variant="outline"
+                  onPress={() => setCatModalOpen(false)}
+                >
                   Cancel
                 </Button>
                 <Button variant="primary" onPress={submitCatModal}>

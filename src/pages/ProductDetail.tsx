@@ -15,9 +15,9 @@ import {
   Truck,
 } from "lucide-react";
 import { Button } from "@heroui/react";
+import { useShallow } from "zustand/react/shallow";
 
 import { useCartStore, useProductStore, useToastStore } from "@/lib/store";
-import { useShallow } from "zustand/react/shallow";
 import PageMeta from "@/components/PageMeta";
 import ProductCard from "@/components/ProductCard";
 

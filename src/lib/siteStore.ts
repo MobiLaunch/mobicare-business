@@ -229,6 +229,24 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       description:
         "Lost photos, contacts, or files? We recover data from damaged or non-booting devices.",
     },
+    {
+      id: "tablet-repair",
+      name: "iPad & Tablet Repair",
+      icon: "tablet_mac",
+      duration: "Same Day",
+      priceRange: "$59 \u2013 $199",
+      description:
+        "Glass digitizer, LCD display, charging port, and battery replacement for all iPad models.",
+    },
+    {
+      id: "back-glass",
+      name: "Laser Back Glass Repair",
+      icon: "smartphone",
+      duration: "2\u20133 hours",
+      priceRange: "$69 \u2013 $149",
+      description:
+        "Shattered back glass removed via specialized high-precision laser separation.",
+    },
   ],
   about: {
     eyebrow: "About Us",

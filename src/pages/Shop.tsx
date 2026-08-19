@@ -11,9 +11,9 @@ import {
   X,
 } from "lucide-react";
 import { InputGroup, TextField } from "@heroui/react";
+import { useShallow } from "zustand/react/shallow";
 
 import { useProductStore } from "@/lib/store";
-import { useShallow } from "zustand/react/shallow";
 import ProductCard from "@/components/ProductCard";
 import PageMeta from "@/components/PageMeta";
 

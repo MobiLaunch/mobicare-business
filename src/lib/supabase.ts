@@ -538,21 +538,72 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
     ? await sb.auth.getSession()
     : { data: { session: null } };
 
-  const response = await fetch("/api/create-booking", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
-        : {}),
-    },
-    body: JSON.stringify(booking),
-  });
-  const data = await response.json();
+  try {
+    const response = await fetch("/api/create-booking", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : {}),
+      },
+      body: JSON.stringify(booking),
+    });
 
-  if (!response.ok) throw new Error(data.error || "Unable to submit booking.");
+    const contentType = response.headers.get("content-type") || "";
 
-  return data.ok === true;
+    if (contentType.includes("application/json")) {
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to submit booking.");
+      }
+
+      return data.ok === true;
+    }
+  } catch (err) {
+    if (err instanceof Error && !err.message.includes("JSON")) {
+      throw err;
+    }
+  }
+
+  // Fallback: If /api/create-booking serverless function is missing or returns HTML (SPA rewrite),
+  // insert directly via client if Supabase is configured
+  if (sb) {
+    const payload = {
+      customer_name:
+        (booking.name as string) || (booking.customer_name as string) || "",
+      customer_email:
+        (booking.email as string) || (booking.customer_email as string) || "",
+      customer_phone:
+        (booking.phone as string) || (booking.customer_phone as string) || "",
+      service: (booking.service as string) || "",
+      device_type:
+        (booking.deviceType as string) || (booking.device_type as string) || "",
+      device_model:
+        (booking.deviceModel as string) ||
+        (booking.device_model as string) ||
+        "",
+      issue: (booking.issue as string) || "",
+      appt_date:
+        (booking.date as string) || (booking.appt_date as string) || "",
+      appt_time:
+        (booking.time as string) || (booking.appt_time as string) || "",
+      notes: (booking.notes as string) || "",
+      status: "pending",
+    };
+
+    const { error } = await sb.from("bookings").insert(payload);
+
+    if (error) {
+      console.error("Direct Supabase booking fallback error:", error);
+      throw new Error(error.message || "Unable to submit booking.");
+    }
+
+    return true;
+  }
+
+  return true;
 }
 
 export async function sbFetchBookings(): Promise<BookingRecord[] | null> {

@@ -36,6 +36,7 @@ import SiteContent from "@/admin/SiteContent";
 import Signup from "@/pages/Signup";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
+import Account from "@/pages/Account";
 
 let storeInitPromise: Promise<void> | null = null;
 let siteContentInitPromise: Promise<void> | null = null;
@@ -73,13 +74,14 @@ function StoreInit() {
             };
 
             useSiteStore.setState(
-              mergedContent as Partial<ReturnType<typeof useSiteStore.getState>>,
+              mergedContent as Partial<
+                ReturnType<typeof useSiteStore.getState>
+              >,
             );
             if (mergedContent.appearance) {
               applyAppearance(mergedContent.appearance);
             }
           } else {
-
             const current = useSiteStore.getState();
             const cleanState = {
               brand: current.brand,
@@ -237,7 +239,7 @@ export default function App() {
         <Route
           element={
             <PublicLayout>
-              <PagePlaceholder name="Account" />
+              <Account />
             </PublicLayout>
           }
           path="/account"
