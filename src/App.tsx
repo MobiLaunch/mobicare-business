@@ -72,7 +72,9 @@ function StoreInit() {
               ctaStrip: dbContent.ctaStrip || defaults.ctaStrip,
             };
 
-            useSiteStore.setState(mergedContent);
+            useSiteStore.setState(
+              dbContent as Partial<ReturnType<typeof useSiteStore.getState>>,
+            ); (mergedContent);
             if (mergedContent.appearance) {
               applyAppearance(mergedContent.appearance);
             }

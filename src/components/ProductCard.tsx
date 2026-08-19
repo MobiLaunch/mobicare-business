@@ -10,21 +10,36 @@ interface ProductCardProps {
   onClick?: () => void;
 }
 
-export default function ProductCard({ product, onClick }: ProductCardProps) {
+export default function ProductCard({
+  product,
+  onClick,
+}: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
   const addToast = useToastStore((s) => s.add);
 
-  const handleAddToCart = (event: React.MouseEvent) => {
-    event.stopPropagation();
+  const handleAddToCart = () => {
     if (product.stock < 1) return;
+
     const added = addItem(product);
 
-    if (added) addToast(`${product.name} added to cart`, "success");
-    else addToast(`Only ${product.stock} available in stock`, "error");
+    if (added) {
+      addToast(
+        `${product.name} added to cart`,
+        "success",
+      );
+    } else {
+      addToast(
+        `Only ${product.stock} available in stock`,
+        "error",
+      );
+    }
   };
 
   const discount = product.comparePrice
-    ? Math.round((1 - product.price / product.comparePrice) * 100)
+    ? Math.round(
+      (1 - product.price / product.comparePrice) *
+      100,
+    )
     : null;
 
   return (
@@ -36,11 +51,14 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
       onKeyDown={
         onClick
           ? (event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onClick();
-              }
+            if (
+              event.key === "Enter" ||
+              event.key === " "
+            ) {
+              event.preventDefault();
+              onClick();
             }
+          }
           : undefined
       }
     >
@@ -64,14 +82,22 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
         )}
 
         {product.stock > 0 && product.stock < 5 && (
-          <Chip className="absolute bottom-2 left-2" color="danger" size="sm">
-            <Chip.Label>Only {product.stock} left</Chip.Label>
+          <Chip
+            className="absolute bottom-2 left-2"
+            color="danger"
+            size="sm"
+          >
+            <Chip.Label>
+              Only {product.stock} left
+            </Chip.Label>
           </Chip>
         )}
 
         {product.stock === 0 && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-            <span className="font-bold text-white">Sold Out</span>
+            <span className="font-bold text-white">
+              Sold Out
+            </span>
           </div>
         )}
       </div>
@@ -80,9 +106,11 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
         <p className="m-0 text-xs font-bold uppercase text-accent">
           {product.category?.replace("-", " ")}
         </p>
+
         <h3 className="m-0 text-base font-semibold text-foreground">
           {product.name}
         </h3>
+
         <p className="m-0 line-clamp-2 text-sm text-muted">
           {product.description}
         </p>
@@ -93,12 +121,14 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
           <strong className="text-lg text-foreground">
             ${product.price?.toFixed(2)}
           </strong>
+
           {product.comparePrice && (
             <span className="ml-2 text-sm text-muted line-through">
               ${product.comparePrice.toFixed(2)}
             </span>
           )}
         </div>
+
         <Button
           isIconOnly
           aria-label={`Add ${product.name} to cart`}
