@@ -3,7 +3,11 @@ import type { SiteAppearance, ColorScheme } from "@/types/domain";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import { sbUpsertSiteSettings, isSupabaseConfigured } from "./supabase";
+import {
+  getClient,
+  sbUpsertSiteSettings,
+  isSupabaseConfigured,
+} from "./supabase";
 
 // ─── Site content shape ─────────────────────────────────────────────────────
 export interface Brand {
@@ -572,7 +576,9 @@ function injectFontLink(id: string, url: string) {
 }
 
 const syncToSupabase = (state: SiteContent) => {
-  if (isSupabaseConfigured()) {
+  const sb = isSupabaseConfigured() ? getClient() : null;
+
+  if (sb) {
     const cleanState: SiteContent = {
       brand: state.brand,
       hero: state.hero,
@@ -589,7 +595,13 @@ const syncToSupabase = (state: SiteContent) => {
       deviceTypes: state.deviceTypes,
     };
 
-    sbUpsertSiteSettings(cleanState as unknown as Record<string, unknown>);
+    void sb.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        void sbUpsertSiteSettings(
+          cleanState as unknown as Record<string, unknown>,
+        );
+      }
+    });
   }
 };
 

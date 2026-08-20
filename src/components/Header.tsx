@@ -145,7 +145,7 @@ export default function Header() {
         {/* CENTER: logo or wordmark */}
         <Link
           aria-label={brand?.name || "Mobicare Device Recovery"}
-          className="flex items-center gap-2.5 transition-opacity hover:opacity-90"
+          className="flex items-center justify-self-center gap-2.5 transition-opacity hover:opacity-90 lg:translate-x-6"
           href="/"
           id="header-brand-logo"
         >

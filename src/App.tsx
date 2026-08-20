@@ -10,11 +10,7 @@ import { ToastProvider } from "@heroui/react";
 
 import { useProductStore, useCartStore } from "@/lib/store";
 import { useSiteStore, applyAppearance } from "@/lib/siteStore";
-import {
-  sbFetchSiteSettings,
-  isSupabaseConfigured,
-  sbUpsertSiteSettings,
-} from "@/lib/supabase";
+import { sbFetchSiteSettings, isSupabaseConfigured } from "@/lib/supabase";
 import PublicLayout from "@/layouts/PublicLayout";
 import RequireAdmin from "@/components/RequireAdmin";
 import PagePlaceholder from "@/components/PagePlaceholder";
@@ -117,23 +113,7 @@ function StoreInit() {
             }
           } else {
             const current = useSiteStore.getState();
-            const cleanState = {
-              brand: current.brand,
-              hero: current.hero,
-              trustItems: current.trustItems,
-              repairBanner: current.repairBanner,
-              repairServices: current.repairServices,
-              about: current.about,
-              business: current.business,
-              appearance: current.appearance,
-              seo: current.seo,
-              social: current.social,
-              footer: current.footer,
-              ctaStrip: current.ctaStrip,
-              deviceTypes: current.deviceTypes || [],
-            };
 
-            await sbUpsertSiteSettings(cleanState);
             if (current.appearance) applyAppearance(current.appearance);
           }
         } else {
