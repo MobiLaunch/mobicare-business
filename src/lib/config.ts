@@ -57,6 +57,18 @@ export const BUSINESS = {
   social: { facebook: "", instagram: "", google: "" },
 };
 
+// ─── AKKO Protection & Insurance ──────────────────────────────────────────────
+export const AKKO_CONFIG = {
+  partnerId: (import.meta.env.VITE_AKKO_PARTNER_ID as string) || "mobicare",
+  partnerUrl:
+    (import.meta.env.VITE_AKKO_PARTNER_URL as string) ||
+    "https://getakko.com/?ref=mobicare",
+  docsUrl: "https://docs.getakko.com/public/v2/introduction",
+  phonePlanPrice: 5,
+  everythingPlanPrice: 15,
+  familyPlanPrice: 25,
+};
+
 // ─── Repair services ──────────────────────────────────────────────────────────
 export interface RepairService {
   id: string;

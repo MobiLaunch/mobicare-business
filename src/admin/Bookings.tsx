@@ -576,6 +576,20 @@ export default function Bookings() {
                           </h6>
                           <div className="rounded-2xl border border-border bg-surface-secondary p-4">
                             <DetailRow
+                              label="Visit Type"
+                              value={
+                                selected.visit_type === "home"
+                                  ? "🏠 Home Visit"
+                                  : "🏪 In-Store"
+                              }
+                            />
+                            {selected.home_address && (
+                              <DetailRow
+                                label="Service Address"
+                                value={selected.home_address}
+                              />
+                            )}
+                            <DetailRow
                               label="Requested Service"
                               value={serviceLabel(selected)}
                             />

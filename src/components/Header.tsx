@@ -6,6 +6,7 @@ import {
   House,
   Info,
   Moon,
+  Shield,
   ShoppingBag,
   Store,
   Sun,
@@ -23,6 +24,7 @@ const NAV_LINKS = [
   { to: "/", label: "Home", icon: House },
   { to: "/shop", label: "Shop", icon: Store },
   { to: "/repairs", label: "Repairs", icon: Wrench },
+  { to: "/protection", label: "Protection", icon: Shield },
   { to: "/about", label: "About", icon: Info },
 ];
 
@@ -110,7 +112,7 @@ export default function Header() {
                   className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                     active
                       ? "bg-accent text-accent-foreground"
-                      : "text-foreground hover:bg-surface-tertiary"
+                      : "text-foreground hover:bg-surface"
                   }`}
                   href={to}
                 >
@@ -122,7 +124,7 @@ export default function Header() {
 
             <button
               aria-label={`Open Shopping Cart${cartItemCount > 0 ? `, ${cartItemCount} items` : ""}`}
-              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-tertiary"
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
               title="Open Shopping Cart"
               type="button"
               onClick={handleCartClick}
@@ -140,29 +142,32 @@ export default function Header() {
           </nav>
         </div>
 
-        {/* CENTER: logo + brand */}
+        {/* CENTER: logo or wordmark */}
         <Link
           aria-label={brand?.name || "Mobicare Device Recovery"}
-          className="flex items-center gap-2.5"
+          className="flex items-center gap-2.5 transition-opacity hover:opacity-90"
           href="/"
+          id="header-brand-logo"
         >
-          {appearance?.logoType === "image" ? (
+          {appearance?.logoType === "image" && logoSrc ? (
             <img
               alt={appearance.logoAlt || brand?.name || "Logo"}
-              className="h-8 w-auto"
+              className="h-7 w-auto max-w-[190px] object-contain sm:h-8 dark:brightness-0 dark:invert"
               src={logoSrc}
             />
           ) : (
-            <span
-              aria-hidden="true"
-              className="flex size-8 items-center justify-center rounded-full bg-accent text-accent-foreground"
-            >
-              <CalendarDays className="size-4" />
-            </span>
+            <div className="flex items-center gap-2.5">
+              <span
+                aria-hidden="true"
+                className="flex size-8 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-sm"
+              >
+                <Store className="size-4" />
+              </span>
+              <strong className="text-base font-bold tracking-tight text-foreground sm:text-lg">
+                {brand?.name || "Mobicare"}
+              </strong>
+            </div>
           )}
-          <strong className="hidden text-accent md:inline">
-            {brand?.name || "Mobicare Device Recovery"}
-          </strong>
         </Link>
 
         {/* RIGHT: actions */}

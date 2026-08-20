@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import emailjs from "@emailjs/browser";
 import {
   Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Home,
+  MapPin,
+  Shield,
+  Store,
   Wrench,
 } from "lucide-react";
 import {
@@ -22,7 +27,16 @@ import { useToastStore } from "@/lib/store";
 import { isSupabaseConfigured, sbInsertBooking } from "@/lib/supabase";
 import { useAuth } from "@/lib/AuthContext";
 
-const STEPS = ["Service", "Device", "Schedule", "Contact", "Confirm"];
+const IN_STORE_STEPS = ["Service", "Device", "Schedule", "Contact", "Confirm"];
+const HOME_STEPS = [
+  "Service",
+  "Device",
+  "Schedule",
+  "Address",
+  "Contact",
+  "Confirm",
+];
+
 const TIMES = [
   "9:00 AM",
   "10:00 AM",
@@ -34,6 +48,8 @@ const TIMES = [
   "4:00 PM",
   "5:00 PM",
 ];
+
+const HOME_VISIT_FEE = 25;
 
 function getNextDays(n = 14) {
   const days: Date[] = [];
@@ -62,6 +78,11 @@ interface BookingForm {
   phone: string;
   email: string;
   notes: string;
+  visitType: "in-store" | "home" | "";
+  homeAddress: string;
+  homeCity: string;
+  homeState: string;
+  homeZip: string;
 }
 
 interface BookingWizardProps {
@@ -82,14 +103,18 @@ export default function BookingWizard({
   onClose,
   defaultService = null,
 }: BookingWizardProps) {
+  const navigate = useNavigate();
   const { user, profile } = useAuth();
   const repairServices = useSiteStore((s) => s.repairServices);
   const deviceTypes = useSiteStore((s) => s.deviceTypes) || [];
   const addToast = useToastStore((s) => s.add);
 
+  const [visitType, setVisitType] = useState<"in-store" | "home" | "">("");
   const [step, setStep] = useState(0);
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
+
+  const STEPS = visitType === "home" ? HOME_STEPS : IN_STORE_STEPS;
 
   const [form, setForm] = useState<BookingForm>(() => {
     const initialContact = {
@@ -106,6 +131,11 @@ export default function BookingWizard({
       date: "",
       time: "",
       notes: "",
+      visitType: "",
+      homeAddress: "",
+      homeCity: "",
+      homeState: "",
+      homeZip: "",
       ...initialContact,
     };
 
@@ -138,6 +168,11 @@ export default function BookingWizard({
     (d) => d.name === form.deviceType || d.id === form.deviceType,
   );
 
+  // Step indices vary depending on visit type
+  const isHomeAddressStep = visitType === "home" && step === 3;
+  const contactStepIndex = visitType === "home" ? 4 : 3;
+  const confirmStepIndex = visitType === "home" ? 5 : 4;
+
   const canNext = () => {
     if (step === 0)
       return (
@@ -145,7 +180,14 @@ export default function BookingWizard({
       );
     if (step === 1) return !!form.deviceType && !!form.deviceModel;
     if (step === 2) return !!form.date && !!form.time;
-    if (step === 3)
+    if (isHomeAddressStep)
+      return (
+        !!form.homeAddress &&
+        !!form.homeCity &&
+        !!form.homeState &&
+        !!form.homeZip
+      );
+    if (step === contactStepIndex)
       return (
         !!form.name &&
         !!form.phone &&
@@ -163,9 +205,19 @@ export default function BookingWizard({
       ? `${service?.name} (${form.variant})`
       : service?.name || form.service;
 
+    const bookingPayload = {
+      ...form,
+      service: serviceLabel,
+      visit_type: visitType,
+      home_address:
+        visitType === "home"
+          ? `${form.homeAddress}, ${form.homeCity}, ${form.homeState} ${form.homeZip}`
+          : undefined,
+    };
+
     if (!import.meta.env.DEV || isSupabaseConfigured()) {
       try {
-        await sbInsertBooking({ ...form, service: serviceLabel });
+        await sbInsertBooking(bookingPayload as never);
       } catch (bookingError) {
         addToast(
           bookingError instanceof Error
@@ -211,6 +263,11 @@ export default function BookingWizard({
             appointment_date: form.date,
             appointment_time: form.time,
             special_notes: form.notes || "None",
+            visit_type: visitType === "home" ? "Home Visit" : "In-Store",
+            home_address:
+              visitType === "home"
+                ? `${form.homeAddress}, ${form.homeCity}, ${form.homeState} ${form.homeZip}`
+                : "N/A",
           },
           emailjsConfig.publicKey,
         );
@@ -266,7 +323,21 @@ export default function BookingWizard({
                     confirm via phone or email within 2 hours during business
                     hours.
                   </p>
+                  {visitType === "home" && (
+                    <div className="mt-1 flex items-center gap-2 rounded-2xl bg-accent-soft px-4 py-2.5 text-sm font-semibold text-accent">
+                      <Home className="size-4 shrink-0" />
+                      <span>Our technician will come to your address.</span>
+                    </div>
+                  )}
                   <div className="mt-2 w-full rounded-2xl border border-border p-4">
+                    <DetailRow
+                      label="Visit Type"
+                      value={
+                        visitType === "home"
+                          ? "Home Visit (We come to you)"
+                          : "In-Store Visit (Fairfield Shop)"
+                      }
+                    />
                     <DetailRow
                       label="Service"
                       value={`${selectedService?.name || ""}${form.variant ? ` (${form.variant})` : ""}`}
@@ -279,10 +350,43 @@ export default function BookingWizard({
                       label="Date"
                       value={`${form.date} at ${form.time}`}
                     />
+                    {visitType === "home" && form.homeAddress && (
+                      <DetailRow
+                        label="Address"
+                        value={`${form.homeAddress}, ${form.homeCity}`}
+                      />
+                    )}
                     <DetailRow
                       label="Contact"
                       value={`${form.name} · ${form.phone}`}
                     />
+                  </div>
+
+                  {/* AKKO Protection Upsell Banner */}
+                  <div className="mt-2 flex w-full items-center justify-between gap-3 rounded-2xl border border-accent/40 bg-accent-soft/50 p-3.5 text-left shadow-sm">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                        <Shield className="size-4" />
+                      </span>
+                      <div>
+                        <strong className="block text-xs font-bold text-foreground">
+                          Protect this device from future damage
+                        </strong>
+                        <span className="text-[11px] text-muted">
+                          AKKO device insurance from $5/mo with $29 deductibles
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      className="shrink-0 rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-accent-foreground transition-opacity hover:opacity-90"
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        navigate("/protection");
+                      }}
+                    >
+                      View Plans
+                    </button>
                   </div>
                 </Modal.Body>
                 <Modal.Footer>
@@ -291,14 +395,126 @@ export default function BookingWizard({
                   </Button>
                 </Modal.Footer>
               </>
-            ) : (
+            ) : visitType === "" ? (
+              /* â”€â”€ Visit Type Picker (pre-wizard screen) â”€â”€ */
               <>
                 <Modal.Header>
                   <div>
                     <Modal.Heading>Book Appointment</Modal.Heading>
                     <p className="m-0 text-sm text-muted">
-                      Step {step + 1} of {STEPS.length} — {STEPS[step]}
+                      How would you like your device serviced?
                     </p>
+                  </div>
+                  <Modal.CloseTrigger />
+                </Modal.Header>
+
+                <Modal.Body className="flex flex-col gap-4 py-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <button
+                      className="group flex flex-col items-center gap-4 rounded-[24px] border-2 border-border bg-surface p-7 text-center transition-all duration-200 hover:border-accent hover:bg-accent-soft/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+                      id="visit-type-in-store"
+                      type="button"
+                      onClick={() => setVisitType("in-store")}
+                    >
+                      <span className="flex size-16 items-center justify-center rounded-full bg-surface-secondary text-accent shadow-sm transition-colors group-hover:bg-accent group-hover:text-accent-foreground">
+                        <Store className="size-8" />
+                      </span>
+                      <div>
+                        <strong className="block text-lg font-bold text-foreground">
+                          In-Store Visit
+                        </strong>
+                        <p className="m-0 mt-1 text-sm leading-relaxed text-muted">
+                          Drop off your device at our Fairfield, IL location.
+                          Most repairs done same-day while you wait.
+                        </p>
+                      </div>
+                      <div className="flex w-full flex-col gap-1.5 rounded-2xl bg-surface-secondary p-3 text-xs">
+                        <span className="font-semibold text-foreground">
+                          âœ“ Same-day service
+                        </span>
+                        <span className="font-semibold text-foreground">
+                          âœ“ Free diagnostics
+                        </span>
+                        <span className="font-semibold text-foreground">
+                          âœ“ No travel fee
+                        </span>
+                      </div>
+                    </button>
+
+                    <button
+                      className="group flex flex-col items-center gap-4 rounded-[24px] border-2 border-border bg-surface p-7 text-center transition-all duration-200 hover:border-accent hover:bg-accent-soft/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+                      id="visit-type-home"
+                      type="button"
+                      onClick={() => setVisitType("home")}
+                    >
+                      <span className="flex size-16 items-center justify-center rounded-full bg-surface-secondary text-accent shadow-sm transition-colors group-hover:bg-accent group-hover:text-accent-foreground">
+                        <Home className="size-8" />
+                      </span>
+                      <div>
+                        <strong className="block text-lg font-bold text-foreground">
+                          Home Visit
+                        </strong>
+                        <p className="m-0 mt-1 text-sm leading-relaxed text-muted">
+                          We come to you. Our technician visits your home or
+                          office at a time that works for you.
+                        </p>
+                      </div>
+                      <div className="flex w-full flex-col gap-1.5 rounded-2xl bg-surface-secondary p-3 text-xs">
+                        <span className="font-semibold text-foreground">
+                          âœ“ We come to you
+                        </span>
+                        <span className="font-semibold text-foreground">
+                          âœ“ Flexible scheduling
+                        </span>
+                        <span className="font-bold text-accent">
+                          + ${HOME_VISIT_FEE} travel fee
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+
+                  <p className="m-0 text-center text-xs text-muted">
+                    Home visits are available within 25 miles of Fairfield, IL.
+                    Travel fee is collected at time of service.
+                  </p>
+                </Modal.Body>
+
+                <Modal.Footer>
+                  <Button fullWidth variant="outline" onPress={onClose}>
+                    Cancel
+                  </Button>
+                </Modal.Footer>
+              </>
+            ) : (
+              /* â”€â”€ Wizard Steps â”€â”€ */
+              <>
+                <Modal.Header>
+                  <div>
+                    <Modal.Heading>Book Appointment</Modal.Heading>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                          visitType === "home"
+                            ? "bg-accent-soft text-accent"
+                            : "bg-surface-secondary text-muted"
+                        }`}
+                      >
+                        {visitType === "home" ? (
+                          <>
+                            <Home className="size-3" />
+                            <span>Home Visit</span>
+                          </>
+                        ) : (
+                          <>
+                            <Store className="size-3" />
+                            <span>In-Store</span>
+                          </>
+                        )}
+                      </span>
+                      <p className="m-0 text-sm text-muted">
+                        Step {step + 1} of {STEPS.length} â€” {STEPS[step]}
+                      </p>
+                    </div>
                   </div>
                   <Modal.CloseTrigger />
                 </Modal.Header>
@@ -327,6 +543,17 @@ export default function BookingWizard({
                 </div>
 
                 <Modal.Body className="flex flex-col gap-4">
+                  {/* Home visit fee banner */}
+                  {visitType === "home" && (
+                    <div className="flex items-center gap-2.5 rounded-2xl bg-accent-soft px-4 py-2.5 text-sm">
+                      <MapPin className="size-4 shrink-0 text-accent" />
+                      <span className="text-accent">
+                        <strong>Home Visit</strong> â€” ${HOME_VISIT_FEE} travel
+                        fee applies, collected at service time.
+                      </span>
+                    </div>
+                  )}
+
                   {step === 0 && (
                     <div className="flex flex-col gap-4">
                       <div>
@@ -447,9 +674,17 @@ export default function BookingWizard({
                                     ),
                                 )}
                                 type="button"
-                                onClick={() => update("deviceModel", "")}
+                                onClick={() => {
+                                  if (
+                                    selectedDeviceType.models.includes(
+                                      form.deviceModel,
+                                    )
+                                  ) {
+                                    update("deviceModel", "__other__");
+                                  }
+                                }}
                               >
-                                Other Model…
+                                Other Modelâ€¦
                               </button>
                             </div>
                           </div>
@@ -463,7 +698,11 @@ export default function BookingWizard({
                         !form.deviceModel) && (
                         <TextField
                           className="flex flex-col gap-1.5"
-                          value={form.deviceModel}
+                          value={
+                            form.deviceModel === "__other__"
+                              ? ""
+                              : form.deviceModel
+                          }
                           onChange={(v) => update("deviceModel", v)}
                         >
                           <Label>Exact model name</Label>
@@ -493,7 +732,7 @@ export default function BookingWizard({
                           Pick a date &amp; time
                         </h3>
                         <p className="m-0 text-sm text-muted">
-                          Monday – Saturday. Sundays closed.
+                          Monday â€“ Saturday. Sundays closed.
                         </p>
                       </div>
 
@@ -547,7 +786,85 @@ export default function BookingWizard({
                     </div>
                   )}
 
-                  {step === 3 && (
+                  {/* Home Visit Address Step */}
+                  {isHomeAddressStep && (
+                    <div className="flex flex-col gap-4">
+                      <div>
+                        <h3 className="m-0 text-base font-semibold text-foreground">
+                          Your service address
+                        </h3>
+                        <p className="m-0 text-sm text-muted">
+                          Where should our technician come to?
+                        </p>
+                      </div>
+
+                      <TextField
+                        isRequired
+                        className="flex flex-col gap-1.5"
+                        value={form.homeAddress}
+                        onChange={(v) => update("homeAddress", v)}
+                      >
+                        <Label>Street address</Label>
+                        <InputGroup>
+                          <InputGroup.Input placeholder="123 Main St" />
+                        </InputGroup>
+                        <FieldError />
+                      </TextField>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <TextField
+                          isRequired
+                          className="flex flex-col gap-1.5"
+                          value={form.homeCity}
+                          onChange={(v) => update("homeCity", v)}
+                        >
+                          <Label>City</Label>
+                          <InputGroup>
+                            <InputGroup.Input placeholder="Fairfield" />
+                          </InputGroup>
+                          <FieldError />
+                        </TextField>
+
+                        <TextField
+                          isRequired
+                          className="flex flex-col gap-1.5"
+                          value={form.homeState}
+                          onChange={(v) => update("homeState", v)}
+                        >
+                          <Label>State</Label>
+                          <InputGroup>
+                            <InputGroup.Input placeholder="IL" />
+                          </InputGroup>
+                          <FieldError />
+                        </TextField>
+                      </div>
+
+                      <TextField
+                        isRequired
+                        className="flex flex-col gap-1.5"
+                        value={form.homeZip}
+                        onChange={(v) => update("homeZip", v)}
+                      >
+                        <Label>ZIP code</Label>
+                        <InputGroup>
+                          <InputGroup.Input placeholder="62837" />
+                        </InputGroup>
+                        <FieldError />
+                      </TextField>
+
+                      <div className="flex items-start gap-2.5 rounded-2xl bg-accent-soft px-4 py-3 text-sm text-accent">
+                        <MapPin className="mt-0.5 size-4 shrink-0" />
+                        <p className="m-0">
+                          Home visits are available within 25 miles of
+                          Fairfield, IL. A{" "}
+                          <strong>${HOME_VISIT_FEE} travel fee</strong> is
+                          collected at time of service.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === contactStepIndex && (
                     <div className="flex flex-col gap-4">
                       <div>
                         <h3 className="m-0 text-base font-semibold text-foreground">
@@ -613,7 +930,7 @@ export default function BookingWizard({
                     </div>
                   )}
 
-                  {step === 4 && (
+                  {step === confirmStepIndex && (
                     <div className="flex flex-col gap-4">
                       <div>
                         <h3 className="m-0 text-base font-semibold text-foreground">
@@ -626,12 +943,20 @@ export default function BookingWizard({
 
                       <div className="rounded-2xl border border-border p-4">
                         <DetailRow
+                          label="Visit Type"
+                          value={
+                            visitType === "home"
+                              ? "ðŸ  Home Visit"
+                              : "ðŸª In-Store"
+                          }
+                        />
+                        <DetailRow
                           label="Service"
                           value={`${selectedService?.name || ""}${form.variant ? ` (${form.variant})` : ""}`}
                         />
                         <DetailRow
                           label="Device"
-                          value={`${form.deviceType} — ${form.deviceModel}`}
+                          value={`${form.deviceType} â€” ${form.deviceModel}`}
                         />
                         {form.issue && (
                           <DetailRow label="Issue" value={form.issue} />
@@ -640,18 +965,30 @@ export default function BookingWizard({
                           label="Date & Time"
                           value={`${form.date} at ${form.time}`}
                         />
+                        {visitType === "home" && (
+                          <DetailRow
+                            label="Service Address"
+                            value={`${form.homeAddress}, ${form.homeCity}, ${form.homeState} ${form.homeZip}`}
+                          />
+                        )}
                         <DetailRow label="Name" value={form.name} />
                         <DetailRow label="Phone" value={form.phone} />
                         <DetailRow label="Email" value={form.email} />
                         {form.notes && (
                           <DetailRow label="Notes" value={form.notes} />
                         )}
+                        {visitType === "home" && (
+                          <DetailRow
+                            label="Travel Fee"
+                            value={`$${HOME_VISIT_FEE}.00 (collected at service)`}
+                          />
+                        )}
                       </div>
 
                       <p className="m-0 text-xs text-muted">
-                        By confirming, you agree to bring your device in at the
-                        scheduled time. Same-day cancellations should be made by
-                        phone.
+                        {visitType === "home"
+                          ? "By confirming, you agree to be available at the provided address at the scheduled time. Same-day cancellations should be made by phone."
+                          : "By confirming, you agree to bring your device in at the scheduled time. Same-day cancellations should be made by phone."}
                       </p>
                     </div>
                   )}
@@ -660,15 +997,19 @@ export default function BookingWizard({
                 <Modal.Footer className="justify-end gap-2">
                   <Button
                     variant="outline"
-                    onPress={() =>
-                      step === 0 ? onClose() : setStep((s) => s - 1)
-                    }
+                    onPress={() => {
+                      if (step === 0) {
+                        setVisitType("");
+                      } else {
+                        setStep((s) => s - 1);
+                      }
+                    }}
                   >
                     <ChevronLeft className="size-4" />
-                    <span>{step === 0 ? "Cancel" : "Back"}</span>
+                    <span>Back</span>
                   </Button>
 
-                  {step < 4 ? (
+                  {step < STEPS.length - 1 ? (
                     <Button
                       isDisabled={!canNext()}
                       variant="primary"

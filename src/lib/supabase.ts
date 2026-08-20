@@ -590,6 +590,14 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
       appt_time:
         (booking.time as string) || (booking.appt_time as string) || "",
       notes: (booking.notes as string) || "",
+      visit_type:
+        (booking.visit_type as string) ||
+        (booking.visitType as string) ||
+        "in-store",
+      home_address:
+        (booking.home_address as string) ||
+        (booking.homeAddress as string) ||
+        "",
       status: "pending",
     };
 

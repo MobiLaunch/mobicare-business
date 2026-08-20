@@ -23,7 +23,9 @@ import Login from "@/pages/Login";
 import Home from "@/pages/Home";
 import Shop from "@/pages/Shop";
 import ProductDetail from "@/pages/ProductDetail";
+import OrderSuccess from "@/pages/OrderSuccess";
 import Repairs from "@/pages/Repairs";
+import Protection from "@/pages/Protection";
 import About from "@/pages/About";
 import AdminLogin from "@/admin/AdminLogin";
 import AdminLayout from "@/admin/AdminLayout";
@@ -41,13 +43,14 @@ import Account from "@/pages/Account";
 let storeInitPromise: Promise<void> | null = null;
 let siteContentInitPromise: Promise<void> | null = null;
 
-// TODO(next batches): each PagePlaceholder below gets swapped for its real
-// rebuilt page/component as it's done — the routes themselves (paths,
-// nesting, redirects) are ported verbatim from the original App.jsx and are
-// not expected to change.
-
 function StoreInit() {
   const init = useProductStore((s) => s.init);
+  const appearance = useSiteStore((s) => s.appearance);
+
+  // Apply theme tokens whenever appearance settings change.
+  useEffect(() => {
+    if (appearance) applyAppearance(appearance);
+  }, [appearance]);
 
   useEffect(() => {
     if (!storeInitPromise) {
@@ -58,14 +61,45 @@ function StoreInit() {
 
     if (!siteContentInitPromise) {
       siteContentInitPromise = (async () => {
+        const LEGACY_ACCENT_HEXES = [
+          "#13522b",
+          "#0a3318",
+          "#13522B",
+          "#0A3318",
+        ];
+
+        function sanitizeAppearance(
+          app: Record<string, unknown>,
+        ): Record<string, unknown> {
+          const out = { ...app };
+
+          if (LEGACY_ACCENT_HEXES.includes(String(out["accentColor"] ?? "")))
+            out["accentColor"] = "";
+          if (
+            LEGACY_ACCENT_HEXES.includes(String(out["accentColorDeep"] ?? ""))
+          )
+            out["accentColorDeep"] = "";
+
+          return out;
+        }
+
         if (isSupabaseConfigured()) {
           const dbContent = await sbFetchSiteSettings();
           const defaults = useSiteStore.getState();
 
           if (dbContent) {
+            const rawAppearance = (dbContent.appearance ?? {}) as Record<
+              string,
+              unknown
+            >;
+            const sanitizedAppearance = sanitizeAppearance({
+              ...(defaults.appearance as unknown as Record<string, unknown>),
+              ...rawAppearance,
+            }) as unknown as typeof defaults.appearance;
             const mergedContent = {
               ...defaults,
               ...dbContent,
+              appearance: sanitizedAppearance,
               deviceTypes: dbContent.deviceTypes || defaults.deviceTypes || [],
               seo: dbContent.seo || defaults.seo,
               social: dbContent.social || defaults.social,
@@ -133,7 +167,7 @@ function CartRedirect() {
   useEffect(() => {
     setCartDrawerOpen(true);
     navigate("/", { replace: true });
-  }, []);
+  }, [navigate, setCartDrawerOpen]);
 
   return null;
 }
@@ -181,7 +215,7 @@ export default function App() {
         <Route
           element={
             <PublicLayout>
-              <PagePlaceholder name="Order Success" />
+              <OrderSuccess />
             </PublicLayout>
           }
           path="/order-success"
@@ -193,6 +227,18 @@ export default function App() {
             </PublicLayout>
           }
           path="/repairs"
+        />
+        <Route
+          element={
+            <PublicLayout>
+              <Protection />
+            </PublicLayout>
+          }
+          path="/protection"
+        />
+        <Route
+          element={<Navigate replace to="/protection" />}
+          path="/insurance"
         />
         <Route
           element={

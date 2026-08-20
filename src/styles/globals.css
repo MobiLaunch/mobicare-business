@@ -1,14 +1,113 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 
-/* Mobicare's applyAppearance() (src/lib/siteStore.ts) sets a data-theme
-   attribute on <html>, not a .dark class — HeroUI's own component tokens
-   already match `.dark, [data-theme="dark"]` (see HEROUI_V3_MIGRATION.md),
-   but Tailwind's `dark:` utility variant needs telling explicitly, so it's
-   broadened here to match either. */
-@custom-variant dark (&:is(.dark *, [data-theme="dark"] *));
+/* Tailwind CSS v4 dark: variant configured for both [data-theme="dark"] and .dark */
+@custom-variant dark (&:is(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
+/* ─── Light Mode Theme Tokens ─── */
+:root,
+[data-theme="light"],
+.light {
+  color-scheme: light;
+  --background: #F8FAF7;
+  --foreground: #111B14;
+  --surface: #FFFFFF;
+  --surface-secondary: #F1F6F2;
+  --surface-tertiary: #E5EFE8;
+  --overlay: #FFFFFF;
+  --overlay-foreground: #111B14;
+  --border: #D7E3DA;
+  --separator: #E2ECE4;
+  --muted: #5D7266;
+  --accent: #15803D; /* Rich Vibrant Forest Green */
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(21, 128, 61, 0.12);
+  --accent-soft-foreground: #15803D;
+  --link: #15803D;
+  --focus: #15803D;
+  --default: #EAEFEA;
+  --default-foreground: #111B14;
+}
+
+/* ─── Dark Mode Theme Tokens ─── */
+[data-theme="dark"],
+.dark {
+  color-scheme: dark;
+  --background: #09150E; /* Deep Obsidian Pine */
+  --foreground: #F3F7F4;
+  --surface: #102217; /* Rich Dark Forest Card */
+  --surface-secondary: #172F21; /* Elevated Forest */
+  --surface-tertiary: #1F3D2C;
+  --overlay: #102217;
+  --overlay-foreground: #F3F7F4;
+  --border: #23432F;
+  --separator: #1B3525;
+  --muted: #95A99D;
+  --accent: #22C55E; /* Bright Electric Emerald */
+  --accent-foreground: #031207;
+  --accent-soft: rgba(34, 197, 94, 0.16);
+  --accent-soft-foreground: #4ADE80;
+  --link: #4ADE80;
+  --focus: #22C55E;
+  --default: #172F21;
+  --default-foreground: #F3F7F4;
+}
+
+/* ─── Base HTML & Body Styles ─── */
+html,
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Give larger phones a little more breathing room without changing desktop. */
+@media (min-width: 400px) and (max-width: 767px) {
+  #homepage-content-wrapper {
+    padding-inline: 20px;
+  }
+
+  #hero-bento-section {
+    padding: 32px 28px;
+  }
+
+  #hero-bento-section h1 {
+    font-size: 2.55rem;
+  }
+
+  #hero-bento-section p {
+    font-size: 1rem;
+  }
+
+  #hero-bento-section button {
+    min-height: 3rem;
+  }
+
+  #location-card h3 {
+    font-size: 1.25rem;
+  }
+
+  #location-card [class*="text-[10px]"],
+  #location-card [class*="text-[11px]"],
+  #location-card [class*="text-[13px]"] {
+    font-size: 0.875rem;
+  }
+
+  #cta-banner-section h2 {
+    font-size: 1.3rem;
+  }
+
+  #cta-banner-section p {
+    font-size: 0.9375rem;
+  }
+}
 
 @keyframes ticker-scroll {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+

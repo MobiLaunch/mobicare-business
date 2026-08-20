@@ -18,6 +18,7 @@ const REPAIR_LINKS = [
   { label: "Battery Replacement", to: "/repairs#battery-replacement" },
   { label: "Water Damage", to: "/repairs#water-damage" },
   { label: "Data Recovery", to: "/repairs#data-recovery" },
+  { label: "AKKO Device Insurance", to: "/protection" },
 ];
 
 // NOTE (HeroUI v3 rebuild): the site-content store also has `footer` (tagline,
@@ -70,7 +71,7 @@ export default function Footer() {
               {appearance?.logoType === "image" ? (
                 <img
                   alt={appearance.logoAlt || brand?.name || "Business logo"}
-                  className="h-9 w-auto max-w-[180px] object-contain"
+                  className="h-9 w-auto max-w-[180px] object-contain dark:brightness-0 dark:invert"
                   src={logoSrc}
                 />
               ) : (

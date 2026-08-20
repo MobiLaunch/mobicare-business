@@ -43,9 +43,6 @@ export interface SiteRepairService {
   duration: string;
   priceRange: string;
   description: string;
-  // Optional per-part pricing options (e.g. "Screen Repair" -> OEM vs
-  // Aftermarket). No default repair service currently populates this, but
-  // BookingWizard has a real UI branch that renders it when present.
   variants?: RepairServiceVariant[];
 }
 export interface About {
@@ -274,14 +271,14 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     logoType: "image",
     logoUrl: "",
     logoAlt: "Mobicare logo",
-    accentColor: "#13522B",
-    accentColorDeep: "#0A3318",
-    bgBase: "#F8FAF4",
-    bgSurface: "#F8FAF7",
-    bgElevated: "#ECEFE8",
+    accentColor: "",
+    accentColorDeep: "",
+    bgBase: "",
+    bgSurface: "",
+    bgElevated: "",
     fontFamily: "system",
     fontUrl: "",
-    colorScheme: "light",
+    colorScheme: "dark",
   },
   seo: {
     siteTitle: "Mobicare Device Recovery",
@@ -443,27 +440,30 @@ export const FONT_PRESETS: FontPreset[] = [
   { id: "custom", label: "Custom URL", css: "", url: "" },
 ];
 
-// ─── Apply appearance → HeroUI v3 CSS custom properties (instant, no reload) ─
-// NOTE (HeroUI v3 migration): the previous version of this function wrote to
-// --cyan / --cyan-dim / --cyan-glow / --cyan-deep / --border-accent / --bg-base /
-// --bg-surface / --bg-elevated / --bg-panel / --shadow-cyan / --font-display /
-// --font-body. None of those custom properties were ever read by any CSS rule
-// in this project (BeerCSS themes its own components via its internal JS
-// engine, which this function never called) — so the admin "Appearance" panel's
-// accent color, background colors, and font pickers have not visibly changed
-// anything in the actual UI. This rewrite targets HeroUI v3's real theme
-// tokens (@heroui/styles/dist/themes/default/variables.css) so those controls
-// actually work. HeroUI derives hover/soft/focus states from --accent and
-// --accent-foreground automatically via color-mix(), so we no longer need to
-// hand-compute dim/glow/shadow variants ourselves.
+// ─── Apply appearance → HeroUI v3 CSS custom properties ────────────────────
 export function applyAppearance(a: Appearance) {
-  const s = document.documentElement.style;
-  const scheme: ColorScheme = a.colorScheme || "dark";
+  if (typeof document === "undefined") return;
 
-  // Set data-theme on <html>. HeroUI's own theme CSS matches
-  // `.dark, [data-theme="dark"]`, so this attribute alone drives HeroUI's
-  // dark-mode cascade too — no need to also toggle a `.dark` class.
-  document.documentElement.setAttribute("data-theme", scheme);
+  const root = document.documentElement;
+  const s = root.style;
+
+  // Resolve mode ('system' evaluation vs explicit 'dark' / 'light')
+  let scheme = a.colorScheme || "dark";
+
+  if (scheme === ("system" as unknown)) {
+    scheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+
+  const isDark = scheme === "dark";
+
+  // Set data-theme on <html> and sync dark/light classes for Hero UI & Tailwind
+  root.setAttribute("data-theme", scheme);
+  root.classList.toggle("dark", isDark);
+  root.classList.toggle("light", !isDark);
+  s.setProperty("color-scheme", scheme);
+
   // Update PWA theme-color
   const themeMetaDark = document.querySelector(
     'meta[name="theme-color"][media*="dark"]',
@@ -473,41 +473,65 @@ export function applyAppearance(a: Appearance) {
   );
 
   if (themeMetaDark)
-    themeMetaDark.setAttribute(
-      "content",
-      scheme === "dark" ? "#000000" : a.bgBase || "#000000",
-    );
+    themeMetaDark.setAttribute("content", isDark ? "#09150E" : "#ffffff");
   if (themeMetaLight)
-    themeMetaLight.setAttribute(
-      "content",
-      scheme === "light" ? "#f5f5f7" : "#000000",
-    );
+    themeMetaLight.setAttribute("content", !isDark ? "#F8FAF4" : "#09150E");
 
-  // "Accent Deep (CTAs)" is described in the admin UI as the solid background
-  // used on primary buttons — that's exactly HeroUI's --accent role.
-  // "Accent (Primary)" is described as active links/badges — map it to
-  // --link and --focus (the brighter, more frequently-visible accent).
-  const ctaColor = a.accentColorDeep || a.accentColor;
+  // If custom accent color override is provided, apply to Hero UI v3 and custom tokens
+  const accent = a.accentColor?.trim();
+  const accentDeep = a.accentColorDeep?.trim();
 
-  if (ctaColor) {
-    s.setProperty("--accent", ctaColor);
-    s.setProperty("--accent-foreground", pickForeground(ctaColor));
+  if (accent || accentDeep) {
+    const primaryColor = accent || accentDeep || "";
+    const primaryDeepColor = accentDeep || accent || "";
+    const foregroundColor = pickForeground(primaryColor);
+
+    s.setProperty("--accent", primaryColor);
+    s.setProperty("--accent-foreground", foregroundColor);
+    s.setProperty("--link", primaryColor);
+    s.setProperty("--focus", primaryColor);
+
+    // Hero UI v3 primary color mapping
+    s.setProperty("--heroui-primary", primaryColor);
+    s.setProperty("--heroui-primary-500", primaryColor);
+    s.setProperty("--heroui-primary-600", primaryDeepColor);
+    s.setProperty("--heroui-primary-700", primaryDeepColor);
+    s.setProperty("--heroui-primary-foreground", foregroundColor);
+    s.setProperty("--color-primary", primaryColor);
+    s.setProperty("--color-primary-foreground", foregroundColor);
+  } else {
+    s.removeProperty("--accent");
+    s.removeProperty("--accent-foreground");
+    s.removeProperty("--link");
+    s.removeProperty("--focus");
+
+    s.removeProperty("--heroui-primary");
+    s.removeProperty("--heroui-primary-500");
+    s.removeProperty("--heroui-primary-600");
+    s.removeProperty("--heroui-primary-700");
+    s.removeProperty("--heroui-primary-foreground");
+    s.removeProperty("--color-primary");
+    s.removeProperty("--color-primary-foreground");
   }
-  if (a.accentColor) {
-    s.setProperty("--link", a.accentColor);
-    s.setProperty("--focus", a.accentColor);
-  }
 
-  if (scheme === "dark") {
-    // Backgrounds are only admin-customizable in dark mode — light mode
-    // keeps HeroUI's built-in light-theme neutrals (same asymmetry the
-    // previous implementation had, just now actually wired up).
-    if (a.bgBase) s.setProperty("--background", a.bgBase);
-    if (a.bgSurface) s.setProperty("--surface", a.bgSurface);
-    if (a.bgElevated) s.setProperty("--surface-secondary", a.bgElevated);
+  // Handle custom background overrides cleanly
+  if (a.bgBase && a.bgBase.trim()) {
+    s.setProperty("--background", a.bgBase);
+    s.setProperty("--heroui-background", a.bgBase);
   } else {
     s.removeProperty("--background");
+    s.removeProperty("--heroui-background");
+  }
+
+  if (a.bgSurface && a.bgSurface.trim()) {
+    s.setProperty("--surface", a.bgSurface);
+  } else {
     s.removeProperty("--surface");
+  }
+
+  if (a.bgElevated && a.bgElevated.trim()) {
+    s.setProperty("--surface-secondary", a.bgElevated);
+  } else {
     s.removeProperty("--surface-secondary");
   }
 
@@ -515,20 +539,20 @@ export function applyAppearance(a: Appearance) {
 
   if (preset && preset.css) {
     if (preset.url) injectFontLink(preset.id, preset.url);
-    // Tailwind v4's own font token — HeroUI/Tailwind base styles apply this
-    // to the document by default, so no extra CSS rule is needed to consume it.
     s.setProperty("--font-sans", preset.css);
+  } else {
+    s.removeProperty("--font-sans");
   }
+
   if (a.fontFamily === "custom" && a.fontUrl) {
     injectFontLink("custom-font", a.fontUrl);
   }
 }
 
-// Naive relative-luminance check to pick a readable foreground (button label
-// color) for an arbitrary admin-chosen accent color. Good enough for a solid
-// CTA color; not a full WCAG contrast solver.
 function pickForeground(hex: string): string {
   const h = hex.replace("#", "");
+
+  if (h.length !== 6) return "#fafafa";
   const r = parseInt(h.substring(0, 2), 16) / 255;
   const g = parseInt(h.substring(2, 4), 16) / 255;
   const b = parseInt(h.substring(4, 6), 16) / 255;
@@ -693,6 +717,43 @@ export const useSiteStore = create<SiteContentState>()(
         syncToSupabase(DEFAULT_SITE_CONTENT);
       },
     }),
-    { name: "mobicare-site-content" },
+    {
+      name: "mobicare-site-content",
+      version: 2,
+      migrate: (persistedState) => {
+        if (!persistedState || typeof persistedState !== "object")
+          return persistedState as SiteContent;
+        const state = { ...(persistedState as Record<string, unknown>) };
+
+        if (state.appearance && typeof state.appearance === "object") {
+          const app = { ...(state.appearance as Record<string, unknown>) };
+
+          if (app.accentColor === "#13522B" || app.accentColor === "#0A3318") {
+            app.accentColor = "";
+          }
+          if (
+            app.accentColorDeep === "#0A3318" ||
+            app.accentColorDeep === "#13522B"
+          ) {
+            app.accentColorDeep = "";
+          }
+          state.appearance = app;
+        }
+
+        return state as unknown as SiteContent;
+      },
+    },
   ),
 );
+
+// Bootstrap initial appearance on module load.
+if (typeof document !== "undefined") {
+  const bootstrapAppearance = { ...useSiteStore.getState().appearance };
+  const LEGACY = ["#13522B", "#0A3318", "#13522b", "#0a3318"];
+
+  if (LEGACY.includes(bootstrapAppearance.accentColor))
+    bootstrapAppearance.accentColor = "";
+  if (LEGACY.includes(bootstrapAppearance.accentColorDeep))
+    bootstrapAppearance.accentColorDeep = "";
+  applyAppearance(bootstrapAppearance);
+}

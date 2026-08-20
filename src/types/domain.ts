@@ -94,6 +94,8 @@ export interface BookingRecord {
   appt_time: string;
   issue?: string;
   notes?: string;
+  visit_type?: string;
+  home_address?: string;
 }
 
 export interface CustomerProfile {

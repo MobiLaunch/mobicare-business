@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { addDays, format } from "date-fns";
 import {
   ArrowLeft,
   ArrowRight,
+  Clock,
   Minus,
   PackageX,
   Plus,
@@ -18,6 +18,7 @@ import { Button } from "@heroui/react";
 import { useShallow } from "zustand/react/shallow";
 
 import { useCartStore, useProductStore, useToastStore } from "@/lib/store";
+import { getEstimatedArrivalWindow, getDispatchCutoff } from "@/lib/shipping";
 import PageMeta from "@/components/PageMeta";
 import ProductCard from "@/components/ProductCard";
 
@@ -62,14 +63,12 @@ export default function ProductDetail() {
     );
   }
 
-  const minArrival = format(
-    addDays(new Date(), product.shippingDays.min + 1),
-    "MMM d",
+  const arrival = getEstimatedArrivalWindow(
+    product.shippingDays?.min || 3,
+    product.shippingDays?.max || 5,
   );
-  const maxArrival = format(
-    addDays(new Date(), product.shippingDays.max + 1),
-    "MMM d",
-  );
+  const cutoff = getDispatchCutoff();
+
   const discount = product.comparePrice
     ? Math.round((1 - product.price / product.comparePrice) * 100)
     : null;
@@ -84,13 +83,13 @@ export default function ProductDetail() {
   const trustRows = [
     {
       icon: Truck,
-      title: "Estimated Arrival",
-      sub: `${minArrival} – ${maxArrival}`,
+      title: "Estimated Delivery",
+      sub: arrival.formatted,
     },
     {
       icon: Shield,
-      title: "Secure Checkout",
-      sub: "256-bit SSL encryption via Stripe",
+      title: "Direct Stripe Checkout",
+      sub: "256-bit SSL encrypted & secure",
     },
     {
       icon: RotateCcw,
@@ -154,7 +153,7 @@ export default function ProductDetail() {
                 <span className="text-[clamp(1.1rem,2vw,1.3rem)] text-muted line-through">
                   ${product.comparePrice.toFixed(2)}
                 </span>
-                <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">
+                <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">
                   Save ${(product.comparePrice - product.price).toFixed(2)}
                 </span>
               </>
@@ -178,7 +177,17 @@ export default function ProductDetail() {
             </div>
           )}
 
-          <div className="my-2 mb-6 border-t border-border" />
+          <div className="my-2 mb-4 border-t border-border" />
+
+          {/* Dynamic shipping notification */}
+          <div className="mb-5 flex items-center gap-2.5 rounded-2xl bg-accent-soft p-3 text-sm text-foreground">
+            <Clock className="size-4 shrink-0 text-accent" />
+            <div className="min-w-0">
+              <span className="font-semibold text-accent">{cutoff.text}</span>
+              <span className="text-muted"> — estimated delivery by </span>
+              <strong className="text-foreground">{arrival.formatted}</strong>
+            </div>
+          </div>
 
           {/* Add to cart */}
           {product.stock > 0 ? (
@@ -216,13 +225,13 @@ export default function ProductDetail() {
               </Button>
             </div>
           ) : (
-            <div className="mb-4 rounded-2xl bg-danger/10 p-4 text-center font-bold text-danger">
+            <div className="mb-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-center font-bold text-rose-600 dark:text-rose-400">
               Out of Stock — Check Back Soon
             </div>
           )}
 
           {product.stock > 0 && product.stock < 5 && (
-            <p className="mb-4 flex items-center gap-1.5 text-[13px] font-bold text-warning">
+            <p className="mb-4 flex items-center gap-1.5 text-[13px] font-bold text-amber-600 dark:text-amber-400">
               <TriangleAlert className="size-[18px]" />
               Only {product.stock} left in stock — order soon
             </p>

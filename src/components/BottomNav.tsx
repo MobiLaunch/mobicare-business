@@ -2,6 +2,7 @@ import { Link as RouterLink, useLocation } from "react-router-dom";
 import {
   CircleUserRound,
   House,
+  Shield,
   ShoppingCart,
   Store,
   Wrench,
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { to: "/", label: "Home", icon: House },
   { to: "/repairs", label: "Repairs", icon: Wrench },
   { to: "/shop", label: "Shop", icon: Store },
+  { to: "/protection", label: "Protect", icon: Shield },
 ];
 
 export default function BottomNav() {
@@ -33,7 +35,10 @@ export default function BottomNav() {
   const cartDrawerOpen = useCartStore((s) => s.cartDrawerOpen);
   const setCartDrawerOpen = useCartStore((s) => s.setCartDrawerOpen);
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) =>
+    path === "/"
+      ? location.pathname === "/"
+      : location.pathname.startsWith(path);
   const accountPath = user ? "/account" : "/login";
   const isAccountActive = location.pathname === accountPath;
   const cartCount = cart.reduce((total, item) => total + (item?.qty || 0), 0);

@@ -19,6 +19,8 @@ export async function insertBookingDirect(
     appt_date: booking.date || booking.appt_date || "",
     appt_time: booking.time || booking.appt_time || "",
     notes: booking.notes || "",
+    visit_type: booking.visit_type || booking.visitType || "in-store",
+    home_address: booking.home_address || booking.homeAddress || "",
     status: "pending",
   };
 

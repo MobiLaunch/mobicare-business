@@ -5,4 +5,3 @@ export type IconSvgProps = SVGProps<SVGSVGElement> & {
 };
 
 export * from "./domain";
-

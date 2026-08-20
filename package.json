@@ -13,6 +13,8 @@
     "@emailjs/browser": "^4.4.1",
     "@heroui/react": "^3.2.4",
     "@heroui/styles": "3.2.4",
+    "@stripe/react-stripe-js": "^6.8.1",
+    "@stripe/stripe-js": "^9.13.0",
     "@supabase/supabase-js": "^2.112.3",
     "clsx": "2.1.1",
     "date-fns": "^4.4.0",

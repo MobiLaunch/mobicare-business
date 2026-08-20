@@ -185,7 +185,7 @@ export default function Repairs() {
           {REPAIR_CATEGORIES_BENTO.map((svc) => (
             <div
               key={svc.id}
-              className="flex h-full min-w-0 flex-col justify-between gap-5 rounded-[24px] bg-surface p-6 transition-all duration-250 hover:-translate-y-0.5"
+              className="flex h-full min-w-0 flex-col justify-between gap-5 rounded-[24px] border border-border bg-surface p-6 shadow-sm transition-all duration-250 hover:-translate-y-0.5 hover:shadow-md"
               id={`repair-card-${svc.id}`}
             >
               <div>
@@ -212,7 +212,7 @@ export default function Repairs() {
               </div>
 
               <button
-                className="flex w-full items-center justify-center gap-1.5 rounded-full bg-accent px-3 py-2.5 text-xs font-semibold text-accent-foreground"
+                className="flex w-full items-center justify-center gap-1.5 rounded-full bg-accent px-3 py-2.5 text-xs font-semibold text-accent-foreground transition-opacity hover:opacity-90"
                 id={`repairs-page-book-btn-${svc.id}`}
                 type="button"
                 onClick={() => handleBook(svc.name)}
@@ -243,7 +243,7 @@ export default function Repairs() {
             return (
               <div
                 key={faq.q}
-                className="overflow-hidden rounded-[18px] bg-surface transition-all duration-200"
+                className="overflow-hidden rounded-[18px] border border-border bg-surface shadow-sm transition-all duration-200"
               >
                 <button
                   aria-expanded={isOpen}
@@ -256,11 +256,19 @@ export default function Repairs() {
                     className={`size-5 shrink-0 text-accent transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
                   />
                 </button>
-                {isOpen && (
-                  <div className="px-5 pb-[18px] text-sm leading-relaxed text-muted">
-                    {faq.a}
+                <div
+                  className={`grid transition-all duration-250 ease-in-out ${
+                    isOpen
+                      ? "grid-rows-[1fr] opacity-100"
+                      : "grid-rows-[0fr] opacity-0"
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="px-5 pb-[18px] text-sm leading-relaxed text-muted">
+                      {faq.a}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             );
           })}

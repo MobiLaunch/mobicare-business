@@ -240,7 +240,10 @@ export default function LocationCard() {
   }, []);
 
   return (
-    <div className="w-full overflow-hidden rounded-[28px] bg-surface">
+    <div
+      className="w-full overflow-hidden rounded-[28px] bg-surface"
+      id="location-card"
+    >
       {/* Map frame */}
       <div className="relative h-[210px] overflow-hidden bg-surface-secondary">
         <div
@@ -291,7 +294,7 @@ export default function LocationCard() {
         <div className="mb-4 flex items-start justify-between gap-2">
           <div>
             <h3 className="m-0 text-lg font-bold leading-tight">
-              Visit Mobicare Express
+              Visit Mobicare Device Recovery
             </h3>
             <span className="mt-0.5 block text-[13px] text-muted">
               Fairfield, IL 62837

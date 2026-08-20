@@ -5,6 +5,12 @@ import { RouterProvider } from "react-aria-components";
 
 import { AuthProvider } from "@/lib/AuthContext";
 
+function useAppHref(href: string) {
+  const routerHref = useHref(href);
+
+  return /^(https?:|mailto:|tel:)/.test(href) ? href : routerHref;
+}
+
 // HeroUI v3 needs no provider (see HEROUI_V3_MIGRATION.md) — this file's job
 // is app-level context instead.
 //
@@ -17,7 +23,7 @@ export function Provider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
 
   return (
-    <RouterProvider navigate={navigate} useHref={useHref}>
+    <RouterProvider navigate={navigate} useHref={useAppHref}>
       <AuthProvider>{children}</AuthProvider>
     </RouterProvider>
   );

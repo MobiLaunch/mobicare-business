@@ -194,8 +194,9 @@ export default function About() {
                   return (
                     <Tag
                       key={row.label}
-                      className="flex items-center gap-3.5 rounded-2xl p-3 no-underline transition-all hover:translate-x-1 hover:bg-surface-tertiary"
+                      className="flex items-center gap-3.5 rounded-2xl p-3 no-underline transition-all hover:translate-x-1 hover:bg-surface"
                       href={row.href}
+                      rel={row.href ? "noopener noreferrer" : undefined}
                     >
                       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
                         <row.icon className="size-5" />
