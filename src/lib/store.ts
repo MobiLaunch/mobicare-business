@@ -413,7 +413,7 @@ interface ProductState {
   addCategory: (data: Partial<Category>) => Promise<void>;
   updateCategory: (id: string, data: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
-  addOrder: (order: Partial<Order>) => Promise<Order>;
+  addOrder: (order: Partial<Order>, alreadyPersisted?: boolean) => Promise<Order>;
   updateOrderStatus: (id: string, status: string) => Promise<void>;
 }
 
@@ -579,7 +579,10 @@ export const useProductStore = create<ProductState>()(
       },
 
       // ── orders ──
-      addOrder: async (order) => {
+      // `alreadyPersisted` skips the client-side Supabase insert when the
+      // order was already saved server-side (/api/create-order) — inserting
+      // the same id twice violates the orders_pkey unique constraint.
+      addOrder: async (order, alreadyPersisted = false) => {
         const rawStatus = (order.status || "").toLowerCase().trim();
         const validStatuses = [
           "paid",
@@ -599,7 +602,7 @@ export const useProductStore = create<ProductState>()(
         } as Order;
 
         set({ orders: [o, ...get().orders] });
-        if (isSupabaseConfigured()) {
+        if (!alreadyPersisted && isSupabaseConfigured()) {
           const saved = await sbInsertOrder(o);
 
           if (saved)

@@ -433,8 +433,10 @@ export default function CartDrawer() {
         return;
       }
 
-      // Local optimistic state so the UI reflects the order immediately
-      await addOrder(newOrder);
+      // Local optimistic state so the UI reflects the order immediately.
+      // The order was already persisted server-side via /api/create-order,
+      // so skip the client-side Supabase insert (would duplicate the id).
+      await addOrder(newOrder, true);
 
       setCompletedOrder(newOrder);
       clearCart();
