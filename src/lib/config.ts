@@ -19,11 +19,22 @@ export const SUPABASE_URL = requireEnv("VITE_SUPABASE_URL");
 export const SUPABASE_ANON_KEY = requireEnv("VITE_SUPABASE_ANON_KEY");
 
 // ─── Stripe ───────────────────────────────────────────────────────────────────
-// NOTE: No Stripe key lives here. Real payment processing happens entirely
-// server-side via /api/create-checkout-session.js and /api/stripe-webhook.js,
-// using STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET set only in your hosting
-// provider's serverless environment variables (never VITE_-prefixed, never
-// in this frontend bundle). See .env.example for details.
+// Publishable key for client-side card elements / payment redirects.
+// Can be configured in Admin Settings (stored in localStorage) or via VITE_STRIPE_PUBLISHABLE_KEY.
+// Secret keys stay server-side only in hosting environment variables.
+export function getStripePublishableKey(): string {
+  return (
+    (typeof localStorage !== "undefined"
+      ? localStorage.getItem("stripe_publishable_key")
+      : null) ||
+    (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string) ||
+    ""
+  );
+}
+
+export function isStripeConfigured(): boolean {
+  return Boolean(getStripePublishableKey());
+}
 
 // ─── EmailJS ──────────────────────────────────────────────────────────────────
 export const EMAILJS_CONFIG = {

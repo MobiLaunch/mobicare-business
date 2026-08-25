@@ -8,12 +8,13 @@ import {
 } from "react-router-dom";
 import { ToastProvider } from "@heroui/react";
 
+import CanvasPreview from "./__canvas_preview__"; // @hyperide-managed
+
 import { useProductStore, useCartStore } from "@/lib/store";
 import { useSiteStore, applyAppearance } from "@/lib/siteStore";
 import { sbFetchSiteSettings, isSupabaseConfigured } from "@/lib/supabase";
 import PublicLayout from "@/layouts/PublicLayout";
 import RequireAdmin from "@/components/RequireAdmin";
-import PagePlaceholder from "@/components/PagePlaceholder";
 import CartDrawer from "@/components/CartDrawer";
 import Login from "@/pages/Login";
 import Home from "@/pages/Home";
@@ -30,6 +31,7 @@ import AdminCategories from "@/admin/Categories";
 import AdminOrders from "@/admin/Orders";
 import AdminBookings from "@/admin/Bookings";
 import AdminDashboard from "@/admin/Dashboard";
+import AdminSettings from "@/admin/Settings";
 import SiteContent from "@/admin/SiteContent";
 import Signup from "@/pages/Signup";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -270,7 +272,6 @@ export default function App() {
           }
           path="/account"
         />
-
         <Route path="/admin">
           <Route index element={<Navigate replace to="login" />} />
           <Route element={<AdminLogin />} path="login" />
@@ -286,15 +287,13 @@ export default function App() {
             <Route element={<AdminCategories />} path="categories" />
             <Route element={<AdminOrders />} path="orders" />
             <Route element={<AdminBookings />} path="bookings" />
-            <Route
-              element={<PagePlaceholder name="Admin Settings" />}
-              path="settings"
-            />
+            <Route element={<AdminSettings />} path="settings" />
             <Route element={<SiteContent />} path="content" />
             <Route index element={<Navigate replace to="dashboard" />} />
           </Route>
         </Route>
 
+        <Route element={<CanvasPreview />} path="/test-preview" />
         <Route element={<Navigate replace to="/" />} path="*" />
       </Routes>
     </>
