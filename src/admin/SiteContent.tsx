@@ -480,13 +480,16 @@ function HeroTab() {
 // ─── Trust Bar Tab ──────────────────────────────────────────────────────
 function TrustTab() {
   const trustItems = useSiteStore((s) => s.trustItems);
-  const updateTrustItem = useSiteStore((s) => s.updateTrustItem);
   const addToast = useToastStore((s) => s.add);
   const [ls, setLs] = useState(trustItems.map((t) => ({ ...t })));
   const set = (i: number, k: "label" | "desc", v: string) =>
     setLs((a) => a.map((l, idx) => (idx === i ? { ...l, [k]: v } : l)));
   const save = () => {
-    ls.forEach((item, i) => updateTrustItem(i, item));
+    // Write the whole array once instead of one update per item — each
+    // updateTrustItem call fires its own Supabase sync. The no-op merge on
+    // item 0 afterwards just reuses the granular updater's Supabase sync.
+    useSiteStore.setState({ trustItems: ls.map((t) => ({ ...t })) });
+    useSiteStore.getState().updateTrustItem(0, {});
     addToast("Trust bar saved", "success");
   };
 
@@ -1090,7 +1093,6 @@ function AboutTab() {
 function BusinessTab() {
   const business = useSiteStore((s) => s.business);
   const updateBusiness = useSiteStore((s) => s.updateBusiness);
-  const updateBusinessHour = useSiteStore((s) => s.updateBusinessHour);
   const addToast = useToastStore((s) => s.add);
   const [l, setL] = useState({
     ...business,
@@ -1111,8 +1113,10 @@ function BusinessTab() {
   const delHourRow = (i: number) =>
     setL((p) => ({ ...p, hours: p.hours.filter((_, idx) => idx !== i) }));
   const save = () => {
+    // updateBusiness replaces the whole business object (including hours) in
+    // one call — calling updateBusinessHour afterward would re-sync each row
+    // individually and trigger redundant Supabase writes.
     updateBusiness({ ...l, hours: l.hours });
-    l.hours.forEach((h, i) => updateBusinessHour(i, h));
     addToast("Business info saved", "success");
   };
 

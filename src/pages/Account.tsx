@@ -103,11 +103,14 @@ export default function Account() {
     }
   };
 
+  const userId = user?.id;
+
   useEffect(() => {
-    if (user) {
+    if (userId) {
       loadUserData();
     }
-  }, [user]);
+    // Fetch when the signed-in user changes, not on every auth-object refresh
+  }, [userId]);
 
   const handleUpdateProfile = async (e: FormEvent) => {
     e.preventDefault();
@@ -527,7 +530,12 @@ export default function Account() {
                     <div className="text-right">
                       <Chip
                         color={
-                          order.status === "completed" ? "success" : "default"
+                          order.status === "delivered"
+                            ? "success"
+                            : order.status === "cancelled" ||
+                                order.status === "refunded"
+                              ? "danger"
+                              : "warning"
                         }
                         size="sm"
                         variant="soft"

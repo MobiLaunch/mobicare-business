@@ -32,9 +32,17 @@ export default function LocationCard() {
   const mapMarkerRef = useRef<any>(null);
 
   const handleCopyAddress = () => {
-    navigator.clipboard.writeText(BUSINESS_ADDRESS);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard
+      .writeText(BUSINESS_ADDRESS)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => {
+        // Clipboard API can be denied (permissions/insecure context) —
+        // leave the button state unchanged instead of throwing unhandled.
+        console.warn("Clipboard write was rejected by the browser.");
+      });
   };
 
   // Load the Google Maps JavaScript API and render a real Fairfield, IL map.
@@ -217,10 +225,16 @@ export default function LocationCard() {
     );
 
     if (existingScript) {
-      existingScript.addEventListener("load", initializeMap, { once: true });
-      existingScript.addEventListener("error", () => setMapError(true), {
-        once: true,
-      });
+      // If the script already finished loading in a previous mount, its
+      // "load" event will never fire again — initialize immediately.
+      if (window.google?.maps) {
+        initializeMap();
+      } else {
+        existingScript.addEventListener("load", initializeMap, { once: true });
+        existingScript.addEventListener("error", () => setMapError(true), {
+          once: true,
+        });
+      }
     } else {
       const script = document.createElement("script");
 

@@ -22,7 +22,7 @@ interface LocationState {
 }
 
 export default function Login() {
-  const { user, loading, signIn } = useAuth();
+  const { user, loading, signIn, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
@@ -65,6 +65,9 @@ export default function Login() {
 
       if (!result.data?.user?.email_confirmed_at) {
         setError("Please verify your email address before signing in.");
+        // Sign back out so the auth listener doesn't immediately redirect
+        // an unverified user into /account.
+        await logout();
 
         return;
       }

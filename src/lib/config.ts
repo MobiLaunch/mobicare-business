@@ -37,6 +37,8 @@ export function isStripeConfigured(): boolean {
 }
 
 // ─── EmailJS ──────────────────────────────────────────────────────────────────
+// Can be configured via .env or in Admin Settings (stored in localStorage).
+// Admin-settings values win so post-deployment changes don't require a rebuild.
 export const EMAILJS_CONFIG = {
   serviceId: requireEnv("VITE_EMAILJS_SERVICE_ID"),
   bookingTemplateId: requireEnv("VITE_EMAILJS_BOOKING_TEMPLATE_ID"),
@@ -46,7 +48,19 @@ export const EMAILJS_CONFIG = {
 
 // Backwards-compatible helper used by BookingWizard
 export function getEmailJSConfig() {
-  return EMAILJS_CONFIG;
+  if (typeof localStorage === "undefined") return EMAILJS_CONFIG;
+
+  const lsService = localStorage.getItem("ejs_service");
+  const lsBooking = localStorage.getItem("ejs_booking");
+  const lsOrder = localStorage.getItem("ejs_order");
+  const lsPubkey = localStorage.getItem("ejs_pubkey");
+
+  return {
+    serviceId: lsService || EMAILJS_CONFIG.serviceId,
+    bookingTemplateId: lsBooking || EMAILJS_CONFIG.bookingTemplateId,
+    orderTemplateId: lsOrder || EMAILJS_CONFIG.orderTemplateId,
+    publicKey: lsPubkey || EMAILJS_CONFIG.publicKey,
+  };
 }
 
 export const GOOGLE_MAPS_API_KEY = requireEnv("VITE_GOOGLE_MAPS_API_KEY");

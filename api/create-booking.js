@@ -28,6 +28,28 @@ export default async function handler(req, res) {
   try {
     const booking = req.body || {};
 
+    // Basic server-side validation — the client validates too, but never
+    // trust the wire. Required: name, email, phone, service, date, time.
+    const name = booking.name || booking.customer_name || "";
+    const email = booking.email || booking.customer_email || "";
+    const phone = booking.phone || booking.customer_phone || "";
+    const service = booking.service || "";
+    const apptDate = booking.date || booking.appt_date || "";
+    const apptTime = booking.time || booking.appt_time || "";
+
+    if (!name.trim() || !service.trim() || !apptDate || !apptTime) {
+      return res.status(400).json({
+        error:
+          "Missing required booking fields (name, service, date, and time are required).",
+      });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "A valid email is required." });
+    }
+    if (!phone.trim()) {
+      return res.status(400).json({ error: "A phone number is required." });
+    }
+
     const sbUrl =
       process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
     const sbKey =
@@ -36,15 +58,15 @@ export default async function handler(req, res) {
       process.env.VITE_SUPABASE_ANON_KEY;
 
     const payload = {
-      customer_name: booking.name || booking.customer_name || "",
-      customer_email: booking.email || booking.customer_email || "",
-      customer_phone: booking.phone || booking.customer_phone || "",
-      service: booking.service || "",
+      customer_name: name,
+      customer_email: email,
+      customer_phone: phone,
+      service,
       device_type: booking.deviceType || booking.device_type || "",
       device_model: booking.deviceModel || booking.device_model || "",
       issue: booking.issue || "",
-      appt_date: booking.date || booking.appt_date || "",
-      appt_time: booking.time || booking.appt_time || "",
+      appt_date: apptDate,
+      appt_time: apptTime,
       notes: booking.notes || "",
       visit_type: booking.visit_type || booking.visitType || "in-store",
       home_address: booking.home_address || booking.homeAddress || "",

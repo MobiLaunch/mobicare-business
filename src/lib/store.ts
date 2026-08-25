@@ -431,47 +431,45 @@ export const useProductStore = create<ProductState>()(
 
       // ── bootstrap: called once on app mount ──
       init: async () => {
-        if (productStoreInitPromise) {
-          return productStoreInitPromise;
-        }
+        if (!productStoreInitPromise) {
+          productStoreInitPromise = (async () => {
+            if (!isSupabaseConfigured()) {
+              set({ usingSupabase: false });
 
-        productStoreInitPromise = (async () => {
-          if (!isSupabaseConfigured()) {
-            set({ usingSupabase: false });
-
-            return;
-          }
-
-          set({ loading: true, loadError: null });
-
-          try {
-            const [products, categories, orders] = await Promise.all([
-              sbFetchProducts(),
-              sbFetchCategories(),
-              sbFetchOrders(),
-            ]);
-
-            if (products === null) {
-              throw new Error(
-                "Could not reach Supabase — check URL / anon key.",
-              );
+              return;
             }
 
-            set({
-              products: products ?? get().products,
-              categories: categories ?? get().categories,
-              orders: orders ?? get().orders,
-              usingSupabase: true,
-              loading: false,
-            });
-          } catch (e) {
-            set({
-              loadError: e instanceof Error ? e.message : String(e),
-              loading: false,
-              usingSupabase: false,
-            });
-          }
-        })();
+            set({ loading: true, loadError: null });
+
+            try {
+              const [products, categories, orders] = await Promise.all([
+                sbFetchProducts(),
+                sbFetchCategories(),
+                sbFetchOrders(),
+              ]);
+
+              if (products === null) {
+                throw new Error(
+                  "Could not reach Supabase — check URL / anon key.",
+                );
+              }
+
+              set({
+                products: products ?? get().products,
+                categories: categories ?? get().categories,
+                orders: orders ?? get().orders,
+                usingSupabase: true,
+                loading: false,
+              });
+            } catch (e) {
+              set({
+                loadError: e instanceof Error ? e.message : String(e),
+                loading: false,
+                usingSupabase: false,
+              });
+            }
+          })();
+        }
 
         try {
           await productStoreInitPromise;

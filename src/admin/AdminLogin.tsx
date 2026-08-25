@@ -58,6 +58,12 @@ export default function AdminLogin() {
     return () => clearInterval(t);
   }, [lockSecs]);
 
+  // Clear the lockout error once the countdown reaches zero so the form
+  // doesn't show a stale "try again in Xs" message.
+  useEffect(() => {
+    if (lockSecs === 0) setError("");
+  }, [lockSecs]);
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (loading || lockSecs > 0) return;

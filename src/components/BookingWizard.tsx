@@ -674,15 +674,7 @@ export default function BookingWizard({
                                     ),
                                 )}
                                 type="button"
-                                onClick={() => {
-                                  if (
-                                    selectedDeviceType.models.includes(
-                                      form.deviceModel,
-                                    )
-                                  ) {
-                                    update("deviceModel", "__other__");
-                                  }
-                                }}
+                                onClick={() => update("deviceModel", "__other__")}
                               >
                                 Other Modelâ€¦
                               </button>

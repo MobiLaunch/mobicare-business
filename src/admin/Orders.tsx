@@ -63,7 +63,11 @@ export default function Orders() {
   const StatusSelect = ({ order }: { order: Order }) => (
     <Select
       className={`w-[150px] rounded-full text-xs font-bold ${STATUS_STYLES[order.status] || "bg-surface-tertiary"}`}
-      selectedKey={order.status || "paid"}
+      selectedKey={
+        STATUS_OPTIONS.includes(order.status as (typeof STATUS_OPTIONS)[number])
+          ? order.status
+          : "paid"
+      }
       onSelectionChange={(key) => handleStatusChange(order.id, String(key))}
     >
       <Select.Trigger className="rounded-full border-0">

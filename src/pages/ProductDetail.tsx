@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -38,6 +38,11 @@ export default function ProductDetail() {
   const addItem = useCartStore((s) => s.addItem);
   const addToast = useToastStore((s) => s.add);
   const [qty, setQty] = useState(1);
+
+  // Reset quantity when navigating between products (same route, new param)
+  useEffect(() => {
+    setQty(1);
+  }, [id]);
 
   if (!product || !product.active) {
     return (
@@ -101,7 +106,7 @@ export default function ProductDetail() {
   return (
     <main className="mx-auto max-w-[1400px] overflow-x-hidden px-[clamp(12px,3vw,24px)] py-6 pb-16">
       <PageMeta
-        description={`${product.name} - ${product.description.slice(0, 150)}... Buy electronic accessories at Mobicare.`}
+        description={`${product.name} - ${(product.description || "").slice(0, 150)}... Buy electronic accessories at Mobicare.`}
         title={`${product.name} | Mobicare Shop`}
       />
 

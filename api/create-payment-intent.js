@@ -29,13 +29,23 @@ export default async function handler(req, res) {
     const { amount, currency = "usd", items, shipping, idempotencyKey } =
       req.body || {};
 
+    // Validate amount before hitting Stripe — reject negative/absent totals
+    const amountCents = Math.round(Number(amount));
+
+    if (!Number.isFinite(amountCents) || amountCents <= 0) {
+      return res.status(400).json({
+        error: "Invalid payment amount.",
+      });
+    }
+
     const stripeSecretKey =
       process.env.STRIPE_SECRET_KEY || process.env.STRIPE_KEY;
 
     if (stripeSecretKey) {
       // Use direct fetch to Stripe API so zero extra serverless dependencies are required
       const params = new URLSearchParams();
-      params.append("amount", String(Math.round(amount || 0)));
+
+      params.append("amount", String(amountCents));
       params.append("currency", currency);
       params.append("automatic_payment_methods[enabled]", "true");
 

@@ -24,9 +24,11 @@ export default function OrderSuccess() {
   const orders = useProductStore((s) => s.orders);
   const business = useSiteStore((s) => s.business);
 
-  // Find order from query param or fallback to the most recent placed order
+  // Find order from query param. Only fall back to the most recent order
+  // when no explicit id was supplied — never show a different order for an
+  // unknown id.
   const order = orderIdParam
-    ? orders.find((o) => o.id === orderIdParam) || orders[0]
+    ? orders.find((o) => o.id === orderIdParam)
     : orders[0];
 
   const arrival = getEstimatedArrivalWindow(3, 5);
@@ -204,15 +206,15 @@ export default function OrderSuccess() {
                 Shipping Destination
               </h3>
               <p className="m-0 text-sm leading-relaxed text-foreground">
-                <strong>{order.customer.name}</strong>
+                <strong>{order.customer?.name || "Customer"}</strong>
                 <br />
-                {order.customer.address}
+                {order.customer?.address}
                 <br />
-                {order.customer.city}, {order.customer.state}{" "}
-                {order.customer.zip}
+                {order.customer?.city}, {order.customer?.state}{" "}
+                {order.customer?.zip}
                 <br />
                 <span className="text-xs text-muted">
-                  {order.customer.email}
+                  {order.customer?.email}
                 </span>
               </p>
             </div>

@@ -180,6 +180,7 @@ export default function CartDrawer() {
         setPayError("");
         setIsProcessing(false);
         setCompletedOrder(null);
+        checkoutRequestIdRef.current = null;
       }, 300);
 
       return () => clearTimeout(t);
@@ -290,6 +291,22 @@ export default function CartDrawer() {
         if (response.ok) {
           const resJson = await response.json();
 
+          // When Stripe is live-server-side, refuse to record a paid order
+          // unless the PaymentIntent actually succeeded. Simulation mode
+          // (no STRIPE_SECRET_KEY configured) returns `simulated: true`.
+          if (
+            resJson?.id &&
+            !resJson.simulated &&
+            resJson.status &&
+            resJson.status !== "succeeded" &&
+            resJson.status !== "requires_capture"
+          ) {
+            throw new Error(
+              resJson.error ||
+                `Payment was not completed (status: ${resJson.status}).`,
+            );
+          }
+
           console.info("PaymentIntent generated:", resJson);
         }
       } catch (err) {
@@ -298,6 +315,14 @@ export default function CartDrawer() {
           "Direct checkout processing via local fallback handler",
           err,
         );
+        // Re-throw real payment rejections so the user sees the failure
+        // instead of getting a "paid" order for an unprocessed payment.
+        if (
+          err instanceof Error &&
+          err.message.startsWith("Payment was not completed")
+        ) {
+          throw err;
+        }
       }
 
       // Simulate instantaneous secure Stripe tokenization & settlement

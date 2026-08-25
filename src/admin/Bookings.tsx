@@ -166,6 +166,14 @@ export default function Bookings() {
       } else {
         addToast("Could not update appointment details", "error");
       }
+    } else {
+      // No Supabase — apply locally so the UI still reflects the edit.
+      setBookings((bs) =>
+        bs.map((b) => (b.id === selected.id ? { ...editForm } : b)),
+      );
+      setSelected({ ...editForm });
+      setIsEditing(false);
+      addToast("Updated locally (Supabase not connected)", "info");
     }
   };
 
@@ -181,7 +189,13 @@ export default function Bookings() {
   const StatusSelect = ({ booking }: { booking: BookingRecord }) => (
     <Select
       className={`w-[140px] rounded-full text-xs font-bold ${STATUS_STYLES[booking.status] || "bg-surface-tertiary"}`}
-      selectedKey={booking.status}
+      selectedKey={
+        STATUS_OPTIONS.includes(
+          booking.status as (typeof STATUS_OPTIONS)[number],
+        )
+          ? booking.status
+          : "pending"
+      }
       onSelectionChange={(key) => handleStatusChange(booking.id, String(key))}
     >
       <Select.Trigger className="rounded-full border-0">
@@ -516,7 +530,14 @@ export default function Bookings() {
 
                         <Select
                           className="sm:col-span-2"
-                          selectedKey={editForm.service}
+                          selectedKey={
+                            // Stored bookings may hold a display label rather
+                            // than a service id — only pass a key the list
+                            // actually contains, otherwise react-aria throws.
+                            repairServices.some((s) => s.id === editForm.service)
+                              ? editForm.service
+                              : null
+                          }
                           onSelectionChange={(key) =>
                             setEditForm(
                               (f) => f && { ...f, service: String(key) },

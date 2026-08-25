@@ -103,12 +103,19 @@ export default function Shop() {
 
   const searchSuggestions = categories
     .slice(0, 3)
-    .map((category) => category.name);
+    .map((category) => ({ name: category.name, id: category.id }));
+
   const selectedSort =
     SORT_OPTIONS.find((option) => option.value === sort) || SORT_OPTIONS[0];
 
   const applySearch = (value: string) => {
     setSearch(value);
+    setSearchMenuOpen(false);
+  };
+
+  const applyCategorySuggestion = (catId: string) => {
+    handleCatChange(catId);
+    setSearch("");
     setSearchMenuOpen(false);
   };
 
@@ -186,13 +193,13 @@ export default function Shop() {
             <div className="absolute inset-x-0 top-[calc(100%+6px)] z-20 overflow-hidden rounded-2xl border border-border bg-surface shadow-lg">
               {searchSuggestions.map((suggestion) => (
                 <button
-                  key={suggestion}
+                  key={suggestion.id}
                   className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-foreground hover:bg-surface-secondary"
                   type="button"
-                  onClick={() => applySearch(suggestion)}
+                  onClick={() => applyCategorySuggestion(suggestion.id)}
                 >
                   <History className="size-4 text-muted" />
-                  <span>{suggestion}</span>
+                  <span>Browse {suggestion.name}</span>
                 </button>
               ))}
             </div>

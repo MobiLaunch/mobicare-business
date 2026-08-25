@@ -12,6 +12,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config";
 
 // ─── Input sanitization (XSS prevention) ──────────────────────────────────
+// NOTE: React already escapes interpolated text, so this is only needed for
+// values that end up in non-React contexts (e.g. the EmailJS email body).
 export function sanitizeInput(str: unknown): unknown {
   if (typeof str !== "string") return str;
 
@@ -20,8 +22,7 @@ export function sanitizeInput(str: unknown): unknown {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;")
-    .replace(/\//g, "&#x2F;");
+    .replace(/'/g, "&#x27;");
 }
 
 // ─── Supabase client ───────────────────────────────────────────────────────
@@ -585,10 +586,20 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
 
       return data.ok === true;
     }
+
+    // Non-JSON response (e.g. SPA rewrite returned index.html) → fall through
+    // to the direct-Supabase fallback below.
   } catch (err) {
-    if (err instanceof Error && !err.message.includes("JSON")) {
+    // Network/HTTP failures from the API route are real errors — surface them
+    // instead of silently pretending nothing happened. Only fall through when
+    // the endpoint is genuinely unreachable (TypeError from fetch itself).
+    if (!(err instanceof TypeError)) {
       throw err;
     }
+    console.warn(
+      "/api/create-booking unreachable, falling back to direct Supabase insert.",
+      err,
+    );
   }
 
   // Fallback: If /api/create-booking serverless function is missing or returns HTML (SPA rewrite),

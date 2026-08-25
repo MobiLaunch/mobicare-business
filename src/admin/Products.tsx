@@ -105,8 +105,12 @@ export default function Products() {
   };
 
   useEffect(() => {
-    if (searchParams.get("action") === "add") openAdd();
-  }, []);
+    if (searchParams.get("action") === "add") {
+      setEditingId(null);
+      setForm({ ...EMPTY_PRODUCT });
+      setModalOpen(true);
+    }
+  }, [searchParams]);
 
   const filtered = products.filter((p) => {
     const matchesCat = catFilter === "all" || p.category === catFilter;
@@ -163,6 +167,11 @@ export default function Products() {
       (!Number.isFinite(compareNum) || compareNum < 0)
     ) {
       addToast("Please enter a valid compare-at price", "error");
+
+      return;
+    }
+    if (compareNum != null && compareNum <= priceNum) {
+      addToast("Compare-at price must be higher than the selling price", "error");
 
       return;
     }

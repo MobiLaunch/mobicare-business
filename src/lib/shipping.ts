@@ -95,9 +95,17 @@ export function getEstimatedArrivalWindow(
   fromDate: Date = new Date(),
 ) {
   const cutoff = getDispatchCutoff(fromDate);
-  const dispatchDate = cutoff.isToday
-    ? fromDate
-    : addDays(fromDate, isSunday(fromDate) ? 1 : 1);
+  // If the order misses today's cutoff, transit starts from the next
+  // business day (Sundays are skipped — carriers are closed).
+  let dispatchDate = fromDate;
+
+  if (!cutoff.isToday) {
+    dispatchDate = addDays(fromDate, isSunday(fromDate) ? 1 : 1);
+    if (isSaturday(dispatchDate) && isSunday(addDays(dispatchDate, 1))) {
+      dispatchDate = addDays(dispatchDate, 2);
+    }
+    if (isSunday(dispatchDate)) dispatchDate = addDays(dispatchDate, 1);
+  }
 
   const minDate = calculateTransitDate(dispatchDate, minDays);
   const maxDate = calculateTransitDate(dispatchDate, maxDays);
@@ -138,11 +146,18 @@ export function getDynamicShippingOptions(
 
   const expressArrival = getEstimatedArrivalWindow(1, 2, fromDate);
 
-  // Local Pickup
+  // Local Pickup — shop is open Mon–Sat (closed Sunday)
   const isShopOpenToday = !isSunday(fromDate);
+  const nextOpenDay = (() => {
+    let d = addDays(fromDate, 1);
+
+    while (isSunday(d)) d = addDays(d, 1);
+
+    return format(d, "EEEE");
+  })();
   const pickupText = isShopOpenToday
     ? "Ready today in ~1 hour"
-    : "Ready Monday at 10:00 AM";
+    : `Ready ${nextOpenDay} at 10:00 AM`;
 
   return [
     {

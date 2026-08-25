@@ -140,10 +140,15 @@ export default function Settings() {
   };
 
   const handleCopySQL = () => {
-    navigator.clipboard.writeText(SCHEMA_SQL).then(() => {
-      setSqlCopied(true);
-      setTimeout(() => setSqlCopied(false), 2000);
-    });
+    navigator.clipboard
+      .writeText(SCHEMA_SQL)
+      .then(() => {
+        setSqlCopied(true);
+        setTimeout(() => setSqlCopied(false), 2000);
+      })
+      .catch(() => {
+        addToast("Could not access the clipboard — copy the SQL manually.", "error");
+      });
   };
 
   const handleSaveEmailjs = () => {

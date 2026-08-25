@@ -98,6 +98,14 @@ export default function Categories() {
       updateCategory(editingId, form);
       addToast("Category updated successfully", "success");
     } else {
+      const newId =
+        form.id || form.name.toLowerCase().replace(/\s+/g, "-");
+
+      if (categories.some((c) => c.id === newId)) {
+        addToast(`A category with id "${newId}" already exists`, "error");
+
+        return;
+      }
       addCategory(form);
       addToast("New category created", "success");
     }

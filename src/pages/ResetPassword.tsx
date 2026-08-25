@@ -42,7 +42,24 @@ export default function ResetPassword() {
       if (data?.session) setReady(true);
     });
 
-    return () => listener?.subscription?.unsubscribe();
+    // Don't leave the user stuck on "Authenticating…" forever if no recovery
+    // session ever arrives (e.g. page opened directly without the email link).
+    const timeout = setTimeout(() => {
+      setReady((r) => {
+        if (!r) {
+          setError(
+            "No password-reset session found. Open the link from your reset email, or request a new one from the Forgot Password page.",
+          );
+        }
+
+        return r;
+      });
+    }, 6000);
+
+    return () => {
+      clearTimeout(timeout);
+      listener?.subscription?.unsubscribe();
+    };
   }, []);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
