@@ -288,7 +288,30 @@ export default function CartDrawer() {
           }),
         });
 
-        if (response.ok) {
+        if (!response.ok) {
+          const errJson = await response.json().catch(() => ({}));
+
+          // Surface auth/config failures loudly — a 401 here means the
+          // server's STRIPE_SECRET_KEY is missing/invalid (or deployment
+          // protection is blocking /api/*), and the customer must know.
+          if (response.status === 401 || response.status === 403) {
+            throw new Error(
+              errJson.error ||
+                "Payment gateway authentication failed (401). The store's Stripe secret key is missing or invalid — please contact support.",
+            );
+          }
+          if (response.status >= 500) {
+            console.warn(
+              "Payment intent endpoint unavailable; continuing in local fallback mode.",
+              errJson,
+            );
+          } else {
+            throw new Error(
+              errJson.error ||
+                `Payment could not be initialized (HTTP ${response.status}).`,
+            );
+          }
+        } else {
           const resJson = await response.json();
 
           // When Stripe is live-server-side, refuse to record a paid order
@@ -310,19 +333,23 @@ export default function CartDrawer() {
           console.info("PaymentIntent generated:", resJson);
         }
       } catch (err) {
-        // Backend API offline/local dev fallback: seamless direct processing
+        // Re-throw real payment failures so the user sees the error instead
+        // of getting a "paid" order for an unprocessed payment. Network-level
+        // failures (endpoint offline in local dev) fall through to the
+        // seamless local fallback.
+        if (
+          err instanceof TypeError ||
+          (err instanceof Error &&
+            (err.message.startsWith("Payment was not completed") ||
+              err.message.includes("401") ||
+              err.message.startsWith("Payment could not be initialized")))
+        ) {
+          throw err;
+        }
         console.warn(
           "Direct checkout processing via local fallback handler",
           err,
         );
-        // Re-throw real payment rejections so the user sees the failure
-        // instead of getting a "paid" order for an unprocessed payment.
-        if (
-          err instanceof Error &&
-          err.message.startsWith("Payment was not completed")
-        ) {
-          throw err;
-        }
       }
 
       // Simulate instantaneous secure Stripe tokenization & settlement
@@ -348,7 +375,65 @@ export default function CartDrawer() {
         total,
       };
 
-      // Persist order in store & Supabase
+      // Persist order: server-side first (service-role key bypasses RLS and
+      // stamps user_id so it appears in the customer's account), then local
+      // store for instant UI feedback.
+      try {
+        const orderResponse = await fetch("/api/create-order", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(session?.access_token
+              ? { Authorization: `Bearer ${session.access_token}` }
+              : {}),
+          },
+          body: JSON.stringify({
+            id: newOrder.id,
+            items: newOrder.items.map((i) => ({
+              id: i.id,
+              name: i.name,
+              price: i.price,
+              qty: i.qty,
+            })),
+            customer: newOrder.customer,
+            subtotal: newOrder.subtotal,
+            shipping: newOrder.shipping,
+            tax: newOrder.tax,
+            total: newOrder.total,
+          }),
+        });
+
+        if (!orderResponse.ok) {
+          const errJson = await orderResponse.json().catch(() => ({}));
+
+          throw new Error(
+            errJson.error ||
+              `Order could not be saved (HTTP ${orderResponse.status}).`,
+          );
+        }
+
+        const savedJson = await orderResponse.json().catch(() => null);
+
+        if (savedJson && !savedJson.ok && !savedJson.simulated) {
+          throw new Error(savedJson.error || "Order could not be saved.");
+        }
+      } catch (orderErr) {
+        console.error("Server-side order persistence failed:", orderErr);
+        addToast(
+          orderErr instanceof Error
+            ? `Payment captured, but saving your order failed: ${orderErr.message}`
+            : "Payment captured, but saving your order failed.",
+          "error",
+        );
+        setIsProcessing(false);
+        setPayError(
+          "Your payment went through, but we couldn't save the order. Please contact support with your payment receipt.",
+        );
+
+        return;
+      }
+
+      // Local optimistic state so the UI reflects the order immediately
       await addOrder(newOrder);
 
       setCompletedOrder(newOrder);

@@ -484,10 +484,24 @@ export async function sbInsertOrder(order: Order): Promise<Order | null> {
     ? rawStatus
     : "paid";
 
+  // Stamp the signed-in user's id so RLS ("Customers can view own orders")
+  // and the Account page's user_id lookup can find this order. Without this,
+  // every order gets a NULL user_id and is invisible to customer accounts.
+  let userId: string | null = null;
+
+  try {
+    const { data } = await sb.auth.getSession();
+
+    userId = data?.session?.user?.id ?? null;
+  } catch {
+    userId = null;
+  }
+
   const { data: orderRow, error: orderErr } = await sb
     .from("orders")
     .insert({
       id: order.id,
+      ...(userId ? { user_id: userId } : {}),
       customer_name: order.customer?.name || "",
       customer_email: order.customer?.email || "",
       customer_phone: order.customer?.phone || "",
