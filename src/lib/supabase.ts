@@ -464,10 +464,25 @@ export async function sbFetchOrders(): Promise<Order[] | null> {
   return data.map(dbToOrder);
 }
 
+const VALID_ORDER_STATUSES = [
+  "paid",
+  "processing",
+  "shipped",
+  "delivered",
+  "cancelled",
+  "refunded",
+];
+
 export async function sbInsertOrder(order: Order): Promise<Order | null> {
   const sb = getClient();
 
   if (!sb) return null;
+
+  const rawStatus = (order.status || "").toLowerCase().trim();
+  const safeStatus = VALID_ORDER_STATUSES.includes(rawStatus)
+    ? rawStatus
+    : "paid";
+
   const { data: orderRow, error: orderErr } = await sb
     .from("orders")
     .insert({
@@ -483,7 +498,7 @@ export async function sbInsertOrder(order: Order): Promise<Order | null> {
       shipping_cost: order.shipping,
       tax: order.tax,
       total: order.total,
-      status: order.status || "pending",
+      status: safeStatus,
     })
     .select()
     .single();
@@ -520,7 +535,16 @@ export async function sbUpdateOrderStatus(
   const sb = getClient();
 
   if (!sb) return null;
-  const { error } = await sb.from("orders").update({ status }).eq("id", id);
+
+  const rawStatus = (status || "").toLowerCase().trim();
+  const safeStatus = VALID_ORDER_STATUSES.includes(rawStatus)
+    ? rawStatus
+    : "paid";
+
+  const { error } = await sb
+    .from("orders")
+    .update({ status: safeStatus })
+    .eq("id", id);
 
   if (error) {
     console.error("sbUpdateOrderStatus:", error);
@@ -632,6 +656,14 @@ export async function sbFetchBookings(): Promise<BookingRecord[] | null> {
   return data as BookingRecord[];
 }
 
+const VALID_BOOKING_STATUSES = [
+  "pending",
+  "confirmed",
+  "completed",
+  "cancelled",
+  "no-show",
+];
+
 export async function sbUpdateBookingStatus(
   id: string,
   status: string,
@@ -639,7 +671,16 @@ export async function sbUpdateBookingStatus(
   const sb = getClient();
 
   if (!sb) return null;
-  const { error } = await sb.from("bookings").update({ status }).eq("id", id);
+
+  const rawStatus = (status || "").toLowerCase().trim();
+  const safeStatus = VALID_BOOKING_STATUSES.includes(rawStatus)
+    ? rawStatus
+    : "pending";
+
+  const { error } = await sb
+    .from("bookings")
+    .update({ status: safeStatus })
+    .eq("id", id);
 
   if (error) {
     console.error("sbUpdateBookingStatus:", error);

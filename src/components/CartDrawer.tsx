@@ -32,7 +32,7 @@ import {
 } from "@heroui/react";
 
 import { useCartStore, useProductStore, useToastStore } from "@/lib/store";
-import { getClient, sbInsertOrder } from "@/lib/supabase";
+import { getClient } from "@/lib/supabase";
 import { useAuth } from "@/lib/AuthContext";
 import {
   getDynamicShippingOptions,
@@ -305,7 +305,7 @@ export default function CartDrawer() {
 
       const newOrder: Order = {
         id: `ORD-${Date.now().toString(36).toUpperCase()}`,
-        status: "confirmed",
+        status: "paid",
         createdAt: new Date().toISOString(),
         customer: {
           name: shippingInfo.name,
@@ -325,9 +325,6 @@ export default function CartDrawer() {
 
       // Persist order in store & Supabase
       await addOrder(newOrder);
-      if (sb) {
-        await sbInsertOrder(newOrder);
-      }
 
       setCompletedOrder(newOrder);
       clearCart();

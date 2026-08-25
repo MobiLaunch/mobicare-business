@@ -582,11 +582,22 @@ export const useProductStore = create<ProductState>()(
 
       // ── orders ──
       addOrder: async (order) => {
+        const rawStatus = (order.status || "").toLowerCase().trim();
+        const validStatuses = [
+          "paid",
+          "processing",
+          "shipped",
+          "delivered",
+          "cancelled",
+          "refunded",
+        ];
+        const status = validStatuses.includes(rawStatus) ? rawStatus : "paid";
+
         const o = {
           ...order,
-          id: uuidv4(),
-          createdAt: new Date().toISOString(),
-          status: "pending",
+          id: order.id || uuidv4(),
+          createdAt: order.createdAt || new Date().toISOString(),
+          status,
         } as Order;
 
         set({ orders: [o, ...get().orders] });
