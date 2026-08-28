@@ -1,56 +1,30 @@
 // Vercel Serverless Function: /api/create-order
-// Persists a completed order to Supabase SERVER-SIDE using the service-role
-// key, bypassing RLS (which intentionally has no public INSERT policy on
-// orders — the browser must never be able to write orders directly).
-//
-// SECURITY MODEL:
-//   - The client sends the order payload AFTER its payment intent succeeded.
-//   - If the caller supplies a Supabase access token, we verify it and stamp
-//     the order's user_id from the authenticated session (never from the
-//     request body) so customer account history works.
-//   - Amount is re-validated server-side; totals are recomputed from item
-//     prices rather than trusting client-supplied math where possible.
+// Persists a completed order to Supabase server-side using the service-role key.
+// The API never reports a simulated order as successfully persisted.
 
 export default async function handler(req, res) {
-  // CORS
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,OPTIONS,POST",
-  );
+  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization",
+    "Authorization, Content-Type, Idempotency-Key",
   );
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+  if (req.method === "OPTIONS") return res.status(204).end();
 
   if (req.method !== "POST") {
-    res.setHeader("Allow", ["POST", "OPTIONS"]);
-    return res.status(405).json({
-      error: `Method ${req.method} Not Allowed. Please send a POST request.`,
-    });
+    res.setHeader("Allow", "POST, OPTIONS");
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
     const sbUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-    // Service role bypasses RLS. Fall back to anon key only as a last resort
-    // (which will fail against hardened RLS — by design).
-    const sbKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.SUPABASE_ANON_KEY ||
-      process.env.VITE_SUPABASE_ANON_KEY;
+    const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!sbUrl || !sbKey) {
-      return res.status(200).json({
-        ok: true,
-        simulated: true,
-        message:
-          "Supabase not configured on the server — order kept client-side only.",
-      });
+      console.error("Supabase server credentials are not configured.");
+      return res.status(503).json({ error: "Orders are temporarily unavailable." });
     }
 
     const authHeader = req.headers.authorization || "";
@@ -58,32 +32,24 @@ export default async function handler(req, res) {
       ? authHeader.slice("Bearer ".length)
       : null;
 
-    // ── Resolve the authenticated user (if any) ────────────────────────────
     let userId = null;
 
     if (accessToken) {
       const whoResponse = await fetch(`${sbUrl.replace(/\/$/, "")}/auth/v1/user`, {
-        method: "GET",
         headers: {
           apikey: sbKey,
           Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
         },
       });
 
-      if (whoResponse.ok) {
-        const who = await whoResponse.json().catch(() => null);
-
-        userId = who?.id || null;
-      } else {
-        console.warn(
-          "create-order: supplied access token was rejected by Supabase Auth;",
-          whoResponse.status,
-        );
+      if (!whoResponse.ok) {
+        return res.status(401).json({ error: "Invalid authentication token." });
       }
+
+      const who = await whoResponse.json().catch(() => null);
+      userId = who?.id || null;
     }
 
-    // ── Validate & normalize the payload ───────────────────────────────────
     const body = req.body || {};
     const items = Array.isArray(body.items) ? body.items : [];
 
@@ -91,40 +57,50 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Order has no items." });
     }
 
-    for (const item of items) {
+    const normalizedItems = items.map((item) => {
       const price = Number(item.price);
       const qty = Number(item.qty);
 
-      if (
-        !item.name ||
-        !Number.isFinite(price) ||
-        price < 0 ||
-        !Number.isInteger(qty) ||
-        qty < 1
-      ) {
-        return res.status(400).json({
-          error: `Invalid line item: ${item.name || "(unnamed)"}`,
-        });
+      if (!item.name || !Number.isFinite(price) || price < 0 || !Number.isInteger(qty) || qty < 1) {
+        throw new Error(`Invalid line item: ${item.name || "(unnamed)"}`);
       }
-    }
 
-    const num = (v, fallback = 0) => {
-      const n = Number(v);
+      return {
+        product_id: item.id ? String(item.id) : null,
+        name: String(item.name).slice(0, 300),
+        price,
+        qty,
+      };
+    });
 
-      return Number.isFinite(n) && n >= 0 ? n : fallback;
+    const money = (value) => {
+      const number = Number(value);
+      return Number.isFinite(number) && number >= 0 ? Math.round(number * 100) / 100 : 0;
     };
 
-    const subtotal = num(body.subtotal);
-    const shippingCost = num(body.shipping);
-    const tax = num(body.tax);
-    const total = num(body.total);
+    const subtotal = money(
+      normalizedItems.reduce((sum, item) => sum + item.price * item.qty, 0),
+    );
+    const shippingCost = money(body.shipping);
+    const tax = money(body.tax);
+    const total = money(subtotal + shippingCost + tax);
 
     if (total <= 0) {
       return res.status(400).json({ error: "Order total must be positive." });
     }
 
-    const customer = body.customer || {};
+    // A completed payment should supply the Stripe PaymentIntent ID. Keeping
+    // it on the order makes webhook reconciliation possible and prevents the
+    // order system from becoming detached from the payment system.
+    const paymentIntentId = String(
+      body.paymentIntentId || body.payment_intent_id || "",
+    ).trim();
 
+    if (!paymentIntentId) {
+      return res.status(400).json({ error: "Payment intent is required." });
+    }
+
+    const customer = body.customer || {};
     const orderRow = {
       id: String(body.id || "").trim() || undefined,
       status: "paid",
@@ -140,6 +116,7 @@ export default async function handler(req, res) {
       tax,
       total,
       ...(userId ? { user_id: userId } : {}),
+      payment_intent_id: paymentIntentId,
     };
 
     const headers = {
@@ -149,70 +126,54 @@ export default async function handler(req, res) {
       Prefer: "return=representation",
     };
 
-    // ── Insert the order row ───────────────────────────────────────────────
-    const orderResponse = await fetch(
-      `${sbUrl.replace(/\/$/, "")}/rest/v1/orders`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify(orderRow),
-      },
-    );
+    const orderResponse = await fetch(`${sbUrl.replace(/\/$/, "")}/rest/v1/orders`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(orderRow),
+    });
 
     if (!orderResponse.ok) {
       const errData = await orderResponse.json().catch(() => ({}));
-
       console.error("create-order: orders insert failed:", errData);
       return res.status(orderResponse.status === 409 ? 409 : 500).json({
-        error:
-          errData.message ||
-          "Failed to persist order in database (orders insert).",
+        error: "Failed to persist order.",
       });
     }
 
     const createdOrders = await orderResponse.json().catch(() => []);
     const savedOrder = createdOrders[0];
 
-    if (!savedOrder) {
-      return res.status(500).json({
-        error: "Order insert returned no row.",
-      });
+    if (!savedOrder?.id) {
+      return res.status(500).json({ error: "Order insert returned no row." });
     }
 
-    // ── Insert line items ──────────────────────────────────────────────────
-    const lineItems = items.map((i) => ({
+    const lineItems = normalizedItems.map((item) => ({
       order_id: savedOrder.id,
-      product_id: i.id ? String(i.id) : null,
-      name: String(i.name).slice(0, 300),
-      price: Number(i.price),
-      qty: Number(i.qty),
+      ...item,
     }));
 
-    const itemsResponse = await fetch(
-      `${sbUrl.replace(/\/$/, "")}/rest/v1/order_items`,
-      {
-        method: "POST",
-        headers: { ...headers, Prefer: "return=minimal" },
-        body: JSON.stringify(lineItems),
-      },
-    );
+    const itemsResponse = await fetch(`${sbUrl.replace(/\/$/, "")}/rest/v1/order_items`, {
+      method: "POST",
+      headers: { ...headers, Prefer: "return=minimal" },
+      body: JSON.stringify(lineItems),
+    });
 
     if (!itemsResponse.ok) {
-      // Order exists but items failed — log loudly; the order itself is safe.
       const itemsErr = await itemsResponse.json().catch(() => ({}));
-
       console.error("create-order: order_items insert failed:", itemsErr);
+      return res.status(500).json({ error: "Failed to persist order items." });
     }
 
-    return res.status(200).json({
+    return res.status(201).json({
       ok: true,
       orderId: savedOrder.id,
-      userId: userId || null,
+      userId,
+      total,
     });
   } catch (error) {
     console.error("create-order error:", error);
-    return res.status(500).json({
-      error: error.message || "Internal server error creating order",
+    return res.status(400).json({
+      error: error.message || "Invalid order.",
     });
   }
 }
