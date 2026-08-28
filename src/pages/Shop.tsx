@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import LogoAndroid from "@gravity-ui/icons/LogoAndroid";
 import LogoApple from "@gravity-ui/icons/LogoApple";
-import { Battery, Cable, CircleCheck, FilterX, Headphones, History, Layers, Search, SearchX, Shield, SlidersHorizontal, Star, Store, X, Zap } from "lucide-react";
+import { Battery, Cable, CircleCheck, FilterX, Headphones, History, Layers, Search, SearchX, SlidersHorizontal, Star, Store, X, Zap } from "lucide-react";
 import { InputGroup, TextField } from "@heroui/react";
 import { useShallow } from "zustand/react/shallow";
 
