@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@emailjs/browser": "^4.4.1",
     "@heroui/react": "^3.2.4",
     "@heroui/styles": "3.2.4",
     "@stripe/react-stripe-js": "^6.8.1",
