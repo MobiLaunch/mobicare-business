@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { CircleCheck, FilterX, History, Search, SearchX, SlidersHorizontal, Store, X } from "lucide-react";
+import { Battery, Cable, CircleCheck, FilterX, Headphones, History, Layers, Search, SearchX, Shield, SlidersHorizontal, Star, Store, X, Zap } from "lucide-react";
 import { InputGroup, TextField } from "@heroui/react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -15,6 +15,21 @@ const SORT_OPTIONS = [
   { value: "name", label: "A–Z Name" },
   { value: "newest", label: "Newest First" },
 ];
+
+const CATEGORY_ICONS = {
+  chargers: Zap,
+  cases: Shield,
+  "screen-protectors": Layers,
+  cables: Cable,
+  audio: Headphones,
+  power: Battery,
+  accessories: Star,
+} as const;
+
+function CategoryIcon({ id }: { id: string }) {
+  const Icon = CATEGORY_ICONS[id as keyof typeof CATEGORY_ICONS] || Store;
+  return <Icon aria-hidden="true" className="size-[19px]" />;
+}
 
 export default function Shop() {
   const navigate = useNavigate();
@@ -67,7 +82,7 @@ export default function Shop() {
   const selectedSort = SORT_OPTIONS.find((option) => option.value === sort) || SORT_OPTIONS[0];
   const applySearch = (value: string) => { setSearch(value); setSearchMenuOpen(false); };
   const applyCategorySuggestion = (catId: string) => { handleCatChange(catId); setSearch(""); setSearchMenuOpen(false); };
-  const catChipClass = (active: boolean) => `inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-transform hover:-translate-y-0.5 active:translate-y-0 ${active ? "bg-accent text-accent-foreground" : "border border-border bg-surface-secondary text-foreground"}`;
+  const categoryButtonClass = (active: boolean) => `relative flex size-11 shrink-0 items-center justify-center rounded-full border transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${active ? "border-accent bg-accent text-accent-foreground shadow-sm" : "border-border bg-surface-secondary text-foreground hover:-translate-y-0.5 hover:bg-surface-tertiary"}`;
 
   return (
     <main className="mx-auto max-w-[1400px] overflow-x-hidden px-[clamp(12px,3vw,24px)] pb-16 pt-6">
@@ -108,9 +123,20 @@ export default function Shop() {
         </div>
       </div>
 
-      <div aria-label="Product categories" className="mb-8 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
-        <button aria-selected={selectedCat === "all"} className={catChipClass(selectedCat === "all")} role="tab" type="button" onClick={() => handleCatChange("all")}>{selectedCat === "all" && <CircleCheck aria-hidden="true" className="size-4" />}All Products</button>
-        {categories.map((cat) => <button key={cat.id} aria-selected={selectedCat === cat.id} className={catChipClass(selectedCat === cat.id)} role="tab" type="button" onClick={() => handleCatChange(cat.id)}>{selectedCat === cat.id && <CircleCheck aria-hidden="true" className="size-4" />}{cat.name}</button>)}
+      <div aria-label="Product categories" className="mb-8 flex gap-2.5 overflow-x-auto px-0.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
+        <button aria-label="All products" aria-selected={selectedCat === "all"} className={categoryButtonClass(selectedCat === "all")} role="tab" title="All products" type="button" onClick={() => handleCatChange("all")}>
+          <Store aria-hidden="true" className="size-[19px]" />
+          {selectedCat === "all" && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-surface text-accent shadow-sm"><CircleCheck className="size-3.5" /></span>}
+        </button>
+        {categories.map((cat) => {
+          const active = selectedCat === cat.id;
+          return (
+            <button key={cat.id} aria-label={cat.name} aria-selected={active} className={categoryButtonClass(active)} role="tab" title={cat.name} type="button" onClick={() => handleCatChange(cat.id)}>
+              <CategoryIcon id={cat.id} />
+              {active && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-surface text-accent shadow-sm"><CircleCheck className="size-3.5" /></span>}
+            </button>
+          );
+        })}
       </div>
 
       {filtered.length > 0 ? <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{filtered.map((p) => <ProductCard key={p.id} product={p} onClick={() => navigate(`/product/${p.id}`)} />)}</div> : <div className="mt-8 rounded-[28px] border border-border bg-surface-secondary p-8 text-center sm:p-12"><span className="mx-auto mb-4 flex size-[72px] items-center justify-center rounded-full bg-surface-tertiary text-accent"><SearchX aria-hidden="true" className="size-9" /></span><h3 className="m-0 mb-2 text-2xl font-bold text-foreground">No matching products</h3><p className="mx-auto mb-6 max-w-[360px] text-muted">We couldn&rsquo;t find anything matching your search. Try resetting your filters.</p><button className="inline-flex h-11 items-center gap-2 rounded-full bg-accent px-6 font-semibold text-accent-foreground" type="button" onClick={() => { setSearch(""); handleCatChange("all"); }}><FilterX aria-hidden="true" className="size-4" /><span>Clear Filters</span></button></div>}
