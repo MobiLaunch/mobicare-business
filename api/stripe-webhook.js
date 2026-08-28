@@ -1,10 +1,7 @@
 // Vercel Serverless Function: /api/stripe-webhook
-// Handles webhook events from Stripe (e.g., checkout.session.completed, payment_intent.succeeded)
-//
-// SECURITY: When STRIPE_WEBHOOK_SECRET is configured, the event signature is
-// verified against the raw request body before processing. Unverified
-// (forged) payloads are rejected with 400. Signature verification requires
-// the exact raw bytes, so body parsing is disabled via `export const config`.
+// Stripe is the source of truth for payment state. The webhook is intentionally
+// strict: an unconfigured signing secret is a deployment error, not a reason to
+// accept unverified payment events.
 
 export const config = {
   api: {
@@ -12,119 +9,113 @@ export const config = {
   },
 };
 
-const WEBHOOK_SECRET =
-  process.env.STRIPE_WEBHOOK_SECRET || process.env.STRIPE_SIGNING_SECRET;
-
-/**
- * Verifies the Stripe-Signature header against the raw body.
- * Implements Stripe's v1 scheme (t=timestamp,v1=hmac_sha256) using only
- * Node built-ins so no extra dependency is required.
- */
-async function verifyStripeSignature(rawBody, sigHeader, secret) {
-  if (!sigHeader) return false;
-
-  const parts = Object.fromEntries(
-    String(sigHeader)
-      .split(",")
-      .map((kv) => kv.split("=")),
-  );
-  const timestamp = parts["t"];
-  const providedSig = parts["v1"];
-
-  if (!timestamp || !providedSig) return false;
-
-  // Reject events older than 5 minutes to prevent replay attacks
-  const ageSeconds = Math.abs(Date.now() / 1000 - Number(timestamp));
-
-  if (!Number.isFinite(ageSeconds) || ageSeconds > 300) return false;
-
-  const { createHmac, timingSafeEqual } = await import("node:crypto");
-  const expected = createHmac("sha256", secret)
-    .update(`${timestamp}.${rawBody}`)
-    .digest("hex");
-
-  const a = Buffer.from(expected, "utf8");
-  const b = Buffer.from(providedSig, "utf8");
-
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 function readRawBody(req) {
   return new Promise((resolve, reject) => {
-    let data = "";
-
-    req.on("data", (chunk) => {
-      data += chunk;
-    });
-    req.on("end", () => resolve(data));
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
 }
 
+async function verifyStripeSignature(rawBody, signatureHeader, secret) {
+  if (!signatureHeader || !secret) return false;
+
+  const { createHmac, timingSafeEqual } = await import("node:crypto");
+  const timestamp = String(signatureHeader)
+    .split(",")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("t="))
+    ?.slice(2);
+
+  const signatures = String(signatureHeader)
+    .split(",")
+    .map((part) => part.trim().slice(0, 2) === "v1" ? part.trim().slice(3) : null)
+    .filter(Boolean);
+
+  if (!timestamp || signatures.length === 0) return false;
+
+  const timestampNumber = Number(timestamp);
+  if (!Number.isFinite(timestampNumber)) return false;
+
+  // Stripe recommends a five-minute tolerance for webhook replay protection.
+  if (Math.abs(Date.now() / 1000 - timestampNumber) > 300) return false;
+
+  const expected = createHmac("sha256", secret)
+    .update(`${timestamp}.${rawBody.toString("utf8")}`)
+    .digest();
+
+  return signatures.some((signature) => {
+    try {
+      const provided = Buffer.from(signature, "hex");
+      return provided.length === expected.length && timingSafeEqual(provided, expected);
+    } catch {
+      return false;
+    }
+  });
+}
+
 export default async function handler(req, res) {
-  if (req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
-    return res.status(200).end();
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  if (req.method !== "POST") {
-    res.setHeader("Allow", ["POST", "OPTIONS"]);
-    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
+  const webhookSecret =
+    process.env.STRIPE_WEBHOOK_SECRET || process.env.STRIPE_SIGNING_SECRET;
+
+  if (!webhookSecret) {
+    console.error("Stripe webhook secret is not configured.");
+    return res.status(503).json({ error: "Webhook is not configured." });
   }
 
   try {
     const rawBody = await readRawBody(req);
+    const signature = req.headers["stripe-signature"];
 
-    // Verify authenticity before trusting anything in the payload.
-    if (WEBHOOK_SECRET) {
-      const signatureHeader = req.headers["stripe-signature"];
-      const valid = await verifyStripeSignature(
-        rawBody,
-        signatureHeader,
-        WEBHOOK_SECRET,
-      );
-
-      if (!valid) {
-        console.error("Stripe webhook signature verification failed");
-        return res.status(400).json({ error: "Invalid signature" });
-      }
-    } else {
-      console.warn(
-        "STRIPE_WEBHOOK_SECRET is not set — accepting unverified webhook payloads. " +
-          "Configure it in your hosting environment to reject forged events.",
-      );
+    if (!(await verifyStripeSignature(rawBody, signature, webhookSecret))) {
+      console.error("Stripe webhook signature verification failed.");
+      return res.status(400).json({ error: "Invalid signature" });
     }
 
     let event;
-
     try {
-      event = JSON.parse(rawBody);
+      event = JSON.parse(rawBody.toString("utf8"));
     } catch {
       return res.status(400).json({ error: "Invalid JSON payload" });
     }
 
+    const object = event?.data?.object;
     console.info("Received Stripe webhook event:", event?.type || "unknown");
 
     switch (event?.type) {
       case "payment_intent.succeeded":
-      case "checkout.session.completed":
-        // Order fulfillment is handled by the store's order pipeline;
-        // extend here to trigger emails / inventory updates as needed.
+        console.info("Payment succeeded:", object?.id);
+        // Order fulfillment/reconciliation is intentionally handled in the
+        // next step once the database schema for payment_intent_id is verified.
         break;
+
       case "payment_intent.payment_failed":
-        console.warn("Payment failed:", event?.data?.object?.id);
+        console.warn("Payment failed:", object?.id);
         break;
+
+      case "payment_intent.canceled":
+        console.warn("Payment canceled:", object?.id);
+        break;
+
+      case "charge.refunded":
+        console.info("Charge refunded:", object?.id);
+        break;
+
       default:
+        // Unknown Stripe events should still be acknowledged after successful
+        // signature verification so Stripe does not repeatedly retry them.
         break;
     }
 
-    // Acknowledge receipt of the webhook event
     return res.status(200).json({ received: true });
   } catch (error) {
     console.error("Webhook processing error:", error);
-    return res.status(500).json({
-      error: error.message || "Internal server error processing webhook",
-    });
+    return res.status(500).json({ error: "Webhook processing failed." });
   }
 }
