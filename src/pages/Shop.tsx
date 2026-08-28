@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { BatteryCharging, CircleCheck, FilterX, Headphones, Layers, PlugWire, Power, Search, SearchX, Shield, ShoppingBag, SlidersHorizontal, Star, Store, Thunderbolt, Xmark } from "@gravity-ui/icons";
 import LogoAndroid from "@gravity-ui/icons/LogoAndroid";
 import LogoApple from "@gravity-ui/icons/LogoApple";
-import { Battery, Cable, CircleCheck, FilterX, Headphones, History, Layers, Search, SearchX, SlidersHorizontal, Star, Store, X, Zap } from "lucide-react";
 import { InputGroup, TextField } from "@heroui/react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -18,19 +18,36 @@ const SORT_OPTIONS = [
   { value: "newest", label: "Newest First" },
 ];
 
+const CATEGORY_LABELS: Record<string, string> = {
+  chargers: "Chargers",
+  cases: "iPhone Cases",
+  "cases--samsung": "Samsung Cases",
+  "screen-protectors": "Screen Protectors",
+  cables: "Cables",
+  audio: "Audio",
+  power: "Power Banks",
+  accessories: "Accessories",
+};
+
 const CATEGORY_ICONS = {
-  chargers: Zap,
+  chargers: Thunderbolt,
   cases: LogoApple,
   "cases--samsung": LogoAndroid,
   "screen-protectors": Layers,
-  cables: Cable,
+  cables: PlugWire,
   audio: Headphones,
-  power: Battery,
+  power: Power,
   accessories: Star,
 } as const;
 
+function formatCategoryLabel(id: string) {
+  return CATEGORY_LABELS[id] || id
+    .split("--").join(" ")
+    .split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+}
+
 function CategoryIcon({ id }: { id: string }) {
-  const Icon = CATEGORY_ICONS[id as keyof typeof CATEGORY_ICONS] || Store;
+  const Icon = CATEGORY_ICONS[id as keyof typeof CATEGORY_ICONS] || ShoppingBag;
   return <Icon aria-hidden="true" className="size-[19px]" />;
 }
 
@@ -66,6 +83,19 @@ export default function Shop() {
     setSearchParams(cat === "all" ? {} : { cat });
   };
 
+  const filterCategories = Array.from(
+    new Set(products.map((product) => product.category).filter(Boolean)),
+  )
+    .map((id) => {
+      const category = categories.find((item) => item.id === id);
+      return {
+        id,
+        name: CATEGORY_LABELS[id] || category?.name || formatCategoryLabel(id),
+        sortOrder: category?.sortOrder ?? 999,
+      };
+    })
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+
   let filtered = products.filter((p) => {
     const matchesCat = selectedCat === "all" || p.category === selectedCat;
     const q = search.trim().toLowerCase();
@@ -81,7 +111,7 @@ export default function Shop() {
     return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
   });
 
-  const searchSuggestions = categories.slice(0, 3).map((category) => ({ name: category.name, id: category.id }));
+  const searchSuggestions = filterCategories.slice(0, 3);
   const selectedSort = SORT_OPTIONS.find((option) => option.value === sort) || SORT_OPTIONS[0];
   const applySearch = (value: string) => { setSearch(value); setSearchMenuOpen(false); };
   const applyCategorySuggestion = (catId: string) => { handleCatChange(catId); setSearch(""); setSearchMenuOpen(false); };
@@ -108,12 +138,12 @@ export default function Shop() {
             <InputGroup className="rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
               <InputGroup.Prefix><Search aria-hidden="true" className="size-4" /></InputGroup.Prefix>
               <InputGroup.Input placeholder="Search accessories, cases, chargers…" type="search" onFocus={() => setSearchMenuOpen(true)} onKeyDown={(e) => e.key === "Enter" && applySearch(e.currentTarget.value)} />
-              {search && <InputGroup.Suffix><button aria-label="Clear search" className="flex size-9 items-center justify-center rounded-full" type="button" onClick={() => applySearch("")}><X aria-hidden="true" className="size-4" /></button></InputGroup.Suffix>}
+              {search && <InputGroup.Suffix><button aria-label="Clear search" className="flex size-9 items-center justify-center rounded-full" type="button" onClick={() => applySearch("")}><Xmark aria-hidden="true" className="size-4" /></button></InputGroup.Suffix>}
             </InputGroup>
           </TextField>
           {searchMenuOpen && searchSuggestions.length > 0 && (
             <div className="absolute inset-x-0 top-[calc(100%+6px)] z-20 overflow-hidden rounded-2xl border border-border bg-surface shadow-lg">
-              {searchSuggestions.map((suggestion) => <button key={suggestion.id} className="flex min-h-11 w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-foreground hover:bg-surface-secondary" type="button" onClick={() => applyCategorySuggestion(suggestion.id)}><History aria-hidden="true" className="size-4 text-muted" /><span>Browse {suggestion.name}</span></button>)}
+              {searchSuggestions.map((suggestion) => <button key={suggestion.id} className="flex min-h-11 w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-foreground hover:bg-surface-secondary" type="button" onClick={() => applyCategorySuggestion(suggestion.id)}><Layers aria-hidden="true" className="size-4 text-muted" /><span>Browse {suggestion.name}</span></button>)}
             </div>
           )}
         </div>
@@ -128,13 +158,13 @@ export default function Shop() {
 
       <div aria-label="Product categories" className="mb-8 flex gap-2.5 overflow-x-auto px-0.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
         <button aria-label="All products" aria-selected={selectedCat === "all"} className={categoryButtonClass(selectedCat === "all")} role="tab" title="All products" type="button" onClick={() => handleCatChange("all")}>
-          <Store aria-hidden="true" className="size-[19px]" />
+          <ShoppingBag aria-hidden="true" className="size-[19px]" />
           {selectedCat === "all" && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-surface text-accent shadow-sm"><CircleCheck className="size-3.5" /></span>}
         </button>
-        {categories.map((cat) => {
+        {filterCategories.map((cat) => {
           const active = selectedCat === cat.id;
           return (
-            <button key={cat.id} aria-label={cat.id === "cases" ? "iPhone Cases" : cat.id === "cases--samsung" ? "Samsung Cases" : cat.name} aria-selected={active} className={categoryButtonClass(active)} role="tab" title={cat.id === "cases" ? "iPhone Cases" : cat.id === "cases--samsung" ? "Samsung Cases" : cat.name} type="button" onClick={() => handleCatChange(cat.id)}>
+            <button key={cat.id} aria-label={cat.name} aria-selected={active} className={categoryButtonClass(active)} role="tab" title={cat.name} type="button" onClick={() => handleCatChange(cat.id)}>
               <CategoryIcon id={cat.id} />
               {active && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-surface text-accent shadow-sm"><CircleCheck className="size-3.5" /></span>}
             </button>
