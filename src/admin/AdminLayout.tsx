@@ -17,13 +17,6 @@ const NAV_LABELS: Record<string, string> = {
   "/admin/settings": "Settings",
 };
 
-// NOTE (HeroUI v3 rebuild): the original mobile nav was a hand-rolled overlay
-// (fixed-position <aside> + a manual backdrop <div>, toggled via a CSS
-// transform and an `open` class) with no real focus trap or keyboard
-// dismissal. Rebuilt on HeroUI's real Drawer here instead — same shared
-// AdminSidebarContent renders in both places, so there's one nav to
-// maintain, but mobile now gets real focus-trapping/Escape-to-close/
-// backdrop-click behavior for free instead of a hand-rolled approximation.
 export default function AdminLayout() {
   const location = useLocation();
   const loadError = useProductStore((s) => s.loadError);
@@ -40,15 +33,13 @@ export default function AdminLayout() {
       className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground"
       id="admin-root-shell"
     >
-      {/* Desktop: static sidebar */}
       <aside className="hidden w-[272px] shrink-0 border-r border-border bg-surface/94 backdrop-blur-xl lg:flex lg:flex-col">
         <AdminSidebarContent />
       </aside>
 
-      {/* Mobile: real Drawer */}
       <Drawer>
         <Drawer.Backdrop isOpen={mobileOpen} onOpenChange={setMobileOpen}>
-          <Drawer.Content className="w-[280px]" placement="left">
+          <Drawer.Content className="w-[min(88vw,320px)]" placement="left">
             <Drawer.Dialog>
               <AdminSidebarContent onNavigate={() => setMobileOpen(false)} />
             </Drawer.Dialog>
@@ -57,40 +48,41 @@ export default function AdminLayout() {
       </Drawer>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-surface/80 px-6 backdrop-blur-xl">
-          <div className="flex min-w-0 items-center gap-3">
+        <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-border bg-surface/80 px-3 py-2 backdrop-blur-xl sm:px-5 lg:px-6">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <button
               aria-expanded={mobileOpen}
-              aria-label="Open side menu"
-              className="flex size-9 items-center justify-center rounded-full text-foreground hover:bg-surface-secondary lg:hidden"
+              aria-label={mobileOpen ? "Close side menu" : "Open side menu"}
+              className="flex size-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:hidden"
               type="button"
-              onClick={() => setMobileOpen(true)}
+              onClick={() => setMobileOpen((open) => !open)}
             >
-              <Menu className="size-5" />
+              <Menu aria-hidden="true" className="size-5" />
             </button>
             <div className="min-w-0">
-              <span className="block text-[11px] font-bold uppercase tracking-widest text-accent">
+              <span className="block truncate text-[10px] font-bold uppercase tracking-[0.16em] text-accent sm:text-[11px]">
                 Mobicare Admin Portal
               </span>
-              <h1 className="m-0 truncate text-lg font-bold text-foreground">
+              <h1 className="m-0 truncate text-base font-bold text-foreground sm:text-lg">
                 {currentPage}
               </h1>
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <a
-              className="hidden items-center gap-1.5 text-sm font-medium text-foreground hover:text-accent sm:inline-flex"
+              aria-label="Open live store in a new tab"
+              className="hidden min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-foreground transition-colors hover:bg-surface-secondary hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:inline-flex"
               href="/"
               rel="noreferrer"
               target="_blank"
               title="Open public website in new tab"
             >
-              <ArrowRight className="size-4" />
+              <ArrowRight aria-hidden="true" className="size-4" />
               <span>Live Store</span>
             </a>
-            <div className="flex items-center gap-2 rounded-full bg-surface-secondary py-1 pl-1 pr-3">
-              <span className="flex size-7 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <div className="flex min-h-11 items-center gap-2 rounded-full bg-surface-secondary py-1 pl-1 pr-2 sm:pr-3">
+              <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-full bg-accent-soft text-accent sm:size-7">
                 <ShieldUser className="size-4" />
               </span>
               <span className="hidden text-sm font-semibold sm:inline">
@@ -102,25 +94,25 @@ export default function AdminLayout() {
 
         {loadError && (
           <div
-            className="mx-6 mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-danger/10 p-4 text-danger"
+            className="mx-3 mt-3 flex flex-wrap items-start gap-3 rounded-2xl bg-danger/10 p-3.5 text-danger sm:mx-5 sm:mt-4 sm:p-4 lg:mx-6"
             role="alert"
           >
-            <TriangleAlert className="size-5 shrink-0" />
-            <div className="min-w-0 flex-1">
+            <TriangleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+            <div className="min-w-0 flex-1 text-sm leading-relaxed">
               <strong className="mr-1">Database Connection Warning:</strong>
-              <span className="text-sm">{loadError}</span>
+              <span>{loadError}</span>
             </div>
             <Link
-              className="flex shrink-0 items-center gap-1 text-sm font-semibold underline"
+              className="flex min-h-11 shrink-0 items-center gap-1 rounded-full px-2 text-sm font-semibold underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               to="/admin/settings"
             >
               <span>Fix in Settings</span>
-              <ArrowRight className="size-3.5" />
+              <ArrowRight aria-hidden="true" className="size-3.5" />
             </Link>
           </div>
         )}
 
-        <main className="flex-1 p-6 pb-24 lg:pb-6">
+        <main className="min-w-0 flex-1 px-3 py-4 pb-24 sm:px-5 sm:py-6 lg:px-6 lg:pb-6">
           <Outlet />
         </main>
 
