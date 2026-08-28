@@ -1,14 +1,15 @@
 import {
   assertClose,
   calculateSubtotal,
+  calculateTax,
   fetchProductsForOrder,
   getShippingCost,
   money,
 } from "./_order-pricing.js";
 
 // Vercel Serverless Function: /api/create-payment-intent
-// The browser supplies product IDs/quantities and a shipping method. Prices
-// and shipping are calculated from server-side data before Stripe is called.
+// The browser supplies product IDs/quantities and a shipping method. Prices,
+// shipping, tax, and the final amount are calculated server-side.
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -33,25 +34,23 @@ export default async function handler(req, res) {
   try {
     const body = req.body || {};
     const items = Array.isArray(body.items) ? body.items : [];
-
     if (!items.length) return res.status(400).json({ error: "Order has no items." });
 
     const normalizedItems = await fetchProductsForOrder(items);
     const subtotal = calculateSubtotal(normalizedItems);
-    const shippingCost = money(getShippingCost(body.shippingMethod || body.shipping_method, subtotal));
-
-    // Tax is temporarily accepted from the checkout calculation, but bounded
-    // to a non-negative monetary value. This will be replaced with a server
-    // tax calculation/Stripe Tax before production launch.
-    const tax = money(body.tax || 0);
+    const shippingCost = money(
+      getShippingCost(body.shippingMethod || body.shipping_method, subtotal),
+    );
+    const tax = calculateTax(subtotal + shippingCost);
     const total = money(subtotal + shippingCost + tax);
 
     if (total <= 0) return res.status(400).json({ error: "Order total must be positive." });
-
     if (body.total != null) assertClose(body.total, total, "Order total");
 
     const currency = String(body.currency || "usd").toLowerCase();
-    if (!/^[a-z]{3}$/.test(currency)) return res.status(400).json({ error: "Invalid currency." });
+    if (!/^[a-z]{3}$/.test(currency)) {
+      return res.status(400).json({ error: "Invalid currency." });
+    }
 
     const params = new URLSearchParams({
       amount: String(Math.round(total * 100)),
