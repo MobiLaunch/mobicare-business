@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, CalendarDays, MapPin, ShoppingBag } from "lucide-react";
-import { Button, Chip } from "@heroui/react";
+import { Chip } from "@heroui/react";
 
 import { useSiteStore } from "@/lib/siteStore";
 import LocationCard from "@/components/home/LocationCard";
@@ -40,41 +40,41 @@ export default function HeroBentoSection({
           </p>
 
           <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Button
-              className="group min-h-[132px] justify-between rounded-[24px] border border-accent p-5 text-left shadow-sm transition-transform hover:-translate-y-0.5"
-              variant="primary"
-              size="lg"
-              onPress={onBookRepair}
+            <button
+              className="group flex min-h-[160px] w-full flex-col justify-between rounded-[24px] border border-accent bg-accent p-5 text-left text-accent-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:translate-y-0"
+              type="button"
+              onClick={onBookRepair}
             >
-              <span className="flex w-full flex-col items-start justify-between gap-5">
-                <span className="flex size-10 items-center justify-center rounded-full bg-accent-foreground/12">
-                  <CalendarDays aria-hidden="true" className="size-5" />
-                </span>
-                <span>
-                  <strong className="block text-lg font-bold">Book a Repair</strong>
-                  <span className="mt-0.5 block text-sm opacity-80">Schedule your device service</span>
-                </span>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-foreground/12">
+                <CalendarDays aria-hidden="true" className="size-5" />
+              </span>
+              <span className="block min-w-0">
+                <strong className="block text-lg font-bold">Book a Repair</strong>
+                <span className="mt-0.5 block text-sm opacity-80">Schedule your device service</span>
+              </span>
+              <span className="flex items-center justify-between">
+                <span className="text-sm font-semibold">Get started</span>
                 <ArrowRight aria-hidden="true" className="size-5 transition-transform group-hover:translate-x-1" />
               </span>
-            </Button>
+            </button>
 
-            <Button
-              className="group min-h-[132px] justify-between rounded-[24px] border border-border bg-surface-secondary p-5 text-left text-foreground shadow-sm transition-transform hover:-translate-y-0.5"
-              variant="outline"
-              size="lg"
-              onPress={() => navigate("/shop")}
+            <button
+              className="group flex min-h-[160px] w-full flex-col justify-between rounded-[24px] border border-border bg-surface-secondary p-5 text-left text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:translate-y-0"
+              type="button"
+              onClick={() => navigate("/shop")}
             >
-              <span className="flex w-full flex-col items-start justify-between gap-5">
-                <span className="flex size-10 items-center justify-center rounded-full bg-surface-tertiary text-accent">
-                  <ShoppingBag aria-hidden="true" className="size-5" />
-                </span>
-                <span>
-                  <strong className="block text-lg font-bold">Shop Accessories</strong>
-                  <span className="mt-0.5 block text-sm text-muted">Cases, chargers &amp; more</span>
-                </span>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-accent">
+                <ShoppingBag aria-hidden="true" className="size-5" />
+              </span>
+              <span className="block min-w-0">
+                <strong className="block text-lg font-bold">Shop Accessories</strong>
+                <span className="mt-0.5 block text-sm text-muted">Cases, chargers &amp; more</span>
+              </span>
+              <span className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-accent">Browse the shop</span>
                 <ArrowRight aria-hidden="true" className="size-5 text-accent transition-transform group-hover:translate-x-1" />
               </span>
-            </Button>
+            </button>
           </div>
         </div>
 
