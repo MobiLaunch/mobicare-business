@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { CircleCheck, FunnelXmark, Headphones, Layers, Magnifier, PlugWire, Power, Shield, ShoppingBag, Sliders, Star, Thunderbolt, Xmark } from "@gravity-ui/icons";
+import { CircleCheck, FunnelXmark, Headphones, Layers, Magnifier, PlugWire, Power, ShoppingBag, Sliders, Star, Thunderbolt, Xmark } from "@gravity-ui/icons";
 import LogoAndroid from "@gravity-ui/icons/LogoAndroid";
 import LogoApple from "@gravity-ui/icons/LogoApple";
 import { InputGroup, TextField } from "@heroui/react";
@@ -83,16 +83,10 @@ export default function Shop() {
     setSearchParams(cat === "all" ? {} : { cat });
   };
 
-  const filterCategories = Array.from(
-    new Set(products.map((product) => product.category).filter(Boolean)),
-  )
+  const filterCategories = Array.from(new Set(products.map((product) => product.category).filter(Boolean)))
     .map((id) => {
       const category = categories.find((item) => item.id === id);
-      return {
-        id,
-        name: CATEGORY_LABELS[id] || category?.name || formatCategoryLabel(id),
-        sortOrder: category?.sortOrder ?? 999,
-      };
+      return { id, name: CATEGORY_LABELS[id] || category?.name || formatCategoryLabel(id), sortOrder: category?.sortOrder ?? 999 };
     })
     .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
 
