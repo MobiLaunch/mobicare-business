@@ -12,15 +12,6 @@ import { Badge } from "@heroui/react";
 import { useCartStore } from "@/lib/store";
 import { useAuth } from "@/lib/AuthContext";
 
-// NOTE (HeroUI v3 rebuild): the original BottomNav took cartDrawerOpen /
-// handleCart / cartCount / user / accountPath as PROPS — but App.jsx rendered
-// it as bare `<BottomNav />` with none of them supplied. That meant, on the
-// original site: the mobile Cart tab's onClick was undefined (tapping it did
-// nothing), the cart badge count never showed, and the Account tab always
-// linked to /account and always read "Sign in" regardless of whether someone
-// was actually logged in. Rebuilt to pull cart state and auth directly from
-// the real stores/context instead of relying on props a parent has to
-// remember to wire up — self-sufficient, and actually works.
 const NAV_ITEMS = [
   { to: "/", label: "Home", icon: House },
   { to: "/repairs", label: "Repairs", icon: Wrench },
@@ -43,21 +34,20 @@ export default function BottomNav() {
   const isAccountActive = location.pathname === accountPath;
   const cartCount = cart.reduce((total, item) => total + (item?.qty || 0), 0);
 
-  const handleCart = () => setCartDrawerOpen(true);
-
   const itemClass =
-    "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-1";
+    "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 touch-manipulation select-none";
   const pillClass = (active: boolean) =>
-    `flex h-8 w-16 items-center justify-center rounded-2xl transition-colors ${
+    `flex h-10 min-w-12 items-center justify-center rounded-2xl px-3 transition-colors ${
       active ? "bg-accent-soft text-accent" : "text-muted"
     }`;
   const labelClass = (active: boolean) =>
-    `text-xs transition-colors ${active ? "font-semibold text-foreground" : "font-medium text-muted"}`;
+    `text-[11px] leading-4 transition-colors ${active ? "font-semibold text-foreground" : "font-medium text-muted"}`;
 
   return (
     <nav
       aria-label="Mobile navigation"
-      className="fixed inset-x-0 bottom-0 z-[60] flex min-h-20 items-center justify-around bg-surface px-1 pt-1 pb-[calc(env(safe-area-inset-bottom,0px)+0.25rem)] shadow-[0_-1px_0_var(--border)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-[60] flex min-h-[4.75rem] items-stretch justify-around border-t border-border bg-surface/95 px-1 pt-1 backdrop-blur-xl lg:hidden"
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.25rem)" }}
     >
       {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
         const active = isActive(to);
@@ -70,7 +60,7 @@ export default function BottomNav() {
             to={to}
           >
             <span className={pillClass(active)}>
-              <Icon className="size-5" />
+              <Icon aria-hidden="true" className="size-5" />
             </span>
             <span className={labelClass(active)}>{label}</span>
           </RouterLink>
@@ -82,10 +72,10 @@ export default function BottomNav() {
         aria-pressed={cartDrawerOpen}
         className={itemClass}
         type="button"
-        onClick={handleCart}
+        onClick={() => setCartDrawerOpen(true)}
       >
         <Badge.Anchor className={pillClass(cartDrawerOpen)}>
-          <ShoppingCart className="size-5" />
+          <ShoppingCart aria-hidden="true" className="size-5" />
           {cartCount > 0 && (
             <Badge color="danger" size="sm">
               <Badge.Label>{cartCount > 99 ? "99+" : cartCount}</Badge.Label>
@@ -101,7 +91,7 @@ export default function BottomNav() {
         to={accountPath}
       >
         <span className={pillClass(isAccountActive)}>
-          <CircleUserRound className="size-5" />
+          <CircleUserRound aria-hidden="true" className="size-5" />
         </span>
         <span className={labelClass(isAccountActive)}>
           {user ? "Account" : "Sign in"}
