@@ -40,35 +40,41 @@ export default function HeroBentoSection({
           </p>
 
           <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <button
-              className="group flex min-h-[132px] flex-col justify-between rounded-[24px] border border-accent bg-accent p-5 text-left text-accent-foreground shadow-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              type="button"
-              onClick={onBookRepair}
+            <Button
+              className="group min-h-[132px] justify-between rounded-[24px] border border-accent p-5 text-left shadow-sm transition-transform hover:-translate-y-0.5"
+              variant="primary"
+              size="lg"
+              onPress={onBookRepair}
             >
-              <span className="flex size-10 items-center justify-center rounded-full bg-accent-foreground/12">
-                <CalendarDays aria-hidden="true" className="size-5" />
+              <span className="flex w-full flex-col items-start justify-between gap-5">
+                <span className="flex size-10 items-center justify-center rounded-full bg-accent-foreground/12">
+                  <CalendarDays aria-hidden="true" className="size-5" />
+                </span>
+                <span>
+                  <strong className="block text-lg font-bold">Book a Repair</strong>
+                  <span className="mt-0.5 block text-sm opacity-80">Schedule your device service</span>
+                </span>
+                <ArrowRight aria-hidden="true" className="size-5 transition-transform group-hover:translate-x-1" />
               </span>
-              <span>
-                <strong className="block text-lg font-bold">Book a Repair</strong>
-                <span className="mt-0.5 block text-sm opacity-80">Schedule your device service</span>
-              </span>
-              <ArrowRight aria-hidden="true" className="size-5 transition-transform group-hover:translate-x-1" />
-            </button>
+            </Button>
 
-            <button
-              className="group flex min-h-[132px] flex-col justify-between rounded-[24px] border border-border bg-surface-secondary p-5 text-left text-foreground shadow-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              type="button"
-              onClick={() => navigate("/shop")}
+            <Button
+              className="group min-h-[132px] justify-between rounded-[24px] border border-border bg-surface-secondary p-5 text-left text-foreground shadow-sm transition-transform hover:-translate-y-0.5"
+              variant="outline"
+              size="lg"
+              onPress={() => navigate("/shop")}
             >
-              <span className="flex size-10 items-center justify-center rounded-full bg-surface-tertiary text-accent">
-                <ShoppingBag aria-hidden="true" className="size-5" />
+              <span className="flex w-full flex-col items-start justify-between gap-5">
+                <span className="flex size-10 items-center justify-center rounded-full bg-surface-tertiary text-accent">
+                  <ShoppingBag aria-hidden="true" className="size-5" />
+                </span>
+                <span>
+                  <strong className="block text-lg font-bold">Shop Accessories</strong>
+                  <span className="mt-0.5 block text-sm text-muted">Cases, chargers &amp; more</span>
+                </span>
+                <ArrowRight aria-hidden="true" className="size-5 text-accent transition-transform group-hover:translate-x-1" />
               </span>
-              <span>
-                <strong className="block text-lg font-bold">Shop Accessories</strong>
-                <span className="mt-0.5 block text-sm text-muted">Cases, chargers &amp; more</span>
-              </span>
-              <ArrowRight aria-hidden="true" className="size-5 text-accent transition-transform group-hover:translate-x-1" />
-            </button>
+            </Button>
           </div>
         </div>
 
