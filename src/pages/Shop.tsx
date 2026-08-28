@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AppleLogo, AndroidLogo } from "@gravity-ui/icons";
+import LogoAndroid from "@gravity-ui/icons/LogoAndroid";
+import LogoApple from "@gravity-ui/icons/LogoApple";
 import { Battery, Cable, CircleCheck, FilterX, Headphones, History, Layers, Search, SearchX, Shield, SlidersHorizontal, Star, Store, X, Zap } from "lucide-react";
 import { InputGroup, TextField } from "@heroui/react";
 import { useShallow } from "zustand/react/shallow";
@@ -19,8 +20,8 @@ const SORT_OPTIONS = [
 
 const CATEGORY_ICONS = {
   chargers: Zap,
-  cases: AppleLogo,
-  "cases--samsung": AndroidLogo,
+  cases: LogoApple,
+  "cases--samsung": LogoAndroid,
   "screen-protectors": Layers,
   cables: Cable,
   audio: Headphones,
