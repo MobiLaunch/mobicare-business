@@ -84,6 +84,22 @@ export function getShippingCost(method, subtotal) {
   }
 }
 
+export function getTaxRate() {
+  const configured = process.env.MOBICARE_TAX_RATE ?? process.env.TAX_RATE;
+  if (configured == null || configured === "") return 0;
+
+  const rate = Number(configured);
+  if (!Number.isFinite(rate) || rate < 0 || rate > 1) {
+    throw new Error("MOBICARE_TAX_RATE must be a decimal between 0 and 1.");
+  }
+
+  return rate;
+}
+
+export function calculateTax(taxableAmount) {
+  return money(money(taxableAmount) * getTaxRate());
+}
+
 export function calculateSubtotal(items) {
   return money(items.reduce((sum, item) => sum + item.price * item.qty, 0));
 }
