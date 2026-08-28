@@ -36,6 +36,11 @@ export default async function handler(req, res) {
     const items = Array.isArray(body.items) ? body.items : [];
     if (!items.length) return res.status(400).json({ error: "Order has no items." });
 
+    const idempotencyKey = req.headers["idempotency-key"] || body.idempotencyKey;
+    if (!idempotencyKey || String(idempotencyKey).trim().length < 16) {
+      return res.status(400).json({ error: "A valid idempotency key is required." });
+    }
+
     const normalizedItems = await fetchProductsForOrder(items);
     const subtotal = calculateSubtotal(normalizedItems);
     const shippingCost = money(
@@ -47,14 +52,16 @@ export default async function handler(req, res) {
     if (total <= 0) return res.status(400).json({ error: "Order total must be positive." });
     if (body.total != null) assertClose(body.total, total, "Order total");
 
+    // Mobicare currently settles all commerce transactions in USD. Do not let
+    // the browser select another currency while the order/webhook layer assumes USD.
     const currency = String(body.currency || "usd").toLowerCase();
-    if (!/^[a-z]{3}$/.test(currency)) {
-      return res.status(400).json({ error: "Invalid currency." });
+    if (currency !== "usd") {
+      return res.status(400).json({ error: "Only USD payments are supported." });
     }
 
     const params = new URLSearchParams({
       amount: String(Math.round(total * 100)),
-      currency,
+      currency: "usd",
       "automatic_payment_methods[enabled]": "true",
       description: `Mobicare Order: ${normalizedItems.length} item(s)`,
     });
@@ -73,9 +80,8 @@ export default async function handler(req, res) {
     const headers = {
       Authorization: `Bearer ${secretKey}`,
       "Content-Type": "application/x-www-form-urlencoded",
+      "Idempotency-Key": String(idempotencyKey).slice(0, 255),
     };
-    const idempotencyKey = req.headers["idempotency-key"] || body.idempotencyKey;
-    if (idempotencyKey) headers["Idempotency-Key"] = String(idempotencyKey).slice(0, 255);
 
     const stripeResponse = await fetch("https://api.stripe.com/v1/payment_intents", {
       method: "POST",
