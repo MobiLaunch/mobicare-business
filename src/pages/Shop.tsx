@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { AppleLogo, AndroidLogo } from "@gravity-ui/icons";
 import { Battery, Cable, CircleCheck, FilterX, Headphones, History, Layers, Search, SearchX, Shield, SlidersHorizontal, Star, Store, X, Zap } from "lucide-react";
 import { InputGroup, TextField } from "@heroui/react";
 import { useShallow } from "zustand/react/shallow";
@@ -18,7 +19,8 @@ const SORT_OPTIONS = [
 
 const CATEGORY_ICONS = {
   chargers: Zap,
-  cases: Shield,
+  cases: AppleLogo,
+  "cases--samsung": AndroidLogo,
   "screen-protectors": Layers,
   cables: Cable,
   audio: Headphones,
@@ -131,7 +133,7 @@ export default function Shop() {
         {categories.map((cat) => {
           const active = selectedCat === cat.id;
           return (
-            <button key={cat.id} aria-label={cat.name} aria-selected={active} className={categoryButtonClass(active)} role="tab" title={cat.name} type="button" onClick={() => handleCatChange(cat.id)}>
+            <button key={cat.id} aria-label={cat.id === "cases" ? "iPhone Cases" : cat.id === "cases--samsung" ? "Samsung Cases" : cat.name} aria-selected={active} className={categoryButtonClass(active)} role="tab" title={cat.id === "cases" ? "iPhone Cases" : cat.id === "cases--samsung" ? "Samsung Cases" : cat.name} type="button" onClick={() => handleCatChange(cat.id)}>
               <CategoryIcon id={cat.id} />
               {active && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-surface text-accent shadow-sm"><CircleCheck className="size-3.5" /></span>}
             </button>
