@@ -41,6 +41,7 @@ export default function HeroBentoSection({
 
           <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <button
+              aria-label="Book a repair"
               className="group flex min-h-[160px] w-full flex-col justify-between rounded-[24px] border border-accent bg-accent p-5 text-left text-accent-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:translate-y-0"
               type="button"
               onClick={onBookRepair}
@@ -59,6 +60,7 @@ export default function HeroBentoSection({
             </button>
 
             <button
+              aria-label="Shop accessories"
               className="group flex min-h-[160px] w-full flex-col justify-between rounded-[24px] border border-border bg-surface-secondary p-5 text-left text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:translate-y-0"
               type="button"
               onClick={() => navigate("/shop")}
