@@ -80,7 +80,7 @@ export default function HeroBentoSection({
           </div>
         </div>
 
-        <div className="relative z-[1] min-w-0 lg:col-span-5">
+        <div className="relative z-[1] hidden min-w-0 lg:col-span-5 lg:block">
           <LocationCard />
         </div>
       </div>
