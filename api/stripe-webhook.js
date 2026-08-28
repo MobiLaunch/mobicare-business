@@ -1,7 +1,6 @@
 // Vercel Serverless Function: /api/stripe-webhook
-// Stripe is the source of truth for payment state. The webhook is intentionally
-// strict: an unconfigured signing secret is a deployment error, not a reason to
-// accept unverified payment events.
+// Stripe is the source of truth for payment state. Events are authenticated
+// before any database mutation is attempted.
 
 export const config = {
   api: {
@@ -22,23 +21,14 @@ async function verifyStripeSignature(rawBody, signatureHeader, secret) {
   if (!signatureHeader || !secret) return false;
 
   const { createHmac, timingSafeEqual } = await import("node:crypto");
-  const timestamp = String(signatureHeader)
-    .split(",")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith("t="))
-    ?.slice(2);
-
-  const signatures = String(signatureHeader)
-    .split(",")
-    .map((part) => part.trim().slice(0, 2) === "v1" ? part.trim().slice(3) : null)
-    .filter(Boolean);
-
-  if (!timestamp || signatures.length === 0) return false;
+  const parts = String(signatureHeader).split(",").map((part) => part.trim());
+  const timestamp = parts.find((part) => part.startsWith("t="))?.slice(2);
+  const signatures = parts
+    .filter((part) => part.startsWith("v1="))
+    .map((part) => part.slice(3));
 
   const timestampNumber = Number(timestamp);
-  if (!Number.isFinite(timestampNumber)) return false;
-
-  // Stripe recommends a five-minute tolerance for webhook replay protection.
+  if (!timestamp || !Number.isFinite(timestampNumber) || signatures.length === 0) return false;
   if (Math.abs(Date.now() / 1000 - timestampNumber) > 300) return false;
 
   const expected = createHmac("sha256", secret)
@@ -53,6 +43,52 @@ async function verifyStripeSignature(rawBody, signatureHeader, secret) {
       return false;
     }
   });
+}
+
+function supabaseConfig() {
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("Supabase server credentials are not configured.");
+  return { url: url.replace(/\/$/, ""), key };
+}
+
+async function findOrderByPaymentIntent(paymentIntentId) {
+  const { url, key } = supabaseConfig();
+  const response = await fetch(
+    `${url}/rest/v1/orders?payment_intent_id=eq.${encodeURIComponent(paymentIntentId)}&select=id,status,total,payment_intent_id&limit=1`,
+    {
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+      },
+    },
+  );
+
+  if (!response.ok) throw new Error(`Unable to query order (${response.status}).`);
+  const orders = await response.json();
+  return orders[0] || null;
+}
+
+async function updateOrder(orderId, patch) {
+  const { url, key } = supabaseConfig();
+  const response = await fetch(
+    `${url}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(patch),
+    },
+  );
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Unable to update order (${response.status}): ${detail.slice(0, 300)}`);
+  }
 }
 
 export default async function handler(req, res) {
@@ -74,7 +110,6 @@ export default async function handler(req, res) {
     const signature = req.headers["stripe-signature"];
 
     if (!(await verifyStripeSignature(rawBody, signature, webhookSecret))) {
-      console.error("Stripe webhook signature verification failed.");
       return res.status(400).json({ error: "Invalid signature" });
     }
 
@@ -86,30 +121,49 @@ export default async function handler(req, res) {
     }
 
     const object = event?.data?.object;
-    console.info("Received Stripe webhook event:", event?.type || "unknown");
+    const paymentIntentId =
+      event?.type?.startsWith("payment_intent.")
+        ? object?.id
+        : object?.payment_intent;
 
-    switch (event?.type) {
-      case "payment_intent.succeeded":
-        console.info("Payment succeeded:", object?.id);
-        // Order fulfillment/reconciliation is intentionally handled in the
-        // next step once the database schema for payment_intent_id is verified.
+    if (!paymentIntentId) return res.status(200).json({ received: true });
+
+    const order = await findOrderByPaymentIntent(paymentIntentId);
+
+    // Stripe may deliver the payment event before create-order has persisted
+    // the order. A non-2xx response makes Stripe retry the event later.
+    if (!order) {
+      console.warn("Stripe event has no matching order yet:", paymentIntentId);
+      return res.status(409).json({ error: "Order not found yet." });
+    }
+
+    switch (event.type) {
+      case "payment_intent.succeeded": {
+        const expectedAmount = Math.round(Number(order.total) * 100);
+        if (Number(object.amount_received ?? object.amount) !== expectedAmount) {
+          console.error("Stripe amount mismatch for order:", order.id);
+          return res.status(409).json({ error: "Payment amount does not match order." });
+        }
+        if (object.currency && object.currency.toLowerCase() !== "usd") {
+          return res.status(409).json({ error: "Unsupported payment currency." });
+        }
+        if (order.status !== "paid") await updateOrder(order.id, { status: "paid" });
         break;
+      }
 
       case "payment_intent.payment_failed":
-        console.warn("Payment failed:", object?.id);
+        if (order.status !== "paid") await updateOrder(order.id, { status: "payment_failed" });
         break;
 
       case "payment_intent.canceled":
-        console.warn("Payment canceled:", object?.id);
+        if (order.status !== "paid") await updateOrder(order.id, { status: "canceled" });
         break;
 
       case "charge.refunded":
-        console.info("Charge refunded:", object?.id);
+        if (order.status !== "refunded") await updateOrder(order.id, { status: "refunded" });
         break;
 
       default:
-        // Unknown Stripe events should still be acknowledged after successful
-        // signature verification so Stripe does not repeatedly retry them.
         break;
     }
 
