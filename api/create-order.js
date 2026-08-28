@@ -1,6 +1,7 @@
 import {
   assertClose,
   calculateSubtotal,
+  calculateTax,
   fetchProductsForOrder,
   getShippingCost,
   getSupabaseServerConfig,
@@ -8,8 +9,8 @@ import {
 } from "./_order-pricing.js";
 
 // Vercel Serverless Function: /api/create-order
-// Persists an already-paid order. Product prices and shipping are calculated
-// from server-side data; the browser cannot choose the item price.
+// Persists an already-paid order. Product prices, shipping, tax, and totals
+// are calculated server-side and tied to the Stripe PaymentIntent.
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -34,8 +35,10 @@ export default async function handler(req, res) {
 
     const normalizedItems = await fetchProductsForOrder(items);
     const subtotal = calculateSubtotal(normalizedItems);
-    const shippingCost = money(getShippingCost(body.shippingMethod || body.shipping_method, subtotal));
-    const tax = money(body.tax || 0);
+    const shippingCost = money(
+      getShippingCost(body.shippingMethod || body.shipping_method, subtotal),
+    );
+    const tax = calculateTax(subtotal + shippingCost);
     const total = money(subtotal + shippingCost + tax);
 
     if (total <= 0) return res.status(400).json({ error: "Order total must be positive." });
@@ -48,9 +51,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "A valid payment intent is required." });
     }
 
-    // Verify the PaymentIntent amount before marking the order paid. This
-    // protects against changing the cart between payment creation and order
-    // creation, and keeps the database total tied to the Stripe charge.
     const secretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_KEY;
     if (!secretKey) {
       console.error("Stripe is not configured on the server.");
@@ -83,15 +83,31 @@ export default async function handler(req, res) {
 
     if (accessToken) {
       const whoResponse = await fetch(`${sbUrl}/auth/v1/user`, {
-        headers: {
-          apikey: sbKey,
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { apikey: sbKey, Authorization: `Bearer ${accessToken}` },
       });
 
-      if (!whoResponse.ok) return res.status(401).json({ error: "Invalid authentication token." });
+      if (!whoResponse.ok) {
+        return res.status(401).json({ error: "Invalid authentication token." });
+      }
+
       const who = await whoResponse.json().catch(() => null);
       userId = who?.id || null;
+    }
+
+    // Idempotency at the database boundary: a PaymentIntent can only create
+    // one order. This also protects against browser retries after a timeout.
+    const existingResponse = await fetch(
+      `${sbUrl}/rest/v1/orders?select=id&payment_intent_id=eq.${encodeURIComponent(paymentIntentId)}&limit=1`,
+      {
+        headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` },
+      },
+    );
+
+    if (existingResponse.ok) {
+      const existing = await existingResponse.json().catch(() => []);
+      if (existing[0]?.id) {
+        return res.status(200).json({ ok: true, orderId: existing[0].id, alreadyExists: true, total });
+      }
     }
 
     const customer = body.customer || body.shippingAddress || {};
@@ -117,7 +133,7 @@ export default async function handler(req, res) {
       apikey: sbKey,
       Authorization: `Bearer ${sbKey}`,
       "Content-Type": "application/json",
-      Prefer: "return=representation,resolution=ignore-duplicates",
+      Prefer: "return=representation",
     };
 
     const orderResponse = await fetch(`${sbUrl}/rest/v1/orders`, {
@@ -136,8 +152,6 @@ export default async function handler(req, res) {
     const savedOrder = createdOrders[0];
 
     if (!savedOrder?.id) {
-      // A duplicate PaymentIntent/order is safe to treat as already persisted;
-      // return a stable conflict instead of creating a second order.
       return res.status(409).json({ error: "Order has already been recorded." });
     }
 
