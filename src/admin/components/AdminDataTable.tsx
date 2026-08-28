@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Table } from "@heroui/react";
 
-export interface AdminDataTableColumn<T> {
+export interface AdminDataTableColumn<T extends object> {
   key: string;
   header: string;
   render: (row: T) => ReactNode;
@@ -10,14 +10,14 @@ export interface AdminDataTableColumn<T> {
   cellClassName?: string;
 }
 
-interface AdminDataTableProps<T> {
+interface AdminDataTableProps<T extends object> {
   columns: AdminDataTableColumn<T>[];
   data: T[];
   rowKey: (row: T) => string;
   emptyState: { icon: LucideIcon; title: string; description: string };
 }
 
-export default function AdminDataTable<T>({
+export default function AdminDataTable<T extends object>({
   columns,
   data,
   rowKey,
