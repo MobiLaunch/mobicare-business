@@ -1,14 +1,6 @@
 import { useEffect } from "react";
-import {
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ToastProvider } from "@heroui/react";
-
-import CanvasPreview from "./__canvas_preview__"; // @hyperide-managed
 
 import { useProductStore, useCartStore } from "@/lib/store";
 import { useSiteStore, applyAppearance } from "@/lib/siteStore";
@@ -45,7 +37,6 @@ function StoreInit() {
   const init = useProductStore((s) => s.init);
   const appearance = useSiteStore((s) => s.appearance);
 
-  // Apply theme tokens whenever appearance settings change.
   useEffect(() => {
     if (appearance) applyAppearance(appearance);
   }, [appearance]);
@@ -59,25 +50,12 @@ function StoreInit() {
 
     if (!siteContentInitPromise) {
       siteContentInitPromise = (async () => {
-        const LEGACY_ACCENT_HEXES = [
-          "#13522b",
-          "#0a3318",
-          "#13522B",
-          "#0A3318",
-        ];
+        const LEGACY_ACCENT_HEXES = ["#13522b", "#0a3318", "#13522B", "#0A3318"];
 
-        function sanitizeAppearance(
-          app: Record<string, unknown>,
-        ): Record<string, unknown> {
+        function sanitizeAppearance(app: Record<string, unknown>) {
           const out = { ...app };
-
-          if (LEGACY_ACCENT_HEXES.includes(String(out["accentColor"] ?? "")))
-            out["accentColor"] = "";
-          if (
-            LEGACY_ACCENT_HEXES.includes(String(out["accentColorDeep"] ?? ""))
-          )
-            out["accentColorDeep"] = "";
-
+          if (LEGACY_ACCENT_HEXES.includes(String(out.accentColor ?? ""))) out.accentColor = "";
+          if (LEGACY_ACCENT_HEXES.includes(String(out.accentColorDeep ?? ""))) out.accentColorDeep = "";
           return out;
         }
 
@@ -86,10 +64,7 @@ function StoreInit() {
           const defaults = useSiteStore.getState();
 
           if (dbContent) {
-            const rawAppearance = (dbContent.appearance ?? {}) as Record<
-              string,
-              unknown
-            >;
+            const rawAppearance = (dbContent.appearance ?? {}) as Record<string, unknown>;
             const sanitizedAppearance = sanitizeAppearance({
               ...(defaults.appearance as unknown as Record<string, unknown>),
               ...rawAppearance,
@@ -105,22 +80,14 @@ function StoreInit() {
               ctaStrip: dbContent.ctaStrip || defaults.ctaStrip,
             };
 
-            useSiteStore.setState(
-              mergedContent as Partial<
-                ReturnType<typeof useSiteStore.getState>
-              >,
-            );
-            if (mergedContent.appearance) {
-              applyAppearance(mergedContent.appearance);
-            }
+            useSiteStore.setState(mergedContent as Partial<ReturnType<typeof useSiteStore.getState>>);
+            if (mergedContent.appearance) applyAppearance(mergedContent.appearance);
           } else {
             const current = useSiteStore.getState();
-
             if (current.appearance) applyAppearance(current.appearance);
           }
         } else {
           const current = useSiteStore.getState();
-
           if (current.appearance) applyAppearance(current.appearance);
         }
       })().catch((error) => {
@@ -134,11 +101,9 @@ function StoreInit() {
 
 function ScrollToTop() {
   const { pathname } = useLocation();
-
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [pathname]);
-
   return null;
 }
 
@@ -162,126 +127,26 @@ export default function App() {
       <ToastProvider />
       <CartDrawer />
       <Routes>
-        <Route
-          element={
-            <PublicLayout>
-              <Home />
-            </PublicLayout>
-          }
-          path="/"
-        />
-        <Route
-          element={
-            <PublicLayout>
-              <Shop />
-            </PublicLayout>
-          }
-          path="/shop"
-        />
-        <Route
-          element={
-            <PublicLayout>
-              <ProductDetail />
-            </PublicLayout>
-          }
-          path="/product/:id"
-        />
-        <Route
-          element={
-            <PublicLayout>
-              <CartRedirect />
-            </PublicLayout>
-          }
-          path="/cart"
-        />
-        <Route
-          element={
-            <PublicLayout>
-              <OrderSuccess />
-            </PublicLayout>
-          }
-          path="/order-success"
-        />
-        <Route
-          element={
-            <PublicLayout>
-              <Repairs />
-            </PublicLayout>
-          }
-          path="/repairs"
-        />
-        <Route
-          element={
-            <PublicLayout>
-              <Protection />
-            </PublicLayout>
-          }
-          path="/protection"
-        />
-        <Route
-          element={<Navigate replace to="/protection" />}
-          path="/insurance"
-        />
-        <Route
-          element={
-            <PublicLayout>
-              <About />
-            </PublicLayout>
-          }
-          path="/about"
-        />
-        <Route
-          element={
-            <PublicLayout>
-              <Login />
-            </PublicLayout>
-          }
-          path="/login"
-        />
+        <Route element={<PublicLayout><Home /></PublicLayout>} path="/" />
+        <Route element={<PublicLayout><Shop /></PublicLayout>} path="/shop" />
+        <Route element={<PublicLayout><ProductDetail /></PublicLayout>} path="/product/:id" />
+        <Route element={<PublicLayout><CartRedirect /></PublicLayout>} path="/cart" />
+        <Route element={<PublicLayout><OrderSuccess /></PublicLayout>} path="/order-success" />
+        <Route element={<PublicLayout><Repairs /></PublicLayout>} path="/repairs" />
+        <Route element={<PublicLayout><Protection /></PublicLayout>} path="/protection" />
+        <Route element={<Navigate replace to="/protection" />} path="/insurance" />
+        <Route element={<PublicLayout><About /></PublicLayout>} path="/about" />
+        <Route element={<PublicLayout><Login /></PublicLayout>} path="/login" />
         <Route element={<Navigate replace to="/login" />} path="/signin" />
         <Route element={<Navigate replace to="/login" />} path="/sign-in" />
-        <Route
-          element={
-            <PublicLayout>
-              <Signup />
-            </PublicLayout>
-          }
-          path="/signup"
-        />
-        <Route
-          element={
-            <PublicLayout>
-              <ForgotPassword />
-            </PublicLayout>
-          }
-          path="/forgot-password"
-        />
-        <Route
-          element={
-            <PublicLayout>
-              <ResetPassword />
-            </PublicLayout>
-          }
-          path="/reset-password"
-        />
-        <Route
-          element={
-            <PublicLayout>
-              <Account />
-            </PublicLayout>
-          }
-          path="/account"
-        />
+        <Route element={<PublicLayout><Signup /></PublicLayout>} path="/signup" />
+        <Route element={<PublicLayout><ForgotPassword /></PublicLayout>} path="/forgot-password" />
+        <Route element={<PublicLayout><ResetPassword /></PublicLayout>} path="/reset-password" />
+        <Route element={<PublicLayout><Account /></PublicLayout>} path="/account" />
         <Route path="/admin">
           <Route index element={<Navigate replace to="login" />} />
           <Route element={<AdminLogin />} path="login" />
-          <Route
-            element={
-              <RequireAdmin>
-                <AdminLayout />
-              </RequireAdmin>
-            }
-          >
+          <Route element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
             <Route element={<AdminDashboard />} path="dashboard" />
             <Route element={<AdminProducts />} path="products" />
             <Route element={<AdminCategories />} path="categories" />
@@ -292,8 +157,6 @@ export default function App() {
             <Route index element={<Navigate replace to="dashboard" />} />
           </Route>
         </Route>
-
-        <Route element={<CanvasPreview />} path="/test-preview" />
         <Route element={<Navigate replace to="/" />} path="*" />
       </Routes>
     </>
