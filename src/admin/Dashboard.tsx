@@ -1,5 +1,6 @@
 import type { Order } from "@/types/domain";
 
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -37,6 +38,9 @@ const QUICK_ACTIONS = [
   { icon: SlidersHorizontal, title: "Store Settings", sub: "Configure API keys & integrations", path: "/admin/settings" },
 ];
 
+const ACTIVE_STATUSES = ["paid", "processing", "shipped"];
+const CLOSED_STATUSES = ["delivered", "cancelled", "refunded"];
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const products = useProductStore((s) => s.products);
@@ -46,8 +50,11 @@ export default function Dashboard() {
   const activeProducts = products.filter((p) => p.active).length;
   const lowStock = products.filter((p) => p.stock > 0 && p.stock <= 5).length;
   const outOfStock = products.filter((p) => p.stock === 0).length;
-  const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0);
-  const recentOrders = orders.slice(0, 5);
+  const activeOrders = orders.filter((o) => ACTIVE_STATUSES.includes(o.status)).length;
+  const completedOrders = orders.filter((o) => o.status === "delivered").length;
+  const attentionOrders = orders.filter((o) => ["cancelled", "refunded"].includes(o.status)).length;
+  const totalRevenue = orders.filter((o) => !["cancelled", "refunded"].includes(o.status)).reduce((s, o) => s + (o.total || 0), 0);
+  const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
 
   const columns: AdminDataTableColumn<Order>[] = [
     { key: "id", header: "Order", render: (o) => <code className="rounded-lg bg-surface-tertiary px-2 py-1 text-xs font-bold">#{o.id?.slice(0, 8).toUpperCase()}</code> },
@@ -68,26 +75,27 @@ export default function Dashboard() {
         title="Dashboard"
       />
 
-      {(outOfStock > 0 || lowStock > 0) && (
-        <section aria-label="Inventory alerts" className="rounded-[24px] border border-border bg-surface p-4 sm:p-5">
+      {(outOfStock > 0 || lowStock > 0 || attentionOrders > 0) && (
+        <section aria-label="Store alerts" className="rounded-[24px] border border-border bg-surface p-4 sm:p-5">
           <div className="mb-3 flex items-center gap-2.5">
             <span className="flex size-8 items-center justify-center rounded-xl bg-warning/10 text-warning"><TriangleAlert className="size-4" /></span>
-            <div><h2 className="m-0 text-sm font-bold text-foreground">Inventory attention</h2><p className="m-0 text-xs text-muted">Items that may need action before the next sale.</p></div>
+            <div><h2 className="m-0 text-sm font-bold text-foreground">Needs attention</h2><p className="m-0 text-xs text-muted">A few store conditions may need action.</p></div>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {outOfStock > 0 && <button type="button" onClick={() => navigate("/admin/products")} className="flex min-h-14 items-center gap-3 rounded-2xl border border-danger/20 bg-danger/5 p-3 text-left transition-colors hover:bg-danger/10"><PackageX className="size-5 shrink-0 text-danger" /><span className="min-w-0 flex-1"><strong className="block text-sm text-foreground">{outOfStock} out of stock</strong><span className="text-xs text-muted">Restock or update these products.</span></span><ArrowRight className="size-4 shrink-0 text-muted" /></button>}
             {lowStock > 0 && <button type="button" onClick={() => navigate("/admin/products")} className="flex min-h-14 items-center gap-3 rounded-2xl border border-warning/20 bg-warning/5 p-3 text-left transition-colors hover:bg-warning/10"><PackageX className="size-5 shrink-0 text-warning" /><span className="min-w-0 flex-1"><strong className="block text-sm text-foreground">{lowStock} low-stock {lowStock === 1 ? "item" : "items"}</strong><span className="text-xs text-muted">Five or fewer units remaining.</span></span><ArrowRight className="size-4 shrink-0 text-muted" /></button>}
+            {attentionOrders > 0 && <button type="button" onClick={() => navigate("/admin/orders")} className="flex min-h-14 items-center gap-3 rounded-2xl border border-danger/20 bg-danger/5 p-3 text-left transition-colors hover:bg-danger/10"><ShoppingBag className="size-5 shrink-0 text-danger" /><span className="min-w-0 flex-1"><strong className="block text-sm text-foreground">{attentionOrders} order{attentionOrders === 1 ? "" : "s"} need review</strong><span className="text-xs text-muted">Cancelled or refunded orders.</span></span><ArrowRight className="size-4 shrink-0 text-muted" /></button>}
           </div>
         </section>
       )}
 
       <section aria-label="Store metrics">
-        <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="m-0 text-lg font-extrabold text-foreground">Store at a glance</h2><p className="m-0 mt-0.5 text-xs text-muted">Current catalog and sales totals.</p></div></div>
+        <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="m-0 text-lg font-extrabold text-foreground">Store at a glance</h2><p className="m-0 mt-0.5 text-xs text-muted">Current catalog, fulfillment, and sales totals.</p></div></div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           <AdminStatCard icon={Boxes} path="/admin/products"><p className="m-0 mb-1 text-[clamp(1.7rem,3vw,2.25rem)] font-extrabold leading-none tracking-tight text-foreground">{products.length}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Products</p><p className="m-0 text-xs text-muted">{activeProducts} active in store</p></AdminStatCard>
-          <AdminStatCard icon={Tag} path="/admin/categories"><p className="m-0 mb-1 text-[clamp(1.7rem,3vw,2.25rem)] font-extrabold leading-none tracking-tight text-foreground">{categories.length}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Categories</p><p className="m-0 text-xs text-muted">Organized product groups</p></AdminStatCard>
-          <AdminStatCard icon={ShoppingBag} path="/admin/orders"><p className="m-0 mb-1 text-[clamp(1.7rem,3vw,2.25rem)] font-extrabold leading-none tracking-tight text-foreground">{orders.length}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Orders</p><p className="m-0 text-xs text-muted">Completed &amp; pending</p></AdminStatCard>
-          <AdminStatCard icon={TrendingUp} path="/admin/orders"><p className="m-0 mb-1 text-[clamp(1.45rem,2.5vw,2rem)] font-extrabold leading-none tracking-tight text-foreground">${totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Gross Revenue</p><p className="m-0 text-xs text-muted">All-time sales</p></AdminStatCard>
+          <AdminStatCard icon={ShoppingBag} path="/admin/orders"><p className="m-0 mb-1 text-[clamp(1.7rem,3vw,2.25rem)] font-extrabold leading-none tracking-tight text-foreground">{activeOrders}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Open Orders</p><p className="m-0 text-xs text-muted">Paid through shipped</p></AdminStatCard>
+          <AdminStatCard icon={Tag} path="/admin/categories"><p className="m-0 mb-1 text-[clamp(1.7rem,3vw,2.25rem)] font-extrabold leading-none tracking-tight text-foreground">{categories.length}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Categories</p><p className="m-0 text-xs text-muted">{completedOrders} orders completed</p></AdminStatCard>
+          <AdminStatCard icon={TrendingUp} path="/admin/orders"><p className="m-0 mb-1 text-[clamp(1.45rem,2.5vw,2rem)] font-extrabold leading-none tracking-tight text-foreground">${totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Net Sales Tracked</p><p className="m-0 text-xs text-muted">Excludes cancelled &amp; refunded</p></AdminStatCard>
         </div>
       </section>
 
