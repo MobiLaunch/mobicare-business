@@ -30,22 +30,21 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
     ? Math.round((1 - product.price / product.comparePrice) * 100)
     : null;
 
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!onClick || event.target !== event.currentTarget) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
-    <div
-      className="group flex h-full flex-col gap-3 rounded-3xl bg-surface p-4 transition-transform duration-200 hover:-translate-y-0.5"
+    <article
+      className="group flex h-full flex-col gap-3 rounded-3xl bg-surface p-3.5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-4"
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
-      onKeyDown={
-        onClick
-          ? (event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onClick();
-              }
-            }
-          : undefined
-      }
+      onKeyDown={handleCardKeyDown}
     >
       <div className="relative aspect-square overflow-hidden rounded-2xl bg-surface-secondary">
         <img
@@ -56,11 +55,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
         />
 
         {discount && (
-          <Chip
-            className="absolute left-2 top-2 gap-1"
-            color="accent"
-            size="sm"
-          >
+          <Chip className="absolute left-2 top-2 gap-1" color="accent" size="sm">
             <Tag className="size-3" />
             <Chip.Label>{discount}% OFF</Chip.Label>
           </Chip>
@@ -80,21 +75,21 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
       </div>
 
       <div className="flex flex-1 flex-col gap-1">
-        <p className="m-0 text-xs font-bold uppercase text-accent">
-          {product.category?.replace("-", " ")}
+        <p className="m-0 text-xs font-bold uppercase tracking-wide text-accent">
+          {product.category?.replaceAll("-", " ")}
         </p>
 
-        <h3 className="m-0 text-base font-semibold text-foreground">
+        <h3 className="m-0 line-clamp-2 text-base font-semibold leading-snug text-foreground">
           {product.name}
         </h3>
 
-        <p className="m-0 line-clamp-2 text-sm text-muted">
+        <p className="m-0 line-clamp-2 text-sm leading-relaxed text-muted">
           {product.description}
         </p>
       </div>
 
       <div className="flex items-center gap-2 pt-1">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <strong className="text-lg text-foreground">
             ${product.price?.toFixed(2)}
           </strong>
@@ -109,14 +104,17 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
         <Button
           isIconOnly
           aria-label={`Add ${product.name} to cart`}
-          className="rounded-full"
+          className="shrink-0 rounded-full"
           isDisabled={product.stock === 0}
           variant="primary"
-          onPress={handleAddToCart}
+          onPress={(event) => {
+            event.stopPropagation();
+            handleAddToCart();
+          }}
         >
           <ShoppingCart className="size-4" />
         </Button>
       </div>
-    </div>
+    </article>
   );
 }
