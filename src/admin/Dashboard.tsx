@@ -18,9 +18,7 @@ import { Button } from "@heroui/react";
 
 import { useProductStore } from "@/lib/store";
 import AdminPageHeader from "@/admin/components/AdminPageHeader";
-import AdminDataTable, {
-  type AdminDataTableColumn,
-} from "@/admin/components/AdminDataTable";
+import AdminDataTable, { type AdminDataTableColumn } from "@/admin/components/AdminDataTable";
 import AdminStatCard from "@/admin/components/AdminStatCard";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -33,30 +31,10 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const QUICK_ACTIONS = [
-  {
-    icon: Boxes,
-    title: "Add Product",
-    sub: "Create new catalog item",
-    path: "/admin/products?action=add",
-  },
-  {
-    icon: Tag,
-    title: "Manage Taxonomies",
-    sub: "Organize categories & tags",
-    path: "/admin/categories",
-  },
-  {
-    icon: Wand2,
-    title: "Site Content Editor",
-    sub: "Customize hero & brand text",
-    path: "/admin/content",
-  },
-  {
-    icon: SlidersHorizontal,
-    title: "Store Settings",
-    sub: "Configure API keys & integrations",
-    path: "/admin/settings",
-  },
+  { icon: Boxes, title: "Add Product", sub: "Create new catalog item", path: "/admin/products?action=add" },
+  { icon: Tag, title: "Manage Taxonomies", sub: "Organize categories & tags", path: "/admin/categories" },
+  { icon: Wand2, title: "Site Content Editor", sub: "Customize hero & brand text", path: "/admin/content" },
+  { icon: SlidersHorizontal, title: "Store Settings", sub: "Configure API keys & integrations", path: "/admin/settings" },
 ];
 
 export default function Dashboard() {
@@ -72,257 +50,56 @@ export default function Dashboard() {
   const recentOrders = orders.slice(0, 5);
 
   const columns: AdminDataTableColumn<Order>[] = [
-    {
-      key: "id",
-      header: "Order Identifier",
-      render: (o) => (
-        <code className="rounded-lg bg-surface-tertiary px-2 py-1 text-xs font-bold">
-          #{o.id?.slice(0, 8).toUpperCase()}
-        </code>
-      ),
-    },
-    {
-      key: "customer",
-      header: "Customer Name",
-      render: (o) => (
-        <strong className="text-sm text-foreground">
-          {o.customer?.name || "Guest Customer"}
-        </strong>
-      ),
-    },
-    {
-      key: "items",
-      header: "Items Count",
-      render: (o) => (
-        <span className="text-sm text-muted">
-          {o.items?.length || 0} item{o.items?.length !== 1 ? "s" : ""}
-        </span>
-      ),
-    },
-    {
-      key: "total",
-      header: "Grand Total",
-      render: (o) => (
-        <strong className="text-sm text-accent">
-          ${(o.total || 0).toFixed(2)}
-        </strong>
-      ),
-    },
-    {
-      key: "status",
-      header: "Fulfillment Status",
-      render: (o) => (
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-bold capitalize ${STATUS_STYLES[o.status] || "bg-surface-tertiary"}`}
-        >
-          {o.status || "pending"}
-        </span>
-      ),
-    },
-    {
-      key: "date",
-      header: "Order Date",
-      render: (o) => (
-        <span className="text-[13px] text-muted">
-          {o.createdAt
-            ? new Date(o.createdAt).toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
-            : "—"}
-        </span>
-      ),
-    },
-    {
-      key: "actions",
-      header: "",
-      render: () => (
-        <Button
-          isIconOnly
-          aria-label="View order"
-          variant="ghost"
-          onPress={() => navigate("/admin/orders")}
-        >
-          <Eye className="size-4" />
-        </Button>
-      ),
-    },
+    { key: "id", header: "Order", render: (o) => <code className="rounded-lg bg-surface-tertiary px-2 py-1 text-xs font-bold">#{o.id?.slice(0, 8).toUpperCase()}</code> },
+    { key: "customer", header: "Customer", render: (o) => <strong className="text-sm text-foreground">{o.customer?.name || "Guest Customer"}</strong> },
+    { key: "items", header: "Items", render: (o) => <span className="text-sm text-muted">{o.items?.length || 0} item{o.items?.length !== 1 ? "s" : ""}</span> },
+    { key: "total", header: "Total", render: (o) => <strong className="text-sm text-accent">${(o.total || 0).toFixed(2)}</strong> },
+    { key: "status", header: "Status", render: (o) => <span className={`rounded-full px-2.5 py-1 text-xs font-bold capitalize ${STATUS_STYLES[o.status] || "bg-surface-tertiary"}`}>{o.status || "pending"}</span> },
+    { key: "date", header: "Date", render: (o) => <span className="text-[13px] text-muted">{o.createdAt ? new Date(o.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—"}</span> },
+    { key: "actions", header: "", render: () => <Button isIconOnly aria-label="View orders" variant="ghost" onPress={() => navigate("/admin/orders")}><Eye className="size-4" /></Button> },
   ];
 
   return (
-    <div>
+    <div className="space-y-7">
       <AdminPageHeader
-        action={
-          <Button
-            variant="primary"
-            onPress={() => navigate("/admin/products?action=add")}
-          >
-            <Plus className="size-4" />
-            <span>Add New Product</span>
-          </Button>
-        }
-        description="Real-time metric telemetry, inventory status, and recent order activity."
-        eyebrow="Executive Overview"
-        title="Store Operations"
+        action={<Button variant="primary" onPress={() => navigate("/admin/products?action=add")}><Plus className="size-4" /><span>Add New Product</span></Button>}
+        description="A quick view of what needs attention across your store today."
+        eyebrow="Store Operations"
+        title="Dashboard"
       />
 
-      {/* Inventory alerts */}
-      <div className="mb-6 flex flex-col gap-3">
-        {outOfStock > 0 && (
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-danger/10 p-4 text-danger">
-            <TriangleAlert className="size-6 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <strong className="block text-sm">Stock Depleted Warning</strong>
-              <span className="text-[13px] opacity-90">
-                {outOfStock} product{outOfStock !== 1 ? "s are" : " is"}{" "}
-                currently completely out of stock.
-              </span>
-            </div>
-            <Button
-              className="shrink-0"
-              variant="outline"
-              onPress={() => navigate("/admin/products")}
-            >
-              <span>Update Inventory</span>
-              <ArrowRight className="size-4" />
-            </Button>
+      {(outOfStock > 0 || lowStock > 0) && (
+        <section aria-label="Inventory alerts" className="rounded-[24px] border border-border bg-surface p-4 sm:p-5">
+          <div className="mb-3 flex items-center gap-2.5">
+            <span className="flex size-8 items-center justify-center rounded-xl bg-warning/10 text-warning"><TriangleAlert className="size-4" /></span>
+            <div><h2 className="m-0 text-sm font-bold text-foreground">Inventory attention</h2><p className="m-0 text-xs text-muted">Items that may need action before the next sale.</p></div>
           </div>
-        )}
-
-        {lowStock > 0 && (
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-warning/10 p-4 text-warning">
-            <PackageX className="size-6 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <strong className="block text-sm">Low Inventory Alert</strong>
-              <span className="text-[13px] opacity-90">
-                {lowStock} product{lowStock !== 1 ? "s have" : " has"} 5 or
-                fewer items remaining.
-              </span>
-            </div>
-            <Button
-              className="shrink-0"
-              variant="outline"
-              onPress={() => navigate("/admin/products")}
-            >
-              <span>View Stock</span>
-              <ArrowRight className="size-4" />
-            </Button>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {outOfStock > 0 && <button type="button" onClick={() => navigate("/admin/products")} className="flex min-h-14 items-center gap-3 rounded-2xl border border-danger/20 bg-danger/5 p-3 text-left transition-colors hover:bg-danger/10"><PackageX className="size-5 shrink-0 text-danger" /><span className="min-w-0 flex-1"><strong className="block text-sm text-foreground">{outOfStock} out of stock</strong><span className="text-xs text-muted">Restock or update these products.</span></span><ArrowRight className="size-4 shrink-0 text-muted" /></button>}
+            {lowStock > 0 && <button type="button" onClick={() => navigate("/admin/products")} className="flex min-h-14 items-center gap-3 rounded-2xl border border-warning/20 bg-warning/5 p-3 text-left transition-colors hover:bg-warning/10"><PackageX className="size-5 shrink-0 text-warning" /><span className="min-w-0 flex-1"><strong className="block text-sm text-foreground">{lowStock} low-stock {lowStock === 1 ? "item" : "items"}</strong><span className="text-xs text-muted">Five or fewer units remaining.</span></span><ArrowRight className="size-4 shrink-0 text-muted" /></button>}
           </div>
-        )}
-      </div>
+        </section>
+      )}
 
-      {/* Stat cards */}
-      {/* NOTE (HeroUI v3 rebuild): the original "Products Catalog" card
-          showed a hardcoded "+12% vs last month" trend string — the app has
-          no historical snapshot data to compute a real month-over-month
-          change, so that number was fabricated. Replaced with an honest
-          descriptive tagline, matching the other three cards, which never
-          claimed a fake statistic. */}
-      <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <AdminStatCard icon={Boxes} path="/admin/products">
-          <p className="m-0 mb-1 text-[clamp(1.8rem,3vw,2.4rem)] font-extrabold leading-none tracking-tight text-foreground">
-            {products.length}
-          </p>
-          <p className="m-0 mb-0.5 text-sm font-bold text-foreground">
-            Products Catalog
-          </p>
-          <p className="m-0 text-xs text-muted">
-            {activeProducts} active in store
-          </p>
-        </AdminStatCard>
-
-        <AdminStatCard icon={Tag} path="/admin/categories">
-          <p className="m-0 mb-1 text-[clamp(1.8rem,3vw,2.4rem)] font-extrabold leading-none tracking-tight text-foreground">
-            {categories.length}
-          </p>
-          <p className="m-0 mb-0.5 text-sm font-bold text-foreground">
-            Categories
-          </p>
-          <p className="m-0 text-xs text-muted">Organized product groups</p>
-        </AdminStatCard>
-
-        <AdminStatCard icon={ShoppingBag} path="/admin/orders">
-          <p className="m-0 mb-1 text-[clamp(1.8rem,3vw,2.4rem)] font-extrabold leading-none tracking-tight text-foreground">
-            {orders.length}
-          </p>
-          <p className="m-0 mb-0.5 text-sm font-bold text-foreground">
-            Total Orders
-          </p>
-          <p className="m-0 text-xs text-muted">Completed &amp; pending</p>
-        </AdminStatCard>
-
-        <AdminStatCard icon={TrendingUp} path="/admin/orders">
-          <p className="m-0 mb-1 text-[clamp(1.5rem,2.6vw,2rem)] font-extrabold leading-none tracking-tight text-foreground">
-            $
-            {totalRevenue.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </p>
-          <p className="m-0 mb-0.5 text-sm font-bold text-foreground">
-            Gross Revenue
-          </p>
-          <p className="m-0 text-xs text-muted">All-time sales</p>
-        </AdminStatCard>
-      </div>
-
-      {/* Recent orders */}
-      <section className="mb-9">
-        <div className="mb-4 flex items-center gap-3">
-          <div>
-            <h3 className="m-0 text-xl font-extrabold text-foreground">
-              Recent Orders
-            </h3>
-            <p className="m-0 text-[13px] text-muted">
-              Latest purchases placed by store customers
-            </p>
-          </div>
-          <div className="flex-1" />
-          <Button variant="ghost" onPress={() => navigate("/admin/orders")}>
-            <span>View All Orders</span>
-            <ArrowRight className="size-4" />
-          </Button>
+      <section aria-label="Store metrics">
+        <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="m-0 text-lg font-extrabold text-foreground">Store at a glance</h2><p className="m-0 mt-0.5 text-xs text-muted">Current catalog and sales totals.</p></div></div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+          <AdminStatCard icon={Boxes} path="/admin/products"><p className="m-0 mb-1 text-[clamp(1.7rem,3vw,2.25rem)] font-extrabold leading-none tracking-tight text-foreground">{products.length}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Products</p><p className="m-0 text-xs text-muted">{activeProducts} active in store</p></AdminStatCard>
+          <AdminStatCard icon={Tag} path="/admin/categories"><p className="m-0 mb-1 text-[clamp(1.7rem,3vw,2.25rem)] font-extrabold leading-none tracking-tight text-foreground">{categories.length}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Categories</p><p className="m-0 text-xs text-muted">Organized product groups</p></AdminStatCard>
+          <AdminStatCard icon={ShoppingBag} path="/admin/orders"><p className="m-0 mb-1 text-[clamp(1.7rem,3vw,2.25rem)] font-extrabold leading-none tracking-tight text-foreground">{orders.length}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Orders</p><p className="m-0 text-xs text-muted">Completed &amp; pending</p></AdminStatCard>
+          <AdminStatCard icon={TrendingUp} path="/admin/orders"><p className="m-0 mb-1 text-[clamp(1.45rem,2.5vw,2rem)] font-extrabold leading-none tracking-tight text-foreground">${totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Gross Revenue</p><p className="m-0 text-xs text-muted">All-time sales</p></AdminStatCard>
         </div>
-
-        <AdminDataTable
-          columns={columns}
-          data={recentOrders}
-          emptyState={{
-            icon: ShoppingBag,
-            title: "No orders recorded yet",
-            description:
-              "Orders will automatically appear here as customers complete checkout on the live store.",
-          }}
-          rowKey={(o) => o.id}
-        />
       </section>
 
-      {/* Quick actions */}
       <section>
-        <h3 className="m-0 mb-4 text-xl font-extrabold text-foreground">
-          Management Shortcuts
-        </h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {QUICK_ACTIONS.map((qa) => (
-            <AdminStatCard
-              key={qa.title}
-              className="flex items-center gap-3.5 p-4"
-              icon={qa.icon}
-              iconClassName=""
-              path={qa.path}
-            >
-              <div className="min-w-0 flex-1">
-                <strong className="block truncate text-sm text-foreground">
-                  {qa.title}
-                </strong>
-                <span className="block truncate text-xs text-muted">
-                  {qa.sub}
-                </span>
-              </div>
-              <ArrowRight className="size-[18px] shrink-0 text-muted" />
-            </AdminStatCard>
-          ))}
+        <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="m-0 text-lg font-extrabold text-foreground">Recent orders</h2><p className="m-0 mt-0.5 text-xs text-muted">The latest purchases placed by customers.</p></div><Button variant="ghost" onPress={() => navigate("/admin/orders")}><span>View all</span><ArrowRight className="size-4" /></Button></div>
+        <AdminDataTable columns={columns} data={recentOrders} emptyState={{ icon: ShoppingBag, title: "No orders recorded yet", description: "Orders will appear here as customers complete checkout." }} rowKey={(o) => o.id} />
+      </section>
+
+      <section>
+        <div className="mb-3"><h2 className="m-0 text-lg font-extrabold text-foreground">Management shortcuts</h2><p className="m-0 mt-0.5 text-xs text-muted">Common tasks, one tap away.</p></div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {QUICK_ACTIONS.map((qa) => <AdminStatCard key={qa.title} className="flex items-center gap-3 p-4" icon={qa.icon} iconClassName="" path={qa.path}><div className="min-w-0 flex-1"><strong className="block truncate text-sm text-foreground">{qa.title}</strong><span className="block truncate text-xs text-muted">{qa.sub}</span></div><ArrowRight className="size-[18px] shrink-0 text-muted" /></AdminStatCard>)}
         </div>
       </section>
     </div>
