@@ -6,9 +6,7 @@ import { Button, Chip, ListBox, Modal, Select } from "@heroui/react";
 
 import { useProductStore, useToastStore } from "@/lib/store";
 import AdminPageHeader from "@/admin/components/AdminPageHeader";
-import AdminDataTable, {
-  type AdminDataTableColumn,
-} from "@/admin/components/AdminDataTable";
+import AdminDataTable, { type AdminDataTableColumn } from "@/admin/components/AdminDataTable";
 
 const STATUS_OPTIONS = ["paid", "processing", "shipped", "delivered", "cancelled", "refunded"] as const;
 const STATUS_STYLES: Record<string, string> = {
@@ -51,6 +49,28 @@ export default function Orders() {
     </Select>
   );
 
+  const MobileOrderCard = ({ order }: { order: Order }) => (
+    <article className="rounded-[24px] border border-border bg-surface p-4 shadow-[0_3px_16px_rgba(0,0,0,0.04)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <code className="inline-flex rounded-lg bg-surface-tertiary px-2 py-1 text-xs font-extrabold">#{order.id.slice(0, 8).toUpperCase()}</code>
+          <strong className="mt-2 block truncate text-sm text-foreground">{order.customer?.name || "Guest Customer"}</strong>
+          <span className="block truncate text-xs text-muted">{order.customer?.email || "No email registered"}</span>
+        </div>
+        <Button isIconOnly aria-label={`View order ${order.id.slice(0, 8)}`} variant="ghost" onPress={() => setSelected(order)}><Eye className="size-4" /></Button>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-surface-secondary p-3">
+        <div><span className="block text-[10px] font-bold uppercase tracking-wider text-muted">Placed</span><span className="text-xs font-semibold text-foreground">{order.createdAt ? new Date(order.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—"}</span></div>
+        <div className="text-right"><span className="block text-[10px] font-bold uppercase tracking-wider text-muted">Items</span><span className="text-xs font-semibold text-foreground">{order.items?.length || 0}</span></div>
+        <div><span className="block text-[10px] font-bold uppercase tracking-wider text-muted">Total</span><strong className="text-base text-accent">${(order.total || 0).toFixed(2)}</strong></div>
+        <div className="flex justify-end"><StatusSelect order={order} /></div>
+      </div>
+      <button type="button" className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-surface-tertiary px-3 py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-accent-soft hover:text-accent" onClick={() => setSelected(order)}>
+        View order details <Eye className="size-3.5" />
+      </button>
+    </article>
+  );
+
   const columns: AdminDataTableColumn<Order>[] = [
     { key: "id", header: "Order Identifier", render: (o) => <code className="rounded-lg bg-surface-tertiary px-2 py-1 text-xs font-bold">#{o.id.slice(0, 8).toUpperCase()}</code> },
     { key: "customer", header: "Customer Information", render: (o) => <div><strong className="block text-sm text-foreground">{o.customer?.name || "Guest Customer"}</strong><span className="text-xs text-muted">{o.customer?.email || "No email registered"}</span></div> },
@@ -66,26 +86,10 @@ export default function Orders() {
       <AdminPageHeader description={`${orders.length} total customer orders · Real-time fulfillment & payment state tracking`} eyebrow="Sales & Transactions" title="Orders Management" />
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <button type="button" onClick={() => setStatusFilter("all")} className={`rounded-2xl border p-4 text-left transition-colors ${statusFilter === "all" ? "border-accent bg-accent-soft/50" : "border-border bg-surface hover:bg-surface-secondary"}`}>
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Total orders</span>
-          <strong className="mt-1 block text-2xl font-extrabold text-foreground">{orders.length}</strong>
-          <span className="text-xs text-muted">All customer orders</span>
-        </button>
-        <button type="button" onClick={() => setStatusFilter("processing")} className={`rounded-2xl border p-4 text-left transition-colors ${statusFilter === "processing" ? "border-accent bg-accent-soft/50" : "border-border bg-surface hover:bg-surface-secondary"}`}>
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">In progress</span>
-          <strong className="mt-1 block text-2xl font-extrabold text-foreground">{activeOrders}</strong>
-          <span className="text-xs text-muted">Paid through shipped</span>
-        </button>
-        <button type="button" onClick={() => setStatusFilter("delivered")} className={`rounded-2xl border p-4 text-left transition-colors ${statusFilter === "delivered" ? "border-accent bg-accent-soft/50" : "border-border bg-surface hover:bg-surface-secondary"}`}>
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Completed</span>
-          <strong className="mt-1 block text-2xl font-extrabold text-foreground">{completedOrders}</strong>
-          <span className="text-xs text-muted">Delivered orders</span>
-        </button>
-        <div className="rounded-2xl border border-border bg-surface p-4 text-left">
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Sales tracked</span>
-          <strong className="mt-1 block text-2xl font-extrabold text-accent">${grossTotal.toFixed(2)}</strong>
-          <span className="text-xs text-muted">Excludes cancelled/refunded</span>
-        </div>
+        <button type="button" onClick={() => setStatusFilter("all")} className={`rounded-2xl border p-4 text-left transition-colors ${statusFilter === "all" ? "border-accent bg-accent-soft/50" : "border-border bg-surface hover:bg-surface-secondary"}`}><span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Total orders</span><strong className="mt-1 block text-2xl font-extrabold text-foreground">{orders.length}</strong><span className="text-xs text-muted">All customer orders</span></button>
+        <button type="button" onClick={() => setStatusFilter("processing")} className={`rounded-2xl border p-4 text-left transition-colors ${statusFilter === "processing" ? "border-accent bg-accent-soft/50" : "border-border bg-surface hover:bg-surface-secondary"}`}><span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">In progress</span><strong className="mt-1 block text-2xl font-extrabold text-foreground">{activeOrders}</strong><span className="text-xs text-muted">Paid through shipped</span></button>
+        <button type="button" onClick={() => setStatusFilter("delivered")} className={`rounded-2xl border p-4 text-left transition-colors ${statusFilter === "delivered" ? "border-accent bg-accent-soft/50" : "border-border bg-surface hover:bg-surface-secondary"}`}><span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Completed</span><strong className="mt-1 block text-2xl font-extrabold text-foreground">{completedOrders}</strong><span className="text-xs text-muted">Delivered orders</span></button>
+        <div className="rounded-2xl border border-border bg-surface p-4 text-left"><span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Sales tracked</span><strong className="mt-1 block text-2xl font-extrabold text-accent">${grossTotal.toFixed(2)}</strong><span className="text-xs text-muted">Excludes cancelled/refunded</span></div>
       </div>
 
       {attentionOrders > 0 && <button type="button" onClick={() => setStatusFilter(orders.some((o) => o.status === "cancelled") ? "cancelled" : "refunded")} className="mb-4 flex w-full items-center justify-between rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-left text-sm"><span><strong>{attentionOrders} order{attentionOrders === 1 ? "" : "s"} need attention</strong><span className="ml-2 text-muted">Cancelled or refunded</span></span><span className="font-bold text-warning">Review</span></button>}
@@ -95,7 +99,12 @@ export default function Orders() {
         {STATUS_OPTIONS.map((s) => { const count = orders.filter((o) => o.status === s).length; if (count === 0 && statusFilter !== s) return null; return <button key={s} className={`rounded-full px-3.5 py-1.5 text-sm font-bold ${statusFilter === s ? "bg-accent text-accent-foreground" : "bg-surface-tertiary text-foreground"}`} type="button" onClick={() => setStatusFilter(s)}>{cap(s)} ({count})</button>; })}
       </div>
 
-      <AdminDataTable columns={columns} data={filtered} emptyState={{ icon: ShoppingBag, title: "No orders found", description: statusFilter === "all" ? "Customer checkout orders will appear here automatically." : `No orders currently marked as "${statusFilter}".` }} rowKey={(o) => o.id} />
+      <div className="md:hidden">
+        {filtered.length === 0 ? <div className="flex flex-col items-center gap-3 rounded-[28px] border border-border bg-surface-secondary p-10 text-center"><span className="flex size-16 items-center justify-center rounded-full bg-surface-tertiary text-muted"><ShoppingBag className="size-8" /></span><h4 className="m-0 text-lg font-bold text-foreground">No orders found</h4><p className="m-0 max-w-md text-sm text-muted">{statusFilter === "all" ? "Customer checkout orders will appear here automatically." : `No orders currently marked as "${statusFilter}".`}</p></div> : <div className="flex flex-col gap-3">{filtered.map((order) => <MobileOrderCard key={order.id} order={order} />)}</div>}
+      </div>
+      <div className="hidden md:block">
+        <AdminDataTable columns={columns} data={filtered} emptyState={{ icon: ShoppingBag, title: "No orders found", description: statusFilter === "all" ? "Customer checkout orders will appear here automatically." : `No orders currently marked as "${statusFilter}".` }} rowKey={(o) => o.id} />
+      </div>
 
       <Modal isOpen={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <Modal.Backdrop><Modal.Container scroll="inside" size="lg"><Modal.Dialog>{selected && <>
