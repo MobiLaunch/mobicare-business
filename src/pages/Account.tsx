@@ -74,10 +74,10 @@ export default function Account() {
 
   const displayName = profile?.full_name || fullName || user.email?.split("@")[0] || "Customer";
   const tabItems = [
-    { id: "profile" as const, label: "Profile", icon: User },
-    { id: "bookings" as const, label: "Bookings", count: bookings.length, icon: Wrench },
-    { id: "orders" as const, label: "Orders", count: orders.length, icon: Package },
-    { id: "settings" as const, label: "Security", icon: ShieldCheck },
+    { id: "profile" as const, label: "Profile", description: "Contact information", icon: User },
+    { id: "bookings" as const, label: "Bookings", description: "Repair appointments", count: bookings.length, icon: Wrench },
+    { id: "orders" as const, label: "Orders", description: "Shopping history", count: orders.length, icon: Package },
+    { id: "settings" as const, label: "Security", description: "Password & security", icon: ShieldCheck },
   ];
 
   return (
@@ -107,17 +107,26 @@ export default function Account() {
         </div>
       </section>
 
+      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3" aria-label="Account actions">
+        {tabItems.map(({ id, label, description, count, icon: Icon }) => {
+          const selected = activeTab === id;
+          return (
+            <button key={id} type="button" aria-pressed={selected} onClick={() => setActiveTab(id)} className={`group min-w-0 rounded-2xl border p-3.5 text-left transition-all sm:p-4 ${selected ? "border-accent bg-accent-soft shadow-sm" : "border-border bg-surface hover:border-accent/50 hover:bg-surface-secondary"}`}>
+              <div className="flex items-start justify-between gap-2">
+                <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-accent text-accent-foreground" : "bg-surface-secondary text-accent"}`}><Icon aria-hidden="true" className="size-4" /></span>
+                {typeof count === "number" && <span className="rounded-full bg-surface-secondary px-2 py-0.5 text-[10px] font-bold text-muted">{count}</span>}
+              </div>
+              <strong className="mt-3 block truncate text-sm font-bold text-foreground">{label}</strong>
+              <span className="mt-0.5 block truncate text-[11px] text-muted">{description}</span>
+            </button>
+          );
+        })}
+      </div>
+
       <Tabs className="w-full" selectedKey={activeTab} onSelectionChange={(key) => setActiveTab(String(key) as AccountTab)} variant="secondary">
-        <Tabs.ListContainer className="mb-5 overflow-x-auto pb-1">
-          <Tabs.List aria-label="Account sections" className="min-w-max rounded-2xl border border-border bg-surface p-1 shadow-sm">
-            {tabItems.map(({ id, label, count, icon: Icon }) => (
-              <Tabs.Tab key={id} id={id} className="min-h-10 shrink-0 gap-1.5 rounded-xl px-3 text-sm font-semibold sm:px-4">
-                <Icon aria-hidden="true" className="size-4" />
-                <span>{label}</span>
-                {typeof count === "number" && <span className="rounded-full bg-surface-secondary px-1.5 py-0.5 text-[10px] font-bold text-muted">{count}</span>}
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            ))}
+        <Tabs.ListContainer className="sr-only">
+          <Tabs.List aria-label="Account sections">
+            {tabItems.map(({ id, label }) => <Tabs.Tab key={id} id={id}>{label}<Tabs.Indicator /></Tabs.Tab>)}
           </Tabs.List>
         </Tabs.ListContainer>
 
@@ -139,7 +148,7 @@ export default function Account() {
 
         <Tabs.Panel id="bookings">
           <AccountSectionHeader title="Your Repair Bookings" action="Refresh" icon={<RefreshCw className="size-3.5" />} onAction={loadUserData} />
-          {dataLoading ? <LoadingCard /> : bookings.length === 0 ? <EmptyCard icon={<Wrench className="size-10" />} title="No bookings yet" description="You haven’t submitted any repair appointments yet." action="Book a Repair" onAction={() => navigate("/repairs")} /> : <div className="grid grid-cols-1 gap-3">{bookings.map((booking) => <Card key={booking.id} className="rounded-[22px] p-4 transition-shadow hover:shadow-md sm:p-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex min-w-0 items-start gap-3"><div aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent"><Wrench className="size-5" /></div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-bold text-foreground">{booking.service}</h3><Chip color={booking.status === "completed" ? "success" : booking.status === "cancelled" ? "danger" : "warning"} size="sm" variant="soft"><Chip.Label className="capitalize">{booking.status || "Pending"}</Chip.Label></Chip></div><p className="mt-0.5 text-sm font-medium text-foreground">{booking.device_type} {booking.device_model ? `— ${booking.device_model}` : ""}</p>{booking.issue && <p className="mt-1 line-clamp-2 text-xs text-muted">{booking.issue}</p>}</div></div><div className="flex shrink-0 flex-row gap-4 border-t border-border pt-3 text-xs text-muted sm:flex-col sm:gap-1 sm:border-t-0 sm:pt-0 sm:text-right"><span className="flex items-center gap-1.5"><Calendar aria-hidden="true" className="size-3.5" />{booking.appt_date}</span><span className="flex items-center gap-1.5"><Clock aria-hidden="true" className="size-3.5" />{booking.appt_time}</span></div></div></Card>)}</div>}
+          {dataLoading ? <LoadingCard /> : bookings.length === 0 ? <EmptyCard icon={<Wrench className="size-10" />} title="No bookings yet" description="You haven’t submitted any repair appointments yet." action="Book a Repair" onAction={() => navigate("/repairs")} /> : <div className="grid grid-cols-1 gap-4">{bookings.map((booking) => <BookingTicket key={booking.id} booking={booking} />)}</div>}
         </Tabs.Panel>
 
         <Tabs.Panel id="orders">
@@ -160,6 +169,48 @@ export default function Account() {
         </Tabs.Panel>
       </Tabs>
     </div>
+  );
+}
+
+function BookingTicket({ booking }: { booking: BookingRecord }) {
+  const ticketNumber = `MC-${String(booking.id).replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase().padStart(8, "0")}`;
+  const status = booking.status || "pending";
+  const statusColor = status === "completed" ? "success" : status === "cancelled" ? "danger" : "warning";
+  return (
+    <Card className="relative overflow-hidden rounded-[24px] border-border bg-surface shadow-sm transition-shadow hover:shadow-md">
+      <div className="pointer-events-none absolute -left-3 top-[42%] size-6 rounded-full border border-border bg-background" />
+      <div className="pointer-events-none absolute -right-3 top-[42%] size-6 rounded-full border border-border bg-background" />
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="m-0 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted">Mobicare • Repair Ticket</p>
+            <p className="m-0 mt-1 font-mono text-xl font-black tracking-tight text-foreground">#{ticketNumber}</p>
+          </div>
+          <Chip color={statusColor} size="sm" variant="soft"><Chip.Label className="capitalize">{status}</Chip.Label></Chip>
+        </div>
+
+        <div className="my-4 border-t border-dashed border-border" />
+
+        <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+          <div className="min-w-0">
+            <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-muted">Service</p>
+            <h3 className="m-0 mt-1 text-lg font-extrabold text-foreground">{booking.service}</h3>
+            <p className="m-0 mt-1 text-sm font-medium text-foreground">{booking.device_type}{booking.device_model ? ` — ${booking.device_model}` : ""}</p>
+            {booking.issue && <p className="m-0 mt-2 line-clamp-2 text-xs leading-relaxed text-muted">{booking.issue}</p>}
+          </div>
+          <div className="grid grid-cols-2 gap-4 border-t border-border pt-3 sm:min-w-[180px] sm:grid-cols-1 sm:border-t-0 sm:border-l sm:pl-5 sm:pt-0">
+            <div><p className="m-0 text-[10px] font-bold uppercase tracking-wider text-muted">Date</p><p className="m-0 mt-1 text-sm font-bold text-foreground">{booking.appt_date}</p></div>
+            <div><p className="m-0 text-[10px] font-bold uppercase tracking-wider text-muted">Time</p><p className="m-0 mt-1 flex items-center gap-1.5 text-sm font-bold text-foreground"><Clock aria-hidden="true" className="size-3.5 text-accent" />{booking.appt_time}</p></div>
+          </div>
+        </div>
+
+        <div className="my-4 border-t border-dashed border-border" />
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex items-center gap-2 text-xs text-muted"><Calendar aria-hidden="true" className="size-3.5" /><span>Appointment ticket</span></div>
+          <div aria-hidden="true" className="flex h-7 items-end gap-px opacity-50">{Array.from({ length: 28 }, (_, i) => <span key={i} className={`w-px bg-foreground ${i % 4 === 0 ? "h-7" : i % 3 === 0 ? "h-5" : "h-3"}`} />)}</div>
+        </div>
+      </div>
+    </Card>
   );
 }
 
