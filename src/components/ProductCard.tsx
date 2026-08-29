@@ -76,7 +76,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
 
       <div className="flex flex-1 flex-col gap-1">
         <p className="m-0 text-xs font-bold uppercase tracking-wide text-accent">
-          {product.category?.replaceAll("-", " ")}
+          {product.category.split("-").join(" ")}
         </p>
 
         <h3 className="m-0 line-clamp-2 text-base font-semibold leading-snug text-foreground">
@@ -107,10 +107,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
           className="shrink-0 rounded-full"
           isDisabled={product.stock === 0}
           variant="primary"
-          onPress={(event) => {
-            event.stopPropagation();
-            handleAddToCart();
-          }}
+          onPress={() => handleAddToCart()}
         >
           <ShoppingCart className="size-4" />
         </Button>
