@@ -107,10 +107,30 @@ export interface CtaStrip {
   primaryCta: string;
   secondaryCta: string;
 }
-export interface DeviceType {
+// Device taxonomy: Manufacturer → Device Type → Model → Generation(s).
+// Generation is optional per model — a model with no generations listed is
+// bookable on its own (e.g. a one-off product with no year/variant split).
+export interface DeviceModel {
   id: string;
   name: string;
-  models: string[];
+  generations: string[];
+}
+export interface DeviceCategory {
+  id: string;
+  name: string;
+  models: DeviceModel[];
+}
+export interface DeviceManufacturer {
+  id: string;
+  name: string;
+  categories: DeviceCategory[];
+}
+
+export interface HouseCallPricing {
+  residentialFirstHour: number;
+  residentialAdditionalHourRate: number;
+  commercialFirstHour: number;
+  commercialAdditionalHourRate: number;
 }
 
 export interface SiteContent {
@@ -126,7 +146,8 @@ export interface SiteContent {
   social: Social;
   footer: SiteFooter;
   ctaStrip: CtaStrip;
-  deviceTypes: DeviceType[];
+  deviceManufacturers: DeviceManufacturer[];
+  houseCallPricing: HouseCallPricing;
 }
 
 // ─── Default site content ──────────────────────────────────────────────────
@@ -154,12 +175,12 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     {
       icon: "shield",
       label: "90-Day Warranty",
-      desc: "All repairs covered, no questions asked",
+      desc: "Every part we replace is covered",
     },
     {
       icon: "schedule",
-      label: "Free Diagnostics",
-      desc: "No charge to find out what's wrong",
+      label: "$35 Bench Fee",
+      desc: "Flat diagnostic fee on any device",
     },
     {
       icon: "star",
@@ -171,7 +192,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     eyebrow: "Device Repair",
     headline: "Broken device?\nWe fix it fast.",
     description:
-      "Cracked screens, dead batteries, water damage, charging ports, cameras \u2014 if it's broken, there's a good chance we can fix it same-day. Free diagnostic on every device.",
+      "Cracked screens, dead batteries, water damage, charging ports, cameras \u2014 if it's broken, there's a good chance we can fix it same-day. $35 bench fee to diagnose any device.",
     primaryCta: "See Repair Services",
     secondaryCta: "Call First",
   },
@@ -199,7 +220,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       name: "Water Damage Recovery",
       icon: "water_drop",
       duration: "24\u201348 hours",
-      priceRange: "Free diagnostic",
+      priceRange: "$35 Bench Fee",
       description:
         "Dropped your phone in water? Bring it in immediately. Our ultrasonic cleaning process saves most devices.",
     },
@@ -255,7 +276,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     lead: "We're a locally-owned electronics repair shop in Fairfield, Illinois \u2014 serving Wayne County and surrounding areas with honest, fast, quality repairs.",
     story: [
       "Mobicare started with a simple belief: your devices should be repaired by someone who actually cares about doing the job right. As a locally-owned shop, we're not chasing volume \u2014 we're building a reputation, one repair at a time.",
-      "We fix what the big-box stores won't touch, and we're honest about what can and can't be done. Free diagnostics mean you'll always know the cost before committing to a repair. No surprises, no hidden fees.",
+      "We fix what the big-box stores won't touch, and we're honest about what can and can't be done. A $35 bench fee covers full diagnostics on every device, so you'll always know the cost before committing to a repair. No surprises, no hidden fees.",
       "We're also expanding into accessories and certified pre-owned devices \u2014 making it easier for everyone in southern Illinois to get the gear they need at fair prices.",
     ],
   },
@@ -320,74 +341,138 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     primaryCta: "Book Appointment",
     secondaryCta: "Browse Shop",
   },
-  deviceTypes: [
+  deviceManufacturers: [
     {
-      id: "iphone",
-      name: "iPhone",
-      models: [
-        "iPhone 15 Pro Max",
-        "iPhone 15 Pro",
-        "iPhone 15",
-        "iPhone 14 Pro Max",
-        "iPhone 14 Pro",
-        "iPhone 14",
-        "iPhone 13",
-        "iPhone 12",
-        "iPhone 11",
-        "iPhone SE",
+      id: "apple",
+      name: "Apple",
+      categories: [
+        {
+          id: "apple-phone",
+          name: "Phone",
+          models: [
+            {
+              id: "apple-iphone",
+              name: "iPhone",
+              generations: ["15 Pro Max", "15 Pro", "15", "14 Pro Max", "14 Pro", "14", "13", "12", "11", "SE"],
+            },
+          ],
+        },
+        {
+          id: "apple-tablet",
+          name: "Tablet",
+          models: [
+            { id: "apple-ipad", name: "iPad", generations: ["Pro 12.9", "Pro 11", "Air", "Mini", "10th Gen"] },
+          ],
+        },
+        {
+          id: "apple-laptop",
+          name: "Laptop",
+          models: [
+            { id: "apple-macbook", name: "MacBook", generations: ["Pro M-Series", "Air M-Series"] },
+          ],
+        },
       ],
     },
     {
-      id: "android",
-      name: "Android / Samsung",
-      models: [
-        "Galaxy S24 Ultra",
-        "Galaxy S24",
-        "Galaxy S23 Ultra",
-        "Galaxy S23",
-        "Galaxy S22 Ultra",
-        "Galaxy A54",
-        "Pixel 8 Pro",
-        "Pixel 8",
+      id: "samsung",
+      name: "Samsung",
+      categories: [
+        {
+          id: "samsung-phone",
+          name: "Phone",
+          models: [
+            { id: "samsung-galaxy-s", name: "Galaxy S", generations: ["S24 Ultra", "S24", "S23 Ultra", "S23", "S22 Ultra"] },
+            { id: "samsung-galaxy-a", name: "Galaxy A", generations: ["A54"] },
+          ],
+        },
+        {
+          id: "samsung-tablet",
+          name: "Tablet",
+          models: [
+            { id: "samsung-galaxy-tab", name: "Galaxy Tab", generations: ["S9"] },
+          ],
+        },
       ],
     },
     {
-      id: "ipad",
-      name: "iPad / Tablet",
-      models: [
-        "iPad Pro 12.9",
-        "iPad Pro 11",
-        "iPad Air",
-        "iPad Mini",
-        "iPad 10th Gen",
-        "Galaxy Tab S9",
+      id: "google",
+      name: "Google",
+      categories: [
+        {
+          id: "google-phone",
+          name: "Phone",
+          models: [
+            { id: "google-pixel", name: "Pixel", generations: ["8 Pro", "8"] },
+          ],
+        },
       ],
     },
     {
-      id: "laptop",
-      name: "Laptop / PC",
-      models: [
-        "MacBook Pro M-Series",
-        "MacBook Air M-Series",
-        "Dell XPS",
-        "Lenovo ThinkPad",
-        "HP Spectre",
+      id: "dell",
+      name: "Dell",
+      categories: [
+        { id: "dell-laptop", name: "Laptop", models: [{ id: "dell-xps", name: "XPS", generations: [] }] },
       ],
     },
     {
-      id: "console",
-      name: "Game Console",
-      models: [
-        "PlayStation 5",
-        "PlayStation 4",
-        "Xbox Series X",
-        "Xbox Series S",
-        "Nintendo Switch OLED",
-        "Nintendo Switch",
+      id: "lenovo",
+      name: "Lenovo",
+      categories: [
+        { id: "lenovo-laptop", name: "Laptop", models: [{ id: "lenovo-thinkpad", name: "ThinkPad", generations: [] }] },
       ],
     },
-    { id: "other", name: "Other Device", models: [] },
+    {
+      id: "hp",
+      name: "HP",
+      categories: [
+        { id: "hp-laptop", name: "Laptop", models: [{ id: "hp-spectre", name: "Spectre", generations: [] }] },
+      ],
+    },
+    {
+      id: "sony",
+      name: "Sony",
+      categories: [
+        {
+          id: "sony-console",
+          name: "Game Console",
+          models: [{ id: "sony-playstation", name: "PlayStation", generations: ["5", "4"] }],
+        },
+      ],
+    },
+    {
+      id: "microsoft",
+      name: "Microsoft",
+      categories: [
+        {
+          id: "microsoft-console",
+          name: "Game Console",
+          models: [{ id: "microsoft-xbox", name: "Xbox", generations: ["Series X", "Series S"] }],
+        },
+      ],
+    },
+    {
+      id: "nintendo",
+      name: "Nintendo",
+      categories: [
+        {
+          id: "nintendo-console",
+          name: "Game Console",
+          models: [{ id: "nintendo-switch", name: "Switch", generations: ["OLED", "Standard"] }],
+        },
+      ],
+    },
+    {
+      id: "other",
+      name: "Other",
+      categories: [{ id: "other-device", name: "Other Device", models: [] }],
+    },
   ],
+  houseCallPricing: {
+    residentialFirstHour: 110,
+    residentialAdditionalHourRate: 55,
+    commercialFirstHour: 175,
+    commercialAdditionalHourRate: 87.5,
+  },
 };
 
 // ─── Font presets ───────────────────────────────────────────────────────────
@@ -553,6 +638,15 @@ export function applyAppearance(a: Appearance) {
   }
 }
 
+// The color scheme actually shown: this visitor's local override if they've
+// ever toggled it, otherwise the admin-configured site-wide default.
+export function getEffectiveColorScheme(state: {
+  appearance: Appearance;
+  viewerColorScheme: ColorScheme | null;
+}): ColorScheme {
+  return state.viewerColorScheme ?? state.appearance.colorScheme;
+}
+
 function pickForeground(hex: string): string {
   const h = hex.replace("#", "");
 
@@ -592,7 +686,8 @@ const syncToSupabase = (state: SiteContent) => {
       social: state.social,
       footer: state.footer,
       ctaStrip: state.ctaStrip,
-      deviceTypes: state.deviceTypes,
+      deviceManufacturers: state.deviceManufacturers,
+      houseCallPricing: state.houseCallPricing,
     };
 
     void sb.auth.getSession().then(({ data }) => {
@@ -607,6 +702,16 @@ const syncToSupabase = (state: SiteContent) => {
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 interface SiteContentState extends SiteContent {
+  // This visitor's own light/dark override, kept ONLY in this browser's
+  // localStorage — never sent to Supabase, never touched by the
+  // site-content fetch/merge on load. `appearance.colorScheme` is the
+  // admin-configured site-wide DEFAULT (synced via Supabase, editable from
+  // Site Editor → Appearance); `viewerColorScheme` is this one visitor's
+  // personal override of that default, or null to just follow it. Without
+  // this split, the public header toggle and the shared site default were
+  // the same field, so every fresh page load re-fetched the site default
+  // from Supabase and silently stomped whatever the visitor had toggled.
+  viewerColorScheme: ColorScheme | null;
   updateBrand: (data: Partial<Brand>) => void;
   updateHero: (data: Partial<Hero>) => void;
   updateRepairBanner: (data: Partial<RepairBanner>) => void;
@@ -614,12 +719,14 @@ interface SiteContentState extends SiteContent {
   updateBusiness: (data: Partial<BusinessInfo>) => void;
   updateAppearance: (data: Partial<Appearance>) => void;
   setColorScheme: (scheme: ColorScheme) => void;
+  setViewerColorScheme: (scheme: ColorScheme | null) => void;
   updateTrustItem: (index: number, data: Partial<TrustItem>) => void;
   updateRepairService: (id: string, data: Partial<SiteRepairService>) => void;
   addRepairService: (service: SiteRepairService) => void;
   deleteRepairService: (id: string) => void;
   setRepairServices: (services: SiteRepairService[]) => void;
-  setDeviceTypes: (deviceTypes: DeviceType[]) => void;
+  setDeviceManufacturers: (manufacturers: DeviceManufacturer[]) => void;
+  updateHouseCallPricing: (data: Partial<HouseCallPricing>) => void;
   updateBusinessHour: (index: number, data: Partial<BusinessHour>) => void;
   updateSeo: (data: Partial<Seo>) => void;
   updateSocial: (data: Partial<Social>) => void;
@@ -632,6 +739,7 @@ export const useSiteStore = create<SiteContentState>()(
   persist(
     (set, get) => ({
       ...DEFAULT_SITE_CONTENT,
+      viewerColorScheme: null,
 
       updateBrand: (data) => {
         set({ brand: { ...get().brand, ...data } });
@@ -664,8 +772,18 @@ export const useSiteStore = create<SiteContentState>()(
         const next = { ...get().appearance, colorScheme: scheme };
 
         set({ appearance: next });
-        applyAppearance(next);
+        applyAppearance({ ...next, colorScheme: get().viewerColorScheme ?? scheme });
         syncToSupabase(get());
+      },
+      // Purely local — this browser's personal light/dark override. Never
+      // synced to Supabase, so it can never be clobbered by a site-content
+      // fetch and never affects other visitors.
+      setViewerColorScheme: (scheme) => {
+        set({ viewerColorScheme: scheme });
+        applyAppearance({
+          ...get().appearance,
+          colorScheme: scheme ?? get().appearance.colorScheme,
+        });
       },
       updateTrustItem: (index, data) => {
         const items = [...get().trustItems];
@@ -696,8 +814,12 @@ export const useSiteStore = create<SiteContentState>()(
         set({ repairServices: services });
         syncToSupabase(get());
       },
-      setDeviceTypes: (deviceTypes) => {
-        set({ deviceTypes });
+      setDeviceManufacturers: (manufacturers) => {
+        set({ deviceManufacturers: manufacturers });
+        syncToSupabase(get());
+      },
+      updateHouseCallPricing: (data) => {
+        set({ houseCallPricing: { ...get().houseCallPricing, ...data } });
         syncToSupabase(get());
       },
       updateBusinessHour: (index, data) => {
@@ -731,7 +853,7 @@ export const useSiteStore = create<SiteContentState>()(
     }),
     {
       name: "mobicare-site-content",
-      version: 2,
+      version: 3,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== "object")
           return persistedState as SiteContent;
@@ -752,6 +874,12 @@ export const useSiteStore = create<SiteContentState>()(
           state.appearance = app;
         }
 
+        // v2 → v3: deviceTypes (flat 2-level) replaced by deviceManufacturers
+        // (Manufacturer → Category → Model → Generation). Old shape doesn't
+        // convert cleanly, so drop it and let the new default seed data
+        // through instead of leaving orphaned/incompatible data around.
+        delete state.deviceTypes;
+
         return state as unknown as SiteContent;
       },
     },
@@ -760,12 +888,16 @@ export const useSiteStore = create<SiteContentState>()(
 
 // Bootstrap initial appearance on module load.
 if (typeof document !== "undefined") {
-  const bootstrapAppearance = { ...useSiteStore.getState().appearance };
+  const bootstrapState = useSiteStore.getState();
+  const bootstrapAppearance = { ...bootstrapState.appearance };
   const LEGACY = ["#13522B", "#0A3318", "#13522b", "#0a3318"];
 
   if (LEGACY.includes(bootstrapAppearance.accentColor))
     bootstrapAppearance.accentColor = "";
   if (LEGACY.includes(bootstrapAppearance.accentColorDeep))
     bootstrapAppearance.accentColorDeep = "";
-  applyAppearance(bootstrapAppearance);
+  applyAppearance({
+    ...bootstrapAppearance,
+    colorScheme: getEffectiveColorScheme(bootstrapState),
+  });
 }

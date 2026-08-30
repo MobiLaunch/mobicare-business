@@ -15,6 +15,8 @@ import {
   Zap,
 } from "lucide-react";
 
+import { Button } from "@heroui/react";
+
 import { useSiteStore } from "@/lib/siteStore";
 import PageMeta from "@/components/PageMeta";
 
@@ -22,7 +24,7 @@ const VALUE_PROPS: { icon: LucideIcon; title: string; desc: string }[] = [
   {
     icon: Shield,
     title: "90-Day Warranty",
-    desc: "Every repair is covered. If the same issue returns within 90 days, we fix it free.",
+    desc: "Every part we replace is covered for 90 days. If it fails, we replace it free.",
   },
   {
     icon: Zap,
@@ -32,7 +34,7 @@ const VALUE_PROPS: { icon: LucideIcon; title: string; desc: string }[] = [
   {
     icon: Star,
     title: "Honest Pricing",
-    desc: "Free diagnostics every time. No hidden fees. You approve the cost before we start.",
+    desc: "$35 flat bench fee for diagnostics. No hidden fees. You approve the cost before we start.",
   },
   {
     icon: Smartphone,
@@ -87,11 +89,11 @@ export default function About() {
             {about?.eyebrow || "About Mobicare"}
           </span>
 
-          <h1 className="m-0 mb-5 break-words text-[clamp(2.2rem,5.5vw,3.8rem)] font-black leading-[1.1] tracking-tight text-foreground">
+          <h1 className="m-0 mb-5 break-words text-display font-black leading-[1.1] tracking-tight text-foreground">
             {about?.headline}
           </h1>
 
-          <p className="mx-auto max-w-[680px] break-words text-[clamp(16px,2.2vw,19px)] leading-relaxed text-muted">
+          <p className="mx-auto max-w-[680px] break-words text-body-lg leading-relaxed text-muted">
             {about?.lead}
           </p>
         </div>
@@ -124,17 +126,17 @@ export default function About() {
         <div className="flex w-full flex-wrap gap-10 p-[clamp(24px,5vw,56px)]">
           {/* Story */}
           <div className="min-w-0 flex-[1_1_340px] break-words">
-            <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-accent">
+            <span className="mb-1.5 block text-caption font-bold uppercase tracking-widest text-accent">
               Who We Are
             </span>
-            <h2 className="m-0 mb-5 text-[clamp(1.8rem,4vw,2.5rem)] font-extrabold tracking-tight text-foreground">
+            <h2 className="m-0 mb-5 text-heading-xl font-extrabold tracking-tight text-foreground">
               Our Story
             </h2>
 
             {(about?.story || []).map((para, i) => (
               <p
                 key={i}
-                className="mb-[18px] break-words text-[clamp(15px,2vw,16px)] leading-[1.75] text-muted"
+                className="mb-[18px] break-words text-body-lg leading-[1.75] text-muted"
               >
                 {para}
               </p>
@@ -162,28 +164,28 @@ export default function About() {
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
-              <button
+              <Button
                 className="flex h-12 items-center gap-1.5 rounded-full bg-accent px-6 text-sm font-bold text-accent-foreground"
-                type="button"
-                onClick={() => navigate("/shop")}
+                variant="primary"
+                onPress={() => navigate("/shop")}
               >
                 <span>Shop Accessories</span>
                 <ArrowRight className="size-4" />
-              </button>
-              <button
+              </Button>
+              <Button
                 className="h-12 rounded-full border border-border bg-surface-secondary px-6 text-sm font-bold text-foreground"
-                type="button"
-                onClick={() => navigate("/repairs")}
+                variant="outline"
+                onPress={() => navigate("/repairs")}
               >
                 View Repair Services
-              </button>
+              </Button>
             </div>
           </div>
 
           {/* Find Us */}
           <div className="min-w-0 flex-[1_1_280px]">
             <article className="rounded-[24px] bg-surface-secondary p-6 shadow-[0_4px_20px_rgba(0,0,0,0.1)]">
-              <h3 className="m-0 mb-5 text-[1.35rem] font-extrabold text-foreground">
+              <h3 className="m-0 mb-5 text-heading font-extrabold text-foreground">
                 Find Us
               </h3>
 
@@ -224,7 +226,7 @@ export default function About() {
                     {(business?.hours || []).map((h) => (
                       <span
                         key={h.days}
-                        className="block text-[13px] leading-relaxed text-muted"
+                        className="block text-label leading-relaxed text-muted"
                       >
                         <strong className="text-foreground">{h.days}:</strong>{" "}
                         {h.hours}
@@ -242,43 +244,43 @@ export default function About() {
       <section className="pb-4 pt-[clamp(32px,6vw,56px)]">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="m-0 text-[11px] font-bold uppercase tracking-widest text-accent">
+            <p className="m-0 text-caption font-bold uppercase tracking-widest text-accent">
               What We Do
             </p>
-            <h2 className="m-0 mt-1 text-[clamp(1.8rem,4vw,2.4rem)] font-extrabold text-foreground">
+            <h2 className="m-0 mt-1 text-heading-xl font-extrabold text-foreground">
               Popular Repairs
             </h2>
           </div>
-          <button
+          <Button
             className="flex h-[42px] items-center gap-1.5 rounded-full border border-border bg-surface-secondary px-5 text-sm font-bold text-foreground"
-            type="button"
-            onClick={() => navigate("/repairs")}
+            variant="outline"
+            onPress={() => navigate("/repairs")}
           >
             <span>View All Services</span>
             <ArrowRight className="size-4" />
-          </button>
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {repairServices.map((svc) => (
-            <button
+            <Button
               key={svc.id}
               className="flex items-center justify-between gap-3 rounded-2xl bg-surface px-5 py-4 text-left transition-all hover:-translate-y-0.5"
-              type="button"
-              onClick={() => navigate("/repairs")}
+              variant="ghost"
+              onPress={() => navigate("/repairs")}
             >
               <div className="flex min-w-0 items-center gap-3">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-accent">
                   <Wrench className="size-[18px]" />
                 </span>
-                <strong className="break-words text-[15px] font-bold text-foreground">
+                <strong className="break-words text-body-sm font-bold text-foreground">
                   {svc.name}
                 </strong>
               </div>
               <span className="shrink-0 whitespace-nowrap rounded-full bg-accent-soft px-2.5 py-1 text-xs font-bold text-accent">
                 {svc.priceRange}
               </span>
-            </button>
+            </Button>
           ))}
         </div>
       </section>

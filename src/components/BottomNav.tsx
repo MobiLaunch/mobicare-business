@@ -41,7 +41,7 @@ export default function BottomNav() {
       active ? "bg-accent-soft text-accent" : "text-muted"
     }`;
   const labelClass = (active: boolean) =>
-    `text-[11px] leading-4 transition-colors ${active ? "font-semibold text-foreground" : "font-medium text-muted"}`;
+    `text-caption leading-4 transition-colors ${active ? "font-semibold text-foreground" : "font-medium text-muted"}`;
 
   return (
     <nav

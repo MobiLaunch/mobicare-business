@@ -2,7 +2,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import type { LucideIcon } from "lucide-react";
 import type {
   Appearance,
-  DeviceType,
+  DeviceManufacturer,
   Social,
   SiteRepairService,
 } from "@/lib/siteStore";
@@ -13,6 +13,8 @@ import {
   BookOpen,
   Building2,
   Camera,
+  ChevronLeft,
+  ChevronRight,
   Droplet,
   FileText,
   Gamepad2,
@@ -151,7 +153,7 @@ function TabIntro({
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <h3 className="mb-3 mt-8 text-[11px] font-bold uppercase tracking-widest text-muted first:mt-0">
+    <h3 className="mb-3 mt-8 text-caption font-bold uppercase tracking-widest text-muted first:mt-0">
       {children}
     </h3>
   );
@@ -1093,11 +1095,20 @@ function AboutTab() {
 function BusinessTab() {
   const business = useSiteStore((s) => s.business);
   const updateBusiness = useSiteStore((s) => s.updateBusiness);
+  const houseCallPricing = useSiteStore((s) => s.houseCallPricing);
+  const updateHouseCallPricing = useSiteStore((s) => s.updateHouseCallPricing);
   const addToast = useToastStore((s) => s.add);
   const [l, setL] = useState({
     ...business,
     hours: business.hours.map((h) => ({ ...h })),
   });
+  const [hcp, setHcp] = useState({ ...houseCallPricing });
+  const setHcpField = (k: keyof typeof hcp, v: string) =>
+    setHcp((p) => ({ ...p, [k]: Number(v) || 0 }));
+  const saveHouseCallPricing = () => {
+    updateHouseCallPricing(hcp);
+    addToast("House call pricing saved", "success");
+  };
   const set = (k: "name" | "phone" | "email" | "address" | "city", v: string) =>
     setL((p) => ({ ...p, [k]: v }));
   const setHour = (i: number, k: "days" | "hours", v: string) =>
@@ -1229,6 +1240,63 @@ function BusinessTab() {
       </div>
 
       <SaveButton label="Save Business Info" onClick={save} />
+
+      <div className="mt-6 rounded-2xl border border-border bg-surface-secondary p-5">
+        <h3 className="m-0 mb-1 text-sm font-bold text-foreground">
+          House Call Pricing
+        </h3>
+        <p className="m-0 mb-4 text-sm text-muted">
+          Flat rate for the first hour, then an hourly rate after — shown to
+          customers in the Booking Wizard when they choose a Home Visit.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <TextField
+            className="flex flex-col gap-1.5"
+            type="number"
+            value={String(hcp.residentialFirstHour)}
+            onChange={(v) => setHcpField("residentialFirstHour", v)}
+          >
+            <Label>Residential — First Hour ($)</Label>
+            <InputGroup>
+              <InputGroup.Input min={0} step="0.01" />
+            </InputGroup>
+          </TextField>
+          <TextField
+            className="flex flex-col gap-1.5"
+            type="number"
+            value={String(hcp.residentialAdditionalHourRate)}
+            onChange={(v) => setHcpField("residentialAdditionalHourRate", v)}
+          >
+            <Label>Residential — Additional Hour ($)</Label>
+            <InputGroup>
+              <InputGroup.Input min={0} step="0.01" />
+            </InputGroup>
+          </TextField>
+          <TextField
+            className="flex flex-col gap-1.5"
+            type="number"
+            value={String(hcp.commercialFirstHour)}
+            onChange={(v) => setHcpField("commercialFirstHour", v)}
+          >
+            <Label>Commercial — First Hour ($)</Label>
+            <InputGroup>
+              <InputGroup.Input min={0} step="0.01" />
+            </InputGroup>
+          </TextField>
+          <TextField
+            className="flex flex-col gap-1.5"
+            type="number"
+            value={String(hcp.commercialAdditionalHourRate)}
+            onChange={(v) => setHcpField("commercialAdditionalHourRate", v)}
+          >
+            <Label>Commercial — Additional Hour ($)</Label>
+            <InputGroup>
+              <InputGroup.Input min={0} step="0.01" />
+            </InputGroup>
+          </TextField>
+        </div>
+        <SaveButton label="Save House Call Pricing" onClick={saveHouseCallPricing} />
+      </div>
     </div>
   );
 }
@@ -1857,248 +1925,585 @@ function AppearanceTab() {
 
 // ─── Devices Tab ────────────────────────────────────────────────────────
 function DevicesTab() {
-  const deviceTypes = useSiteStore((s) => s.deviceTypes) || [];
-  const setDeviceTypes = useSiteStore((s) => s.setDeviceTypes);
+  const deviceManufacturers = useSiteStore((s) => s.deviceManufacturers) || [];
+  const setDeviceManufacturers = useSiteStore((s) => s.setDeviceManufacturers);
   const addToast = useToastStore((s) => s.add);
-  const [ld, setLd] = useState<DeviceType[]>(() =>
-    JSON.parse(JSON.stringify(deviceTypes)),
+  const [ld, setLd] = useState<DeviceManufacturer[]>(() =>
+    JSON.parse(JSON.stringify(deviceManufacturers)),
   );
-  const [selId, setSelId] = useState(ld[0]?.id || "");
-  const [newModel, setNewModel] = useState("");
-  const [catModalOpen, setCatModalOpen] = useState(false);
-  const [catModalMode, setCatModalMode] = useState<"add" | "rename">("add");
-  const [catModalValue, setCatModalValue] = useState("");
-  const [catModalTargetId, setCatModalTargetId] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const cur = ld.find((d) => d.id === selId);
+  // Drill-down position — which manufacturer / category / model is open.
+  // Only one level below the deepest set id is ever shown at a time.
+  const [manuId, setManuId] = useState<string | null>(null);
+  const [catId, setCatId] = useState<string | null>(null);
+  const [modelId, setModelId] = useState<string | null>(null);
 
-  const openAddType = () => {
-    setCatModalMode("add");
-    setCatModalValue("");
-    setCatModalTargetId(null);
-    setCatModalOpen(true);
+  const curManu = ld.find((m) => m.id === manuId) || null;
+  const curCat = curManu?.categories.find((c) => c.id === catId) || null;
+  const curModel = curCat?.models.find((m) => m.id === modelId) || null;
+
+  // Generic add/rename modal, reused for the manufacturer/category/model
+  // levels — they're all just { id, name } nodes with children.
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"add" | "rename">("add");
+  const [modalLevel, setModalLevel] = useState<
+    "manufacturer" | "category" | "model"
+  >("manufacturer");
+  const [modalValue, setModalValue] = useState("");
+  const [modalTargetId, setModalTargetId] = useState<string | null>(null);
+
+  const [deleteTarget, setDeleteTarget] = useState<{
+    level: "manufacturer" | "category" | "model";
+    id: string;
+  } | null>(null);
+
+  const [newGen, setNewGen] = useState("");
+
+  const slugify = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+  const modalLevelLabel: Record<typeof modalLevel, string> = {
+    manufacturer: "Manufacturer",
+    category: "Device Type",
+    model: "Model",
   };
-  const openRenameType = (d: DeviceType) => {
-    setCatModalMode("rename");
-    setCatModalValue(d.name);
-    setCatModalTargetId(d.id);
-    setCatModalOpen(true);
+
+  const openAdd = (level: "manufacturer" | "category" | "model") => {
+    setModalMode("add");
+    setModalLevel(level);
+    setModalValue("");
+    setModalTargetId(null);
+    setModalOpen(true);
   };
-  const submitCatModal = () => {
-    const name = catModalValue.trim();
+  const openRename = (
+    level: "manufacturer" | "category" | "model",
+    id: string,
+    name: string,
+  ) => {
+    setModalMode("rename");
+    setModalLevel(level);
+    setModalValue(name);
+    setModalTargetId(id);
+    setModalOpen(true);
+  };
+
+  const submitModal = () => {
+    const name = modalValue.trim();
 
     if (!name) return;
-    if (catModalMode === "add") {
-      const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
-      if (ld.some((d) => d.id === id)) {
-        addToast("Category already exists", "error");
+    if (modalLevel === "manufacturer") {
+      if (modalMode === "add") {
+        const id = slugify(name);
 
-        return;
+        if (ld.some((m) => m.id === id)) {
+          addToast("Manufacturer already exists", "error");
+
+          return;
+        }
+        setLd((a) => [...a, { id, name, categories: [] }]);
+        setManuId(id);
+      } else if (modalTargetId) {
+        setLd((a) => a.map((m) => (m.id === modalTargetId ? { ...m, name } : m)));
       }
-      setLd((a) => [...a, { id, name, models: [] }]);
-      setSelId(id);
-    } else if (catModalTargetId) {
-      setLd((a) =>
-        a.map((x) => (x.id === catModalTargetId ? { ...x, name } : x)),
-      );
+    } else if (modalLevel === "category") {
+      if (!curManu) return;
+      if (modalMode === "add") {
+        const id = slugify(name);
+
+        if (curManu.categories.some((c) => c.id === id)) {
+          addToast("Device type already exists", "error");
+
+          return;
+        }
+        setLd((a) =>
+          a.map((m) =>
+            m.id === curManu.id
+              ? { ...m, categories: [...m.categories, { id, name, models: [] }] }
+              : m,
+          ),
+        );
+        setCatId(id);
+      } else if (modalTargetId) {
+        setLd((a) =>
+          a.map((m) =>
+            m.id === curManu.id
+              ? {
+                  ...m,
+                  categories: m.categories.map((c) =>
+                    c.id === modalTargetId ? { ...c, name } : c,
+                  ),
+                }
+              : m,
+          ),
+        );
+      }
+    } else if (modalLevel === "model") {
+      if (!curManu || !curCat) return;
+      if (modalMode === "add") {
+        const id = slugify(name);
+
+        if (curCat.models.some((m) => m.id === id)) {
+          addToast("Model already exists", "error");
+
+          return;
+        }
+        setLd((a) =>
+          a.map((m) =>
+            m.id === curManu.id
+              ? {
+                  ...m,
+                  categories: m.categories.map((c) =>
+                    c.id === curCat.id
+                      ? { ...c, models: [...c.models, { id, name, generations: [] }] }
+                      : c,
+                  ),
+                }
+              : m,
+          ),
+        );
+        setModelId(id);
+      } else if (modalTargetId) {
+        setLd((a) =>
+          a.map((m) =>
+            m.id === curManu.id
+              ? {
+                  ...m,
+                  categories: m.categories.map((c) =>
+                    c.id === curCat.id
+                      ? {
+                          ...c,
+                          models: c.models.map((mo) =>
+                            mo.id === modalTargetId ? { ...mo, name } : mo,
+                          ),
+                        }
+                      : c,
+                  ),
+                }
+              : m,
+          ),
+        );
+      }
     }
-    setCatModalOpen(false);
+    setModalOpen(false);
   };
 
-  const delType = (id: string) => {
-    if (ld.length <= 1) {
-      addToast("Keep at least one category", "error");
-
-      return;
+  const deleteManufacturer = (id: string) => {
+    setLd((a) => a.filter((m) => m.id !== id));
+    if (manuId === id) {
+      setManuId(null);
+      setCatId(null);
+      setModelId(null);
     }
-    const updated = ld.filter((d) => d.id !== id);
-
-    setLd(updated);
-    if (selId === id) setSelId(updated[0]?.id || "");
+  };
+  const deleteCategory = (id: string) => {
+    if (!curManu) return;
+    setLd((a) =>
+      a.map((m) =>
+        m.id === curManu.id
+          ? { ...m, categories: m.categories.filter((c) => c.id !== id) }
+          : m,
+      ),
+    );
+    if (catId === id) {
+      setCatId(null);
+      setModelId(null);
+    }
+  };
+  const deleteModel = (id: string) => {
+    if (!curManu || !curCat) return;
+    setLd((a) =>
+      a.map((m) =>
+        m.id === curManu.id
+          ? {
+              ...m,
+              categories: m.categories.map((c) =>
+                c.id === curCat.id
+                  ? { ...c, models: c.models.filter((mo) => mo.id !== id) }
+                  : c,
+              ),
+            }
+          : m,
+      ),
+    );
+    if (modelId === id) setModelId(null);
   };
 
-  const addModel = (e: FormEvent) => {
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.level === "manufacturer") deleteManufacturer(deleteTarget.id);
+    else if (deleteTarget.level === "category") deleteCategory(deleteTarget.id);
+    else deleteModel(deleteTarget.id);
+  };
+
+  const addGeneration = (e: FormEvent) => {
     e.preventDefault();
-    if (!newModel.trim() || !cur) return;
-    if (cur.models.includes(newModel.trim())) {
-      addToast("Model already exists", "error");
+    const g = newGen.trim();
+
+    if (!g || !curManu || !curCat || !curModel) return;
+    if (curModel.generations.includes(g)) {
+      addToast("Generation already exists", "error");
 
       return;
     }
     setLd((a) =>
-      a.map((d) =>
-        d.id === cur.id ? { ...d, models: [...d.models, newModel.trim()] } : d,
+      a.map((m) =>
+        m.id === curManu.id
+          ? {
+              ...m,
+              categories: m.categories.map((c) =>
+                c.id === curCat.id
+                  ? {
+                      ...c,
+                      models: c.models.map((mo) =>
+                        mo.id === curModel.id
+                          ? { ...mo, generations: [...mo.generations, g] }
+                          : mo,
+                      ),
+                    }
+                  : c,
+              ),
+            }
+          : m,
       ),
     );
-    setNewModel("");
+    setNewGen("");
   };
-  const delModel = (m: string) =>
+  const removeGeneration = (g: string) => {
+    if (!curManu || !curCat || !curModel) return;
     setLd((a) =>
-      a.map((d) =>
-        d.id === cur?.id
-          ? { ...d, models: d.models.filter((x) => x !== m) }
-          : d,
+      a.map((m) =>
+        m.id === curManu.id
+          ? {
+              ...m,
+              categories: m.categories.map((c) =>
+                c.id === curCat.id
+                  ? {
+                      ...c,
+                      models: c.models.map((mo) =>
+                        mo.id === curModel.id
+                          ? { ...mo, generations: mo.generations.filter((x) => x !== g) }
+                          : mo,
+                      ),
+                    }
+                  : c,
+              ),
+            }
+          : m,
       ),
     );
+  };
+
   const save = () => {
-    setDeviceTypes(ld);
+    setDeviceManufacturers(ld);
     addToast("Devices & models saved", "success");
   };
+
+  const goBack = () => {
+    if (curModel) setModelId(null);
+    else if (curCat) setCatId(null);
+    else if (curManu) setManuId(null);
+  };
+
+  const breadcrumbs: { label: string; onClick: () => void }[] = [
+    {
+      label: "Manufacturers",
+      onClick: () => {
+        setManuId(null);
+        setCatId(null);
+        setModelId(null);
+      },
+    },
+  ];
+
+  if (curManu) {
+    breadcrumbs.push({
+      label: curManu.name,
+      onClick: () => {
+        setCatId(null);
+        setModelId(null);
+      },
+    });
+  }
+  if (curCat) {
+    breadcrumbs.push({ label: curCat.name, onClick: () => setModelId(null) });
+  }
+  if (curModel) {
+    breadcrumbs.push({ label: curModel.name, onClick: () => {} });
+  }
+
+  const deleteCopy: Record<
+    "manufacturer" | "category" | "model",
+    { title: string; description: (name: string) => string }
+  > = {
+    manufacturer: {
+      title: "Delete This Manufacturer?",
+      description: (name) =>
+        `This deletes "${name}" and every device type, model, and generation nested under it from the Booking Wizard.`,
+    },
+    category: {
+      title: "Delete This Device Type?",
+      description: (name) =>
+        `This deletes "${name}" and all its models and generations from the Booking Wizard.`,
+    },
+    model: {
+      title: "Delete This Model?",
+      description: (name) =>
+        `This deletes "${name}" and all its generations from the Booking Wizard.`,
+    },
+  };
+
+  const deleteTargetName = deleteTarget
+    ? deleteTarget.level === "manufacturer"
+      ? ld.find((m) => m.id === deleteTarget.id)?.name || ""
+      : deleteTarget.level === "category"
+        ? curManu?.categories.find((c) => c.id === deleteTarget.id)?.name || ""
+        : curCat?.models.find((mo) => mo.id === deleteTarget.id)?.name || ""
+    : "";
+
+  // Shared row renderer for the manufacturer/category/model levels — each is
+  // an { id, name } node with a child count, a rename/delete action, and a
+  // chevron indicating it drills into the next level down.
+  const renderNodeList = (opts: {
+    items: Array<{ id: string; name: string; count: number; countLabel: string }>;
+    onSelect: (id: string) => void;
+    onRename: (id: string, name: string) => void;
+    onDelete: (id: string) => void;
+    emptyMessage: string;
+  }) => (
+    <div className="flex flex-col gap-1">
+      {opts.items.length === 0 ? (
+        <p className="text-sm italic text-muted">{opts.emptyMessage}</p>
+      ) : (
+        opts.items.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center gap-1 rounded-xl text-foreground hover:bg-surface-tertiary"
+          >
+            <button
+              className="flex-1 truncate px-3 py-2.5 text-left text-sm font-medium"
+              type="button"
+              onClick={() => opts.onSelect(item.id)}
+            >
+              {item.name}
+              <span className="ml-2 text-xs font-normal text-muted">
+                {item.count} {item.countLabel}
+                {item.count !== 1 ? "s" : ""}
+              </span>
+            </button>
+            <div className="flex shrink-0 items-center gap-0.5 pr-1">
+              <Button
+                isIconOnly
+                aria-label={`Rename ${item.name}`}
+                variant="ghost"
+                onPress={() => opts.onRename(item.id, item.name)}
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+              <Button
+                isIconOnly
+                aria-label={`Delete ${item.name}`}
+                variant="ghost"
+                onPress={() => opts.onDelete(item.id)}
+              >
+                <Trash2 className="size-3.5 text-danger" />
+              </Button>
+              <ChevronRight className="size-4 text-muted" />
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
 
   return (
     <div>
       <TabIntro
-        description="Configure device categories and models shown in the Booking Wizard dropdowns."
+        description="Configure the Manufacturer → Device Type → Model → Generation hierarchy that drives the Booking Wizard's device picker."
         title="Devices & Models"
       />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
-        <div className="rounded-2xl border border-border bg-surface-secondary p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="m-0 text-sm font-bold text-foreground">
-              Categories
-            </h3>
-            <Button variant="outline" onPress={openAddType}>
-              <Plus className="size-3.5" />
-              <span>Add</span>
-            </Button>
-          </div>
-          <div className="flex flex-col gap-1">
-            {ld.map((d) => (
-              <div
-                key={d.id}
-                className={`flex items-center gap-1 rounded-xl ${
-                  selId === d.id
-                    ? "bg-accent text-accent-foreground"
-                    : "text-foreground hover:bg-surface-tertiary"
-                }`}
-              >
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        {curManu && (
+          <Button variant="outline" onPress={goBack}>
+            <ChevronLeft className="size-3.5" />
+            <span>Back</span>
+          </Button>
+        )}
+        <nav aria-label="Device hierarchy" className="flex flex-wrap items-center gap-1 text-sm">
+          {breadcrumbs.map((crumb, i) => (
+            <span key={`${crumb.label}-${i}`} className="flex items-center gap-1">
+              {i > 0 && <ChevronRight className="size-3.5 text-muted" />}
+              {i === breadcrumbs.length - 1 ? (
+                <span className="font-bold text-foreground">{crumb.label}</span>
+              ) : (
                 <button
-                  className="flex-1 truncate px-3 py-2 text-left text-sm font-medium"
+                  className="font-medium text-muted hover:text-foreground hover:underline"
                   type="button"
-                  onClick={() => setSelId(d.id)}
+                  onClick={crumb.onClick}
                 >
-                  {d.name}
+                  {crumb.label}
                 </button>
-                <div className="flex shrink-0 items-center gap-0.5 pr-1">
-                  <Button
-                    isIconOnly
-                    aria-label={`Rename ${d.name}`}
-                    variant="ghost"
-                    onPress={() => openRenameType(d)}
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
-                  <Button
-                    isIconOnly
-                    aria-label={`Delete ${d.name}`}
-                    variant="ghost"
-                    onPress={() => setDeleteId(d.id)}
-                  >
-                    <Trash2 className="size-3.5 text-danger" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              )}
+            </span>
+          ))}
+        </nav>
+      </div>
 
-        <div className="rounded-2xl border border-border p-5">
-          {cur ? (
-            <>
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="m-0 text-sm font-bold text-foreground">
-                  Models for {cur.name}
-                </h3>
-                <span className="text-xs text-muted">
-                  {cur.models.length} model{cur.models.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-              <form className="mb-4 flex gap-2" onSubmit={addModel}>
-                <TextField
-                  className="flex-1"
-                  value={newModel}
-                  onChange={setNewModel}
-                >
-                  <InputGroup>
-                    <InputGroup.Input placeholder="e.g. iPhone 16 Pro Max" />
-                  </InputGroup>
-                </TextField>
-                <Button type="submit" variant="primary">
-                  Add
-                </Button>
-              </form>
-              <div className="flex flex-wrap gap-2">
-                {cur.models.length === 0 ? (
-                  <p className="text-sm italic text-muted">
-                    No models yet — Booking Wizard will show a text field.
-                  </p>
-                ) : (
-                  cur.models.map((m) => (
-                    <div
-                      key={m}
-                      className="flex items-center gap-1.5 rounded-full bg-surface-tertiary py-1 pl-3 pr-1.5 text-xs font-semibold"
+      <div className="rounded-2xl border border-border bg-surface-secondary p-4">
+        {!curManu ? (
+          <>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="m-0 text-sm font-bold text-foreground">Manufacturers</h3>
+              <Button variant="outline" onPress={() => openAdd("manufacturer")}>
+                <Plus className="size-3.5" />
+                <span>Add Manufacturer</span>
+              </Button>
+            </div>
+            {renderNodeList({
+              items: ld.map((m) => ({
+                id: m.id,
+                name: m.name,
+                count: m.categories.length,
+                countLabel: "device type",
+              })),
+              onSelect: (id) => setManuId(id),
+              onRename: (id, name) => openRename("manufacturer", id, name),
+              onDelete: (id) => setDeleteTarget({ level: "manufacturer", id }),
+              emptyMessage: "No manufacturers yet — add one to start building the device picker.",
+            })}
+          </>
+        ) : !curCat ? (
+          <>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="m-0 text-sm font-bold text-foreground">
+                Device Types in {curManu.name}
+              </h3>
+              <Button variant="outline" onPress={() => openAdd("category")}>
+                <Plus className="size-3.5" />
+                <span>Add Device Type</span>
+              </Button>
+            </div>
+            {renderNodeList({
+              items: curManu.categories.map((c) => ({
+                id: c.id,
+                name: c.name,
+                count: c.models.length,
+                countLabel: "model",
+              })),
+              onSelect: (id) => setCatId(id),
+              onRename: (id, name) => openRename("category", id, name),
+              onDelete: (id) => setDeleteTarget({ level: "category", id }),
+              emptyMessage: "No device types yet — e.g. Phone, Tablet, Laptop.",
+            })}
+          </>
+        ) : !curModel ? (
+          <>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="m-0 text-sm font-bold text-foreground">
+                Models in {curManu.name} {curCat.name}
+              </h3>
+              <Button variant="outline" onPress={() => openAdd("model")}>
+                <Plus className="size-3.5" />
+                <span>Add Model</span>
+              </Button>
+            </div>
+            {renderNodeList({
+              items: curCat.models.map((mo) => ({
+                id: mo.id,
+                name: mo.name,
+                count: mo.generations.length,
+                countLabel: "generation",
+              })),
+              onSelect: (id) => setModelId(id),
+              onRename: (id, name) => openRename("model", id, name),
+              onDelete: (id) => setDeleteTarget({ level: "model", id }),
+              emptyMessage: "No models yet — e.g. iPhone 16 Pro Max.",
+            })}
+          </>
+        ) : (
+          <>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="m-0 text-sm font-bold text-foreground">
+                Generations for {curModel.name}
+              </h3>
+              <span className="text-xs text-muted">
+                {curModel.generations.length} generation
+                {curModel.generations.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <form className="mb-4 flex gap-2" onSubmit={addGeneration}>
+              <TextField className="flex-1" value={newGen} onChange={setNewGen}>
+                <InputGroup>
+                  <InputGroup.Input placeholder="e.g. 15 Pro Max" />
+                </InputGroup>
+              </TextField>
+              <Button type="submit" variant="primary">
+                Add
+              </Button>
+            </form>
+            <div className="flex flex-wrap gap-2">
+              {curModel.generations.length === 0 ? (
+                <p className="text-sm italic text-muted">
+                  No generations yet — this model is bookable on its own.
+                </p>
+              ) : (
+                curModel.generations.map((g) => (
+                  <div
+                    key={g}
+                    className="flex items-center gap-1.5 rounded-full bg-surface-tertiary py-1 pl-3 pr-1.5 text-xs font-semibold"
+                  >
+                    <span>{g}</span>
+                    <button
+                      aria-label={`Remove ${g}`}
+                      className="flex size-5 items-center justify-center rounded-full text-muted hover:bg-danger/15 hover:text-danger"
+                      type="button"
+                      onClick={() => removeGeneration(g)}
                     >
-                      <span>{m}</span>
-                      <button
-                        aria-label={`Remove ${m}`}
-                        className="flex size-5 items-center justify-center rounded-full text-muted hover:bg-danger/15 hover:text-danger"
-                        type="button"
-                        onClick={() => delModel(m)}
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : (
-            <p className="text-sm italic text-muted">
-              Select a category to manage models.
-            </p>
-          )}
-        </div>
+                      <X className="size-3" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <Divider />
       <SaveButton label="Save Devices" onClick={save} />
 
       <Modal>
-        <Modal.Backdrop isOpen={catModalOpen} onOpenChange={setCatModalOpen}>
+        <Modal.Backdrop isOpen={modalOpen} onOpenChange={setModalOpen}>
           <Modal.Container size="sm">
             <Modal.Dialog>
               <Modal.Header>
                 <Modal.Heading>
-                  {catModalMode === "add"
-                    ? "New Device Category"
-                    : "Rename Category"}
+                  {modalMode === "add"
+                    ? `New ${modalLevelLabel[modalLevel]}`
+                    : `Rename ${modalLevelLabel[modalLevel]}`}
                 </Modal.Heading>
                 <Modal.CloseTrigger />
               </Modal.Header>
               <Modal.Body>
                 <TextField
                   className="flex flex-col gap-1.5"
-                  value={catModalValue}
-                  onChange={setCatModalValue}
+                  value={modalValue}
+                  onChange={setModalValue}
                 >
-                  <Label>Category Name</Label>
+                  <Label>{modalLevelLabel[modalLevel]} Name</Label>
                   <InputGroup>
                     <InputGroup.Input />
                   </InputGroup>
                 </TextField>
               </Modal.Body>
               <Modal.Footer className="justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onPress={() => setCatModalOpen(false)}
-                >
+                <Button variant="outline" onPress={() => setModalOpen(false)}>
                   Cancel
                 </Button>
-                <Button variant="primary" onPress={submitCatModal}>
-                  {catModalMode === "add" ? "Create Category" : "Save Name"}
+                <Button variant="primary" onPress={submitModal}>
+                  {modalMode === "add"
+                    ? `Create ${modalLevelLabel[modalLevel]}`
+                    : "Save Name"}
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>
@@ -2107,11 +2512,13 @@ function DevicesTab() {
       </Modal>
 
       <AdminConfirmDialog
-        description="This deletes the category and all its models from the Booking Wizard dropdown."
-        isOpen={!!deleteId}
-        title="Delete This Category?"
-        onClose={() => setDeleteId(null)}
-        onConfirm={() => deleteId && delType(deleteId)}
+        description={
+          deleteTarget ? deleteCopy[deleteTarget.level].description(deleteTargetName) : ""
+        }
+        isOpen={!!deleteTarget}
+        title={deleteTarget ? deleteCopy[deleteTarget.level].title : ""}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
       />
     </div>
   );
@@ -2122,6 +2529,7 @@ export default function SiteContent() {
   const resetToDefaults = useSiteStore((s) => s.resetToDefaults);
   const addToast = useToastStore((s) => s.add);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>(TABS[0].id);
 
   const handleReset = () => {
     resetToDefaults();
@@ -2142,12 +2550,40 @@ export default function SiteContent() {
         title="Live Site Content & Branding"
       />
 
+      {/* Mobile section picker — the sidebar tab rail below only works at
+          lg+ width (see Tabs.ListContainer's lg:flex below); on narrow
+          screens it would squeeze the actual editing panel down to almost
+          nothing, so mobile gets a compact dropdown instead and the panel
+          keeps the full screen width. Both drive the same controlled
+          Tabs selection. */}
+      <Select
+        aria-label="Site content section"
+        className="mb-3 lg:hidden"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => setActiveTab(String(key))}
+      >
+        <Select.Trigger className="w-full rounded-2xl">
+          <Select.Value />
+        </Select.Trigger>
+        <Select.Popover>
+          <ListBox>
+            {TABS.map((tab) => (
+              <ListBox.Item key={tab.id} id={tab.id} textValue={tab.label}>
+                <tab.icon className="size-4 shrink-0" />
+                <span>{tab.label}</span>
+              </ListBox.Item>
+            ))}
+          </ListBox>
+        </Select.Popover>
+      </Select>
+
       <Tabs
         className="w-full overflow-hidden rounded-[28px] border border-border bg-surface-secondary"
-        defaultSelectedKey="brand"
         orientation="vertical"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => setActiveTab(String(key))}
       >
-        <Tabs.ListContainer className="shrink-0 border-border p-3 sm:border-r">
+        <Tabs.ListContainer className="hidden shrink-0 border-border p-3 sm:border-r lg:flex">
           <Tabs.List aria-label="Site content sections" className="gap-1">
             {TABS.map((tab) => (
               <Tabs.Tab
@@ -2163,7 +2599,7 @@ export default function SiteContent() {
         </Tabs.ListContainer>
 
         {TABS.map((tab) => (
-          <Tabs.Panel key={tab.id} className="flex-1 p-6 sm:p-8" id={tab.id}>
+          <Tabs.Panel key={tab.id} className="flex-1 p-4 sm:p-6 lg:p-8" id={tab.id}>
             {tab.id === "brand" && <BrandTab />}
             {tab.id === "hero" && <HeroTab />}
             {tab.id === "trust" && <TrustTab />}

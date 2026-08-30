@@ -57,6 +57,30 @@ export default async function handler(req, res) {
       process.env.SUPABASE_ANON_KEY ||
       process.env.VITE_SUPABASE_ANON_KEY;
 
+    // If the customer is signed in, tie the booking to their account so it
+    // shows up in their order/booking history. Best-effort: an invalid or
+    // missing token just leaves the booking unattached, it never blocks
+    // the submission.
+    let userId = null;
+    const authHeader = req.headers.authorization || "";
+    const accessToken = authHeader.startsWith("Bearer ")
+      ? authHeader.slice("Bearer ".length)
+      : null;
+
+    if (accessToken && sbUrl) {
+      try {
+        const whoResponse = await fetch(`${sbUrl.replace(/\/$/, "")}/auth/v1/user`, {
+          headers: { apikey: sbKey, Authorization: `Bearer ${accessToken}` },
+        });
+        if (whoResponse.ok) {
+          const who = await whoResponse.json().catch(() => null);
+          userId = who?.id || null;
+        }
+      } catch {
+        // Ignore — booking still proceeds unattached.
+      }
+    }
+
     const payload = {
       customer_name: name,
       customer_email: email,
@@ -69,8 +93,10 @@ export default async function handler(req, res) {
       appt_time: apptTime,
       notes: booking.notes || "",
       visit_type: booking.visit_type || booking.visitType || "in-store",
+      visit_location_type: booking.visit_location_type || booking.visitLocationType || null,
       home_address: booking.home_address || booking.homeAddress || "",
       status: "pending",
+      ...(userId ? { user_id: userId } : {}),
     };
 
     if (sbUrl && sbKey) {

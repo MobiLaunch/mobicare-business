@@ -14,6 +14,8 @@ import {
   Tablet,
 } from "lucide-react";
 
+import { Accordion, Button } from "@heroui/react";
+
 import BookingWizard from "@/components/BookingWizard";
 import PageMeta from "@/components/PageMeta";
 
@@ -114,7 +116,7 @@ const FAQS = [
   },
   {
     q: "Do you offer a warranty on repairs?",
-    a: "Yes! All repairs include a 90-day warranty covering parts and labor. If the issue persists within 90 days, we service it free of charge.",
+    a: "Yes — every part we install is backed by a 90-day warranty. If that part fails within 90 days, we'll replace it at no charge. Labor for unrelated issues isn't covered.",
   },
   {
     q: "Do you fix all phone brands?",
@@ -122,7 +124,11 @@ const FAQS = [
   },
   {
     q: "Is there a diagnostic fee?",
-    a: "Diagnostics are always 100% free. We'll examine your device and provide a zero-obligation quote before starting work.",
+    a: "Yes, a flat $35 bench fee covers a full diagnostic on any device. We'll give you a clear, no-obligation quote before starting any work.",
+  },
+  {
+    q: "What is your refund policy?",
+    a: "Refunds require a valid receipt and are limited to the cost of parts — labor charges are non-refundable.",
   },
   {
     q: "Do I need an appointment?",
@@ -131,8 +137,8 @@ const FAQS = [
 ];
 
 const BADGES = [
-  "Free Diagnostics",
-  "90-Day Warranty",
+  "$35 Bench Fee",
+  "90-Day Parts Warranty",
   "Same-Day Repairs",
   "Walk-Ins Welcome",
 ];
@@ -140,7 +146,6 @@ const BADGES = [
 export default function Repairs() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<string | null>(null);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const handleBook = (serviceName: string | null = null) => {
     setSelectedService(serviceName);
@@ -156,15 +161,15 @@ export default function Repairs() {
 
       {/* Hero */}
       <section className="pb-8 pt-[clamp(24px,5vw,48px)] text-center">
-        <p className="m-0 mb-1.5 text-[11px] font-bold uppercase tracking-widest text-accent">
+        <p className="m-0 mb-1.5 text-caption font-bold uppercase tracking-widest text-accent">
           Device Repair Services
         </p>
-        <h1 className="m-0 mb-3 text-[clamp(2.2rem,5vw,3.4rem)] font-extrabold leading-[1.15] text-foreground">
+        <h1 className="m-0 mb-3 text-display font-extrabold leading-[1.15] text-foreground">
           We Fix What&rsquo;s Broken.
         </h1>
-        <p className="mx-auto mb-7 max-w-[640px] text-[clamp(15px,2vw,18px)] leading-relaxed text-muted">
-          Fast, honest repairs on every major device brand. Free diagnostics,
-          90-day warranty, same-day turnaround on most jobs.
+        <p className="mx-auto mb-7 max-w-[640px] text-body-lg leading-relaxed text-muted">
+          Fast, honest repairs on every major device brand. $35 bench fee,
+          90-day parts warranty, same-day turnaround on most jobs.
         </p>
 
         <div className="mb-8 flex flex-wrap justify-center gap-3">
@@ -194,10 +199,10 @@ export default function Repairs() {
                     <svc.icon className="size-6" />
                   </span>
                   <div className="flex flex-col items-end gap-0.5">
-                    <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-bold text-accent">
+                    <span className="rounded-full bg-accent-soft px-2.5 py-1 text-caption font-bold text-accent">
                       {svc.price}
                     </span>
-                    <span className="text-[11px] font-semibold text-muted">
+                    <span className="text-caption font-semibold text-muted">
                       ⏱ {svc.time}
                     </span>
                   </div>
@@ -206,20 +211,20 @@ export default function Repairs() {
                 <h3 className="m-0 mb-2 break-words text-lg font-bold text-foreground">
                   {svc.name}
                 </h3>
-                <p className="m-0 break-words text-[13px] leading-relaxed text-muted">
+                <p className="m-0 break-words text-label leading-relaxed text-muted">
                   {svc.desc}
                 </p>
               </div>
 
-              <button
+              <Button
                 className="flex w-full items-center justify-center gap-1.5 rounded-full bg-accent px-3 py-2.5 text-xs font-semibold text-accent-foreground transition-opacity hover:opacity-90"
                 id={`repairs-page-book-btn-${svc.id}`}
-                type="button"
-                onClick={() => handleBook(svc.name)}
+                variant="primary"
+                onPress={() => handleBook(svc.name)}
               >
                 <CalendarPlus className="size-3.5" />
                 <span>Book Repair</span>
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -228,51 +233,37 @@ export default function Repairs() {
       {/* FAQ */}
       <section className="mx-auto mb-14 max-w-[840px]">
         <div className="mb-8 text-center">
-          <p className="m-0 mb-1 text-[11px] font-bold uppercase tracking-widest text-accent">
+          <p className="m-0 mb-1 text-caption font-bold uppercase tracking-widest text-accent">
             Got Questions?
           </p>
-          <h2 className="m-0 text-[clamp(1.5rem,3.5vw,2.2rem)] font-extrabold text-foreground">
+          <h2 className="m-0 text-heading-lg font-extrabold text-foreground">
             Frequently Asked Questions
           </h2>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {FAQS.map((faq, index) => {
-            const isOpen = openFaq === index;
-
-            return (
-              <div
-                key={faq.q}
-                className="overflow-hidden rounded-[18px] border border-border bg-surface shadow-sm transition-all duration-200"
-              >
-                <button
-                  aria-expanded={isOpen}
-                  className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left font-bold text-foreground"
-                  type="button"
-                  onClick={() => setOpenFaq(isOpen ? null : index)}
-                >
+        <Accordion className="flex flex-col gap-3">
+          {FAQS.map((faq) => (
+            <Accordion.Item
+              key={faq.q}
+              className="overflow-hidden rounded-[18px] border border-border bg-surface shadow-sm transition-all duration-200"
+              id={faq.q}
+            >
+              <Accordion.Heading>
+                <Accordion.Trigger className="w-full gap-3 px-5 py-4 text-left text-base font-bold text-foreground">
                   <span>{faq.q}</span>
-                  <ChevronDown
-                    className={`size-5 shrink-0 text-accent transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
-                <div
-                  className={`grid transition-all duration-250 ease-in-out ${
-                    isOpen
-                      ? "grid-rows-[1fr] opacity-100"
-                      : "grid-rows-[0fr] opacity-0"
-                  }`}
-                >
-                  <div className="overflow-hidden">
-                    <div className="px-5 pb-[18px] text-sm leading-relaxed text-muted">
-                      {faq.a}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                  <Accordion.Indicator>
+                    <ChevronDown className="size-5 shrink-0 text-accent" />
+                  </Accordion.Indicator>
+                </Accordion.Trigger>
+              </Accordion.Heading>
+              <Accordion.Panel>
+                <Accordion.Body className="px-5 pb-[18px] pt-0 text-sm leading-relaxed text-muted">
+                  {faq.a}
+                </Accordion.Body>
+              </Accordion.Panel>
+            </Accordion.Item>
+          ))}
+        </Accordion>
       </section>
 
       {bookingOpen && (

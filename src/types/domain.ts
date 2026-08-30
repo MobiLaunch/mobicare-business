@@ -95,6 +95,7 @@ export interface BookingRecord {
   issue?: string;
   notes?: string;
   visit_type?: string;
+  visit_location_type?: string;
   home_address?: string;
 }
 

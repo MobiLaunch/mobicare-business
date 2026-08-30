@@ -60,7 +60,7 @@ export default function AdminLayout() {
               <Menu aria-hidden="true" className="size-5" />
             </button>
             <div className="min-w-0">
-              <span className="block truncate text-[10px] font-bold uppercase tracking-[0.16em] text-accent sm:text-[11px]">
+              <span className="block truncate text-micro font-bold uppercase tracking-[0.16em] text-accent sm:text-caption">
                 Mobicare Admin Portal
               </span>
               <h1 className="m-0 truncate text-base font-bold text-foreground sm:text-lg">

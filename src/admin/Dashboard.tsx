@@ -39,7 +39,6 @@ const QUICK_ACTIONS = [
 ];
 
 const ACTIVE_STATUSES = ["paid", "processing", "shipped"];
-const CLOSED_STATUSES = ["delivered", "cancelled", "refunded"];
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -62,7 +61,7 @@ export default function Dashboard() {
     { key: "items", header: "Items", render: (o) => <span className="text-sm text-muted">{o.items?.length || 0} item{o.items?.length !== 1 ? "s" : ""}</span> },
     { key: "total", header: "Total", render: (o) => <strong className="text-sm text-accent">${(o.total || 0).toFixed(2)}</strong> },
     { key: "status", header: "Status", render: (o) => <span className={`rounded-full px-2.5 py-1 text-xs font-bold capitalize ${STATUS_STYLES[o.status] || "bg-surface-tertiary"}`}>{o.status || "pending"}</span> },
-    { key: "date", header: "Date", render: (o) => <span className="text-[13px] text-muted">{o.createdAt ? new Date(o.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—"}</span> },
+    { key: "date", header: "Date", render: (o) => <span className="text-label text-muted">{o.createdAt ? new Date(o.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—"}</span> },
     { key: "actions", header: "", render: () => <Button isIconOnly aria-label="View orders" variant="ghost" onPress={() => navigate("/admin/orders")}><Eye className="size-4" /></Button> },
   ];
 
@@ -92,10 +91,10 @@ export default function Dashboard() {
       <section aria-label="Store metrics">
         <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="m-0 text-lg font-extrabold text-foreground">Store at a glance</h2><p className="m-0 mt-0.5 text-xs text-muted">Current catalog, fulfillment, and sales totals.</p></div></div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-          <AdminStatCard icon={Boxes} path="/admin/products"><p className="m-0 mb-1 text-[clamp(1.7rem,3vw,2.25rem)] font-extrabold leading-none tracking-tight text-foreground">{products.length}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Products</p><p className="m-0 text-xs text-muted">{activeProducts} active in store</p></AdminStatCard>
-          <AdminStatCard icon={ShoppingBag} path="/admin/orders"><p className="m-0 mb-1 text-[clamp(1.7rem,3vw,2.25rem)] font-extrabold leading-none tracking-tight text-foreground">{activeOrders}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Open Orders</p><p className="m-0 text-xs text-muted">Paid through shipped</p></AdminStatCard>
-          <AdminStatCard icon={Tag} path="/admin/categories"><p className="m-0 mb-1 text-[clamp(1.7rem,3vw,2.25rem)] font-extrabold leading-none tracking-tight text-foreground">{categories.length}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Categories</p><p className="m-0 text-xs text-muted">{completedOrders} orders completed</p></AdminStatCard>
-          <AdminStatCard icon={TrendingUp} path="/admin/orders"><p className="m-0 mb-1 text-[clamp(1.45rem,2.5vw,2rem)] font-extrabold leading-none tracking-tight text-foreground">${totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Net Sales Tracked</p><p className="m-0 text-xs text-muted">Excludes cancelled &amp; refunded</p></AdminStatCard>
+          <AdminStatCard icon={Boxes} path="/admin/products"><p className="m-0 mb-1 text-heading-lg font-extrabold leading-none tracking-tight text-foreground">{products.length}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Products</p><p className="m-0 text-xs text-muted">{activeProducts} active in store</p></AdminStatCard>
+          <AdminStatCard icon={ShoppingBag} path="/admin/orders"><p className="m-0 mb-1 text-heading-lg font-extrabold leading-none tracking-tight text-foreground">{activeOrders}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Open Orders</p><p className="m-0 text-xs text-muted">Paid through shipped</p></AdminStatCard>
+          <AdminStatCard icon={Tag} path="/admin/categories"><p className="m-0 mb-1 text-heading-lg font-extrabold leading-none tracking-tight text-foreground">{categories.length}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Categories</p><p className="m-0 text-xs text-muted">{completedOrders} orders completed</p></AdminStatCard>
+          <AdminStatCard icon={TrendingUp} path="/admin/orders"><p className="m-0 mb-1 text-heading font-extrabold leading-none tracking-tight text-foreground">${totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p><p className="m-0 mb-0.5 text-sm font-bold text-foreground">Net Sales Tracked</p><p className="m-0 text-xs text-muted">Excludes cancelled &amp; refunded</p></AdminStatCard>
         </div>
       </section>
 

@@ -111,14 +111,14 @@ export default function Account() {
         {tabItems.map(({ id, label, description, count, icon: Icon }) => {
           const selected = activeTab === id;
           return (
-            <button key={id} type="button" aria-pressed={selected} onClick={() => setActiveTab(id)} className={`group min-w-0 rounded-2xl border p-3.5 text-left transition-all sm:p-4 ${selected ? "border-accent bg-accent-soft shadow-sm" : "border-border bg-surface hover:border-accent/50 hover:bg-surface-secondary"}`}>
+            <Button key={id} aria-pressed={selected} className={`group flex h-auto min-w-0 flex-col rounded-2xl border p-3.5 text-left whitespace-normal transition-all sm:p-4 ${selected ? "border-accent bg-accent-soft shadow-sm" : "border-border bg-surface hover:border-accent/50 hover:bg-surface-secondary"}`} variant="ghost" onPress={() => setActiveTab(id)}>
               <div className="flex items-start justify-between gap-2">
                 <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-accent text-accent-foreground" : "bg-surface-secondary text-accent"}`}><Icon aria-hidden="true" className="size-4" /></span>
-                {typeof count === "number" && <span className="rounded-full bg-surface-secondary px-2 py-0.5 text-[10px] font-bold text-muted">{count}</span>}
+                {typeof count === "number" && <span className="rounded-full bg-surface-secondary px-2 py-0.5 text-micro font-bold text-muted">{count}</span>}
               </div>
               <strong className="mt-3 block truncate text-sm font-bold text-foreground">{label}</strong>
-              <span className="mt-0.5 block truncate text-[11px] text-muted">{description}</span>
-            </button>
+              <span className="mt-0.5 block truncate text-caption text-muted">{description}</span>
+            </Button>
           );
         })}
       </div>
@@ -183,7 +183,7 @@ function BookingTicket({ booking }: { booking: BookingRecord }) {
       <div className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="m-0 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted">Mobicare • Repair Ticket</p>
+            <p className="m-0 font-mono text-micro font-bold uppercase tracking-[0.2em] text-muted">Mobicare • Repair Ticket</p>
             <p className="m-0 mt-1 font-mono text-xl font-black tracking-tight text-foreground">#{ticketNumber}</p>
           </div>
           <Chip color={statusColor} size="sm" variant="soft"><Chip.Label className="capitalize">{status}</Chip.Label></Chip>
@@ -193,14 +193,14 @@ function BookingTicket({ booking }: { booking: BookingRecord }) {
 
         <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
           <div className="min-w-0">
-            <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-muted">Service</p>
+            <p className="m-0 text-micro font-bold uppercase tracking-wider text-muted">Service</p>
             <h3 className="m-0 mt-1 text-lg font-extrabold text-foreground">{booking.service}</h3>
             <p className="m-0 mt-1 text-sm font-medium text-foreground">{booking.device_type}{booking.device_model ? ` — ${booking.device_model}` : ""}</p>
             {booking.issue && <p className="m-0 mt-2 line-clamp-2 text-xs leading-relaxed text-muted">{booking.issue}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4 border-t border-border pt-3 sm:min-w-[180px] sm:grid-cols-1 sm:border-t-0 sm:border-l sm:pl-5 sm:pt-0">
-            <div><p className="m-0 text-[10px] font-bold uppercase tracking-wider text-muted">Date</p><p className="m-0 mt-1 text-sm font-bold text-foreground">{booking.appt_date}</p></div>
-            <div><p className="m-0 text-[10px] font-bold uppercase tracking-wider text-muted">Time</p><p className="m-0 mt-1 flex items-center gap-1.5 text-sm font-bold text-foreground"><Clock aria-hidden="true" className="size-3.5 text-accent" />{booking.appt_time}</p></div>
+            <div><p className="m-0 text-micro font-bold uppercase tracking-wider text-muted">Date</p><p className="m-0 mt-1 text-sm font-bold text-foreground">{booking.appt_date}</p></div>
+            <div><p className="m-0 text-micro font-bold uppercase tracking-wider text-muted">Time</p><p className="m-0 mt-1 flex items-center gap-1.5 text-sm font-bold text-foreground"><Clock aria-hidden="true" className="size-3.5 text-accent" />{booking.appt_time}</p></div>
           </div>
         </div>
 
@@ -215,7 +215,7 @@ function BookingTicket({ booking }: { booking: BookingRecord }) {
 }
 
 function SummaryStat({ icon, label, value }: { icon: ReactNode; label: string; value: string | number }) {
-  return <div className="flex items-center gap-2.5 px-4 py-3.5 sm:px-6"><span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">{icon}</span><div className="min-w-0"><p className="m-0 text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</p><p className="m-0 text-sm font-bold text-foreground">{value}</p></div></div>;
+  return <div className="flex items-center gap-2.5 px-4 py-3.5 sm:px-6"><span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">{icon}</span><div className="min-w-0"><p className="m-0 text-caption font-semibold uppercase tracking-wide text-muted">{label}</p><p className="m-0 text-sm font-bold text-foreground">{value}</p></div></div>;
 }
 
 function AccountSectionHeader({ title, action, icon, onAction }: { title: string; action: string; icon: ReactNode; onAction: () => void }) {

@@ -352,7 +352,7 @@ export default function Settings() {
               </span>
             </Button>
             {!isSupabaseConfigured() && (
-              <span className="text-[13px] text-muted">
+              <span className="text-label text-muted">
                 Connect Supabase first
               </span>
             )}
@@ -366,52 +366,64 @@ export default function Settings() {
         icon={Mail}
         title="EmailJS Notifications"
       >
-        <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={emailjs.serviceId}
-            onChange={(v) => setEmailjs((s) => ({ ...s, serviceId: v }))}
-          >
-            <Label>EmailJS Service ID</Label>
-            <InputGroup>
-              <InputGroup.Input />
-            </InputGroup>
-          </TextField>
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={emailjs.publicKey}
-            onChange={(v) => setEmailjs((s) => ({ ...s, publicKey: v }))}
-          >
-            <Label>Public Key</Label>
-            <InputGroup>
-              <InputGroup.Input />
-            </InputGroup>
-          </TextField>
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={emailjs.bookingTemplate}
-            onChange={(v) => setEmailjs((s) => ({ ...s, bookingTemplate: v }))}
-          >
-            <Label>Booking Template ID</Label>
-            <InputGroup>
-              <InputGroup.Input />
-            </InputGroup>
-          </TextField>
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={emailjs.orderTemplate}
-            onChange={(v) => setEmailjs((s) => ({ ...s, orderTemplate: v }))}
-          >
-            <Label>Order Template ID</Label>
-            <InputGroup>
-              <InputGroup.Input />
-            </InputGroup>
-          </TextField>
-        </div>
-        <Button variant="primary" onClick={handleSaveEmailjs}>
-          <Save className="size-4" />
-          <span>Save EmailJS Settings</span>
-        </Button>
+        <SettingsStepItem
+          description={
+            <>
+              From <strong>dashboard.emailjs.com</strong> — your service,
+              public key, and the two template IDs for booking and order
+              confirmations.
+            </>
+          }
+          number={1}
+          title="EmailJS Credentials"
+        >
+          <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+            <TextField
+              className="flex flex-col gap-1.5"
+              value={emailjs.serviceId}
+              onChange={(v) => setEmailjs((s) => ({ ...s, serviceId: v }))}
+            >
+              <Label>EmailJS Service ID</Label>
+              <InputGroup>
+                <InputGroup.Input />
+              </InputGroup>
+            </TextField>
+            <TextField
+              className="flex flex-col gap-1.5"
+              value={emailjs.publicKey}
+              onChange={(v) => setEmailjs((s) => ({ ...s, publicKey: v }))}
+            >
+              <Label>Public Key</Label>
+              <InputGroup>
+                <InputGroup.Input />
+              </InputGroup>
+            </TextField>
+            <TextField
+              className="flex flex-col gap-1.5"
+              value={emailjs.bookingTemplate}
+              onChange={(v) => setEmailjs((s) => ({ ...s, bookingTemplate: v }))}
+            >
+              <Label>Booking Template ID</Label>
+              <InputGroup>
+                <InputGroup.Input />
+              </InputGroup>
+            </TextField>
+            <TextField
+              className="flex flex-col gap-1.5"
+              value={emailjs.orderTemplate}
+              onChange={(v) => setEmailjs((s) => ({ ...s, orderTemplate: v }))}
+            >
+              <Label>Order Template ID</Label>
+              <InputGroup>
+                <InputGroup.Input />
+              </InputGroup>
+            </TextField>
+          </div>
+          <Button variant="primary" onClick={handleSaveEmailjs}>
+            <Save className="size-4" />
+            <span>Save EmailJS Settings</span>
+          </Button>
+        </SettingsStepItem>
       </AdminSettingsCard>
 
       {/* Stripe */}
@@ -464,14 +476,17 @@ export default function Settings() {
           title="Secret Key & Webhook Secret (server-side only)"
         >
           <div className="rounded-2xl bg-surface-tertiary p-5">
-            <p className="m-0 mb-1.5 text-[13px] text-muted">
+            <p className="m-0 mb-1.5 text-label text-muted">
               1. Set <code>STRIPE_SECRET_KEY</code> (starts with{" "}
               <code>sk_</code>) as an environment variable in your hosting
               platform.
             </p>
-            <p className="m-0 text-[13px] text-muted">
+            <p className="m-0 text-label text-muted">
               2. Point your Stripe Webhook to <code>/api/stripe-webhook</code>,
-              listening for <code>checkout.session.completed</code>, and set{" "}
+              listening for <code>payment_intent.succeeded</code>,{" "}
+              <code>payment_intent.payment_failed</code>,{" "}
+              <code>payment_intent.canceled</code>, and{" "}
+              <code>charge.refunded</code>, and set{" "}
               <code>STRIPE_WEBHOOK_SECRET</code> the same way.
             </p>
           </div>

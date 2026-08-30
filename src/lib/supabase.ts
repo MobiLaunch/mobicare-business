@@ -472,6 +472,7 @@ const VALID_ORDER_STATUSES = [
   "delivered",
   "cancelled",
   "refunded",
+  "payment_failed",
 ];
 
 export async function sbInsertOrder(order: Order): Promise<Order | null> {
@@ -570,6 +571,45 @@ export async function sbUpdateOrderStatus(
   return true;
 }
 
+// Issues a real Stripe refund via /api/refund-payment-intent. Unlike
+// sbUpdateOrderStatus, this never writes the order row directly — the
+// stripe-webhook function's "charge.refunded" handler is what actually
+// flips the status once Stripe confirms.
+export async function sbRefundOrder(
+  orderId: string,
+): Promise<{ ok: boolean; error?: string; alreadyRefunded?: boolean }> {
+  const sb = getClient();
+  const { data: { session } = { session: null } } = sb?.auth
+    ? await sb.auth.getSession()
+    : { data: { session: null } };
+
+  if (!session?.access_token) {
+    return { ok: false, error: "You must be signed in as an admin to issue a refund." };
+  }
+
+  try {
+    const response = await fetch("/api/refund-payment-intent", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ orderId }),
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return { ok: false, error: data?.error || "Unable to issue refund." };
+    }
+
+    return { ok: true, alreadyRefunded: Boolean(data?.alreadyRefunded) };
+  } catch (error) {
+    console.error("sbRefundOrder:", error);
+
+    return { ok: false, error: "Unable to reach the refund service." };
+  }
+}
+
 // ─── Bookings ──────────────────────────────────────────────────────────────
 export async function sbInsertBooking(booking: Booking): Promise<boolean> {
   const sb = getClient();
@@ -643,6 +683,10 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
         (booking.visit_type as string) ||
         (booking.visitType as string) ||
         "in-store",
+      visit_location_type:
+        (booking.visit_location_type as string) ||
+        (booking.visitLocationType as string) ||
+        null,
       home_address:
         (booking.home_address as string) ||
         (booking.homeAddress as string) ||
@@ -663,10 +707,13 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
   return true;
 }
 
-export async function sbFetchBookings(): Promise<BookingRecord[] | null> {
+export async function sbFetchBookings(): Promise<{
+  data: BookingRecord[] | null;
+  error: string | null;
+}> {
   const sb = getClient();
 
-  if (!sb) return null;
+  if (!sb) return { data: null, error: "Supabase client not configured." };
   const { data, error } = await sb
     .from("bookings")
     .select("*")
@@ -675,10 +722,10 @@ export async function sbFetchBookings(): Promise<BookingRecord[] | null> {
   if (error) {
     console.error("sbFetchBookings:", error);
 
-    return null;
+    return { data: null, error: error.message || "Unknown error." };
   }
 
-  return data as BookingRecord[];
+  return { data: data as BookingRecord[], error: null };
 }
 
 const VALID_BOOKING_STATUSES = [

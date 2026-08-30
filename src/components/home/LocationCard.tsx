@@ -270,8 +270,8 @@ export default function LocationCard() {
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-surface-secondary to-surface-tertiary p-6 text-center text-foreground">
             <div>
               <MapIcon className="mx-auto mb-2 size-8" />
-              <strong className="block text-[13px]">Fairfield, Illinois</strong>
-              <span className="mt-1 block text-[11px] opacity-75">
+              <strong className="block text-label">Fairfield, Illinois</strong>
+              <span className="mt-1 block text-caption opacity-75">
                 Google Maps is unavailable right now.
               </span>
             </div>
@@ -287,7 +287,7 @@ export default function LocationCard() {
 
         <div className="absolute right-3 top-3 z-[4]">
           <Link
-            className={`${buttonVariants({ variant: "secondary", size: "sm" })} gap-1.5 rounded-full bg-white/92 text-[11px] text-foreground shadow-md backdrop-blur-md`}
+            className={`${buttonVariants({ variant: "secondary", size: "sm" })} gap-1.5 rounded-full bg-white/92 text-caption text-foreground shadow-md backdrop-blur-md`}
             href={GOOGLE_MAPS_URL}
             target="_blank"
           >
@@ -297,7 +297,7 @@ export default function LocationCard() {
         </div>
 
         <div className="absolute bottom-3 left-3 z-[4]">
-          <Chip className="bg-white/92 text-[11px] font-bold text-accent shadow-md backdrop-blur-md">
+          <Chip className="bg-white/92 text-caption font-bold text-accent shadow-md backdrop-blur-md">
             <Chip.Label>● Open Today · Fairfield, IL</Chip.Label>
           </Chip>
         </div>
@@ -310,16 +310,16 @@ export default function LocationCard() {
             <h3 className="m-0 text-lg font-bold leading-tight">
               Visit Mobicare Device Recovery
             </h3>
-            <span className="mt-0.5 block text-[13px] text-muted">
+            <span className="mt-0.5 block text-label text-muted">
               Fairfield, IL 62837
             </span>
           </div>
 
           <div className="shrink-0 rounded-xl border border-border bg-surface-secondary px-2.5 py-1 text-right">
-            <span className="flex items-center justify-end gap-1 text-[13px] font-extrabold text-warning">
+            <span className="flex items-center justify-end gap-1 text-label font-extrabold text-warning">
               <Star className="size-3.5 fill-current" /> 5.0
             </span>
-            <span className="text-[10px] font-semibold text-muted">
+            <span className="text-micro font-semibold text-muted">
               Locally Owned
             </span>
           </div>
@@ -336,7 +336,7 @@ export default function LocationCard() {
             return (
               <button
                 key={town.name}
-                className={`rounded-full px-3 py-1.5 text-[11px] font-medium transition-all ${
+                className={`rounded-full px-3 py-1.5 text-caption font-medium transition-all ${
                   isActive
                     ? "bg-accent font-bold text-accent-foreground"
                     : "border border-border bg-surface-secondary text-foreground"
@@ -362,7 +362,7 @@ export default function LocationCard() {
 
           <div className="grid grid-cols-2 gap-2.5">
             <Link
-              className={`${buttonVariants({ variant: "outline" })} gap-1.5 text-[13px]`}
+              className={`${buttonVariants({ variant: "outline" })} gap-1.5 text-label`}
               href={`tel:${BUSINESS.phone.replace(/[^0-9+]/g, "")}`}
             >
               <Phone className="size-[18px]" />
@@ -370,7 +370,7 @@ export default function LocationCard() {
             </Link>
 
             <button
-              className={`${buttonVariants({ variant: "outline" })} gap-1.5 text-[13px]`}
+              className={`${buttonVariants({ variant: "outline" })} gap-1.5 text-label`}
               type="button"
               onClick={handleCopyAddress}
             >

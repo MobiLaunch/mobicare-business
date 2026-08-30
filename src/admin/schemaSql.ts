@@ -9,12 +9,15 @@ export const SCHEMA_SQL = `-- ==================================================
 --      Dashboard → Authentication → Users → Add User, then provision its
 --      UUID in staff_users using the trusted SQL note at the end.
 --    - Orders are NEVER writable by anonymous clients. They are only
---      created by your Stripe webhook (service_role key, server-side),
---      after payment is confirmed. The browser can only read the minimum
---      confirmation data using a short-lived signed lookup token.
+--      created by the create-order/webhook serverless functions
+--      (service_role key, server-side), after payment is confirmed. A
+--      signed-in customer may read their own order rows (user_id =
+--      auth.uid()); anonymous browsers can only read via the short-lived
+--      signed lookup token flow.
 --    - Bookings are written only by the rate-limited serverless booking API
---      using the service-role key. There is NO public SELECT/INSERT/UPDATE/
---      DELETE policy on bookings; only staff can read or manage them.
+--      using the service-role key. There is NO public INSERT/UPDATE/DELETE
+--      policy on bookings; staff can read/manage all, and a signed-in
+--      customer may read their own booking rows (user_id = auth.uid()).
 --  Run this entire block in your Supabase SQL editor.
 --  Dashboard → SQL Editor → New query → paste → Run
 -- ============================================================
@@ -93,16 +96,18 @@ create index if not exists products_featured_idx on public.products(featured);
 
 -- ────────────────────────────────────────────────────────────
 -- ORDERS
--- Written ONLY by the Stripe webhook (service_role key), after
--- payment_intent.succeeded. The anon/browser key can never insert,
--- update, or delete rows here — see RLS policies below.
+-- Written ONLY by the create-order and stripe-webhook serverless functions
+-- (service_role key) — create-order inserts once payment is verified, the
+-- webhook updates status as Stripe confirms/fails/refunds it. The
+-- anon/browser key can never insert, update, or delete rows here — see RLS
+-- policies below (customers may only SELECT their own rows).
 -- ────────────────────────────────────────────────────────────
 create table if not exists public.orders (
   id                       text primary key default gen_random_uuid()::text,
-  stripe_payment_intent_id text unique,           -- idempotency key from Stripe
-  stripe_checkout_session_id text unique,
+  payment_intent_id text,                         -- idempotency key from Stripe
+  user_id          uuid references auth.users(id) on delete set null,
   status           text not null default 'paid'
-                     check (status in ('paid','processing','shipped','delivered','cancelled','refunded')),
+                     check (status in ('paid','processing','shipped','delivered','cancelled','refunded','payment_failed')),
   customer_name    text not null default '',
   customer_email   text not null default '',
   customer_phone   text not null default '',
@@ -124,13 +129,11 @@ alter table public.orders add column if not exists lookup_token_expires_at times
 
 create index if not exists orders_status_idx     on public.orders(status);
 create index if not exists orders_created_at_idx on public.orders(created_at desc);
+create index if not exists orders_user_id_idx    on public.orders(user_id);
 create index if not exists orders_lookup_token_idx on public.orders(lookup_token_hash);
-create unique index if not exists orders_stripe_session_unique_idx
-  on public.orders(stripe_checkout_session_id)
-  where stripe_checkout_session_id is not null;
-create unique index if not exists orders_stripe_payment_intent_unique_idx
-  on public.orders(stripe_payment_intent_id)
-  where stripe_payment_intent_id is not null;
+create unique index if not exists orders_payment_intent_id_key
+  on public.orders(payment_intent_id)
+  where payment_intent_id is not null;
 create unique index if not exists orders_lookup_token_unique_idx
   on public.orders(lookup_token_hash)
   where lookup_token_hash is not null;
@@ -171,6 +174,10 @@ create table if not exists public.bookings (
   customer_phone text not null,
   customer_email text not null,
   notes          text not null default '',
+  visit_type     text not null default 'in-store',
+  visit_location_type text,                   -- 'residential' | 'commercial', home visits only
+  home_address   text not null default '',
+  user_id        uuid references auth.users(id) on delete set null,
   status         text not null default 'pending'
                    check (status in ('pending','confirmed','completed','cancelled','no-show')),
   created_at     timestamptz not null default now(),
@@ -180,6 +187,7 @@ create table if not exists public.bookings (
 create index if not exists bookings_status_idx     on public.bookings(status);
 create index if not exists bookings_created_at_idx on public.bookings(created_at desc);
 create index if not exists bookings_email_created_idx on public.bookings(customer_email, created_at desc);
+create index if not exists bookings_user_id_idx on public.bookings(user_id);
 
 -- Rate-limit trigger: block more than 1 booking every 30 seconds per email
 create or replace function public.check_booking_rate_limit()
@@ -289,18 +297,22 @@ drop policy if exists "admin modify site_settings" on public.site_settings;
 create policy "public read site_settings" on public.site_settings for select using (true);
 create policy "admin modify site_settings" on public.site_settings for all using (public.is_admin()) with check (public.is_admin());
 
--- Bookings: no browser access. The serverless API uses service_role;
--- admin staff users have full access.
+-- Bookings: no anonymous browser access. The serverless API uses
+-- service_role; admin staff users have full access; a signed-in customer
+-- may only read their own bookings (never write — that stays service-role).
 drop policy if exists "public create bookings" on public.bookings;
 drop policy if exists "admin all bookings" on public.bookings;
 create policy "admin all bookings" on public.bookings for all using (public.is_admin()) with check (public.is_admin());
+create policy "customer read own bookings" on public.bookings for select using (auth.uid() = user_id);
 
--- Orders: NO public access at all — not even insert. Only the service_role
--- key (used exclusively by your Stripe webhook, server-side) bypasses RLS
--- entirely, so no policy is needed to permit its writes. Admin can read/manage.
+-- Orders: no anonymous browser access, and no customer write access — only
+-- the service_role key (used exclusively by your create-order/webhook
+-- functions, server-side) can insert or update. Admin can read/manage
+-- everything; a signed-in customer may only read their own orders.
 drop policy if exists "public create orders" on public.orders;
 drop policy if exists "admin all orders" on public.orders;
 create policy "admin all orders" on public.orders for all using (public.is_admin()) with check (public.is_admin());
+create policy "customer read own orders" on public.orders for select using (auth.uid() = user_id);
 
 -- Order line items: same lockdown as orders
 drop policy if exists "public create order_items" on public.order_items;

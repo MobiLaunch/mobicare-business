@@ -4,6 +4,31 @@
 /* Tailwind CSS v4 dark: variant configured for both [data-theme="dark"] and .dark */
 @custom-variant dark (&:is(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
 
+/* ─── Typography scale ───────────────────────────────────────────────────
+   Consolidates what used to be one-off text-[clamp(...)]/text-[Npx]
+   arbitrary values per component into a small shared set. Generates
+   matching text-* utilities automatically (Tailwind v4 --text-* theme
+   namespace) — e.g. --text-display below produces the `text-display`
+   class. Values are drawn from the most common sizes already in use
+   across pages; a few near-duplicate one-offs (e.g. 2.2rem vs 2.4rem
+   hero headings) were merged into a single shared step. */
+@theme {
+  /* Responsive headings/body copy */
+  --text-display: clamp(2.2rem, 5.5vw, 3.8rem);
+  --text-heading-xl: clamp(1.8rem, 4vw, 2.6rem);
+  --text-heading-lg: clamp(1.6rem, 3.5vw, 2.2rem);
+  --text-heading: clamp(1.2rem, 3vw, 1.6rem);
+  --text-heading-sm: clamp(1.1rem, 2.5vw, 1.4rem);
+  --text-body-lg: clamp(15px, 2vw, 19px);
+  --text-body: clamp(13px, 2vw, 15px);
+
+  /* Fixed micro-typography (badges, eyebrows, table meta, nav labels) */
+  --text-micro: 10px;
+  --text-caption: 11px;
+  --text-label: 13px;
+  --text-body-sm: 15px;
+}
+
 /* ─── Light Mode Theme Tokens ─── */
 :root,
 [data-theme="light"],
@@ -83,17 +108,13 @@ body {
     font-size: 1rem;
   }
 
-  #hero-bento-section button {
-    min-height: 3rem;
-  }
-
   #location-card h3 {
     font-size: 1.25rem;
   }
 
-  #location-card [class*="text-[10px]"],
-  #location-card [class*="text-[11px]"],
-  #location-card [class*="text-[13px]"] {
+  #location-card [class*="text-micro"],
+  #location-card [class*="text-caption"],
+  #location-card [class*="text-label"] {
     font-size: 0.875rem;
   }
 

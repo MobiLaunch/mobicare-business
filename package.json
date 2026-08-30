@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@emailjs/browser": "4.4.1",
-    "@gravity-ui/icons": "^2.21.0",
     "@heroui/react": "^3.2.4",
     "@heroui/styles": "3.2.4",
     "@stripe/react-stripe-js": "^6.8.1",
@@ -25,7 +24,6 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "6.23.0",
-    "stripe": "^18.5.0",
     "uuid": "^14.0.1",
     "zustand": "^5.0.15"
   },

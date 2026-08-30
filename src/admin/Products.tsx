@@ -261,7 +261,7 @@ export default function Products() {
         <div>
           <strong className="text-sm text-accent">${p.price.toFixed(2)}</strong>
           {p.comparePrice && (
-            <div className="text-[11px] text-muted line-through">
+            <div className="text-caption text-muted line-through">
               ${p.comparePrice.toFixed(2)}
             </div>
           )}

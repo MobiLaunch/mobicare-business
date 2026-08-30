@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { CircleCheck, FunnelXmark, Headphones, Layers, Magnifier, PlugWire, Power, ShoppingBag, Sliders, Star, Thunderbolt, Xmark } from "@gravity-ui/icons";
-import LogoAndroid from "@gravity-ui/icons/LogoAndroid";
-import LogoApple from "@gravity-ui/icons/LogoApple";
-import { InputGroup, TextField } from "@heroui/react";
+import { Apple, BatteryCharging, CircleCheck, FilterX, Headphones, Layers, Plug, Search, ShoppingBag, SlidersHorizontal, Smartphone, Star, X, Zap } from "lucide-react";
+import { InputGroup, ListBox, Menu, Select, TextField, ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { useShallow } from "zustand/react/shallow";
 
 import { useProductStore } from "@/lib/store";
@@ -30,13 +28,13 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_ICONS = {
-  chargers: Thunderbolt,
-  cases: LogoApple,
-  "cases--samsung": LogoAndroid,
+  chargers: Zap,
+  cases: Apple,
+  "cases--samsung": Smartphone,
   "screen-protectors": Layers,
-  cables: PlugWire,
+  cables: Plug,
   audio: Headphones,
-  power: Power,
+  power: BatteryCharging,
   accessories: Star,
 } as const;
 
@@ -58,11 +56,9 @@ export default function Shop() {
   const categories = useProductStore((s) => s.categories);
   const [search, setSearch] = useState("");
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
-  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [sort, setSort] = useState("featured");
   const [selectedCat, setSelectedCat] = useState(searchParams.get("cat") || "all");
   const searchWrapRef = useRef<HTMLDivElement>(null);
-  const sortWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const cat = searchParams.get("cat");
@@ -72,7 +68,6 @@ export default function Shop() {
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) setSearchMenuOpen(false);
-      if (sortWrapRef.current && !sortWrapRef.current.contains(e.target as Node)) setSortMenuOpen(false);
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -118,8 +113,8 @@ export default function Shop() {
         <div className="pointer-events-none absolute left-[10%] top-[30%] h-[140px] w-[clamp(200px,40vw,400px)] rounded-full bg-accent-soft/40 blur-[50px]" />
         <div className="relative z-[1] flex items-end justify-between gap-3 sm:gap-4">
           <div className="min-w-0">
-            <span className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-accent sm:px-3 sm:text-[11px]"><ShoppingBag aria-hidden="true" className="size-3" /> Accessories &amp; Gear</span>
-            <h1 className="m-0 text-[clamp(2rem,5vw,3.4rem)] font-extrabold leading-[1.05] tracking-tight text-foreground">Shop Catalog</h1>
+            <span className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-micro font-bold uppercase tracking-widest text-accent sm:px-3 sm:text-caption"><ShoppingBag aria-hidden="true" className="size-3" /> Accessories &amp; Gear</span>
+            <h1 className="m-0 text-display font-extrabold leading-[1.05] tracking-tight text-foreground">Shop Catalog</h1>
           </div>
           <span aria-live="polite" className="shrink-0 rounded-full border border-border bg-surface-secondary px-3 py-1.5 text-xs font-bold shadow-sm sm:px-4 sm:text-sm">{filtered.length} Product{filtered.length !== 1 ? "s" : ""}</span>
         </div>
@@ -129,43 +124,59 @@ export default function Shop() {
         <div ref={searchWrapRef} className="relative min-w-0 flex-1">
           <TextField aria-label="Search products" className="flex flex-col" value={search} onChange={setSearch}>
             <InputGroup className="rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
-              <InputGroup.Prefix><Magnifier aria-hidden="true" className="size-4" /></InputGroup.Prefix>
+              <InputGroup.Prefix><Search aria-hidden="true" className="size-4" /></InputGroup.Prefix>
               <InputGroup.Input placeholder="Search accessories, cases, chargers…" type="search" onFocus={() => setSearchMenuOpen(true)} onKeyDown={(e) => e.key === "Enter" && applySearch(e.currentTarget.value)} />
-              {search && <InputGroup.Suffix><button aria-label="Clear search" className="flex size-9 items-center justify-center rounded-full" type="button" onClick={() => applySearch("")}><Xmark aria-hidden="true" className="size-4" /></button></InputGroup.Suffix>}
+              {search && <InputGroup.Suffix><button aria-label="Clear search" className="flex size-9 items-center justify-center rounded-full" type="button" onClick={() => applySearch("")}><X aria-hidden="true" className="size-4" /></button></InputGroup.Suffix>}
             </InputGroup>
           </TextField>
           {searchMenuOpen && searchSuggestions.length > 0 && (
             <div className="absolute inset-x-0 top-[calc(100%+6px)] z-20 overflow-hidden rounded-2xl border border-border bg-surface shadow-lg">
-              {searchSuggestions.map((suggestion) => <button key={suggestion.id} className="flex min-h-11 w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-foreground hover:bg-surface-secondary" type="button" onClick={() => applyCategorySuggestion(suggestion.id)}><Layers aria-hidden="true" className="size-4 text-muted" /><span>Browse {suggestion.name}</span></button>)}
+              <Menu aria-label="Search suggestions" className="gap-0 p-1.5" onAction={(key) => applyCategorySuggestion(String(key))}>
+                {searchSuggestions.map((suggestion) => (
+                  <Menu.Item key={suggestion.id} className="min-h-11 w-full gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-sm text-foreground" id={suggestion.id} textValue={`Browse ${suggestion.name}`}>
+                    <Layers aria-hidden="true" className="size-4 text-muted" />
+                    <span>Browse {suggestion.name}</span>
+                  </Menu.Item>
+                ))}
+              </Menu>
             </div>
           )}
         </div>
 
-        <div ref={sortWrapRef} className="relative shrink-0">
-          <button aria-expanded={sortMenuOpen} aria-haspopup="menu" aria-label={`Sort products: ${selectedSort.label}`} className="flex size-10 items-center justify-center rounded-full border border-border bg-surface-secondary text-foreground transition-colors hover:bg-surface-tertiary sm:size-11" type="button" onClick={() => { setSearchMenuOpen(false); setSortMenuOpen((o) => !o); }}>
-            <Sliders aria-hidden="true" className="size-[17px] sm:size-[18px]" />
-          </button>
-          {sortMenuOpen && <div aria-label="Sort products" className="absolute right-0 top-[calc(100%+6px)] z-20 w-56 overflow-hidden rounded-2xl border border-border bg-surface p-1.5 shadow-lg" role="menu">{SORT_OPTIONS.map((option) => <button key={option.value} aria-checked={sort === option.value} className={`flex min-h-11 w-full items-center gap-2 rounded-xl px-4 py-2.5 text-left text-sm ${sort === option.value ? "font-semibold text-accent" : "text-foreground hover:bg-surface-secondary"}`} role="menuitemradio" type="button" onClick={() => { setSort(option.value); setSortMenuOpen(false); }}>{sort === option.value && <CircleCheck aria-hidden="true" className="size-4" />}<span>{option.label}</span></button>)}</div>}
-        </div>
+        <Select className="shrink-0" selectedKey={sort} onSelectionChange={(key) => setSort(String(key))}>
+          <Select.Trigger aria-label={`Sort products: ${selectedSort.label}`} className="flex size-10 items-center justify-center rounded-full border border-border bg-surface-secondary text-foreground transition-colors hover:bg-surface-tertiary sm:size-11">
+            <SlidersHorizontal aria-hidden="true" className="size-[17px] sm:size-[18px]" />
+          </Select.Trigger>
+          <Select.Popover className="w-56">
+            <ListBox aria-label="Sort products">
+              {SORT_OPTIONS.map((option) => <ListBox.Item key={option.value} id={option.value}>{option.label}</ListBox.Item>)}
+            </ListBox>
+          </Select.Popover>
+        </Select>
       </div>
 
-      <div aria-label="Product categories" className="mb-6 flex gap-2 overflow-x-auto px-0.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mb-8 sm:gap-2.5" role="tablist">
-        <button aria-label="All products" aria-selected={selectedCat === "all"} className={categoryButtonClass(selectedCat === "all")} role="tab" title="All products" type="button" onClick={() => handleCatChange("all")}>
-          <ShoppingBag aria-hidden="true" className="size-[18px]" />
-          {selectedCat === "all" && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-surface text-accent shadow-sm"><CircleCheck className="size-3.5" /></span>}
-        </button>
-        {filterCategories.map((cat) => {
-          const active = selectedCat === cat.id;
-          return (
-            <button key={cat.id} aria-label={cat.name} aria-selected={active} className={categoryButtonClass(active)} role="tab" title={cat.name} type="button" onClick={() => handleCatChange(cat.id)}>
-              <CategoryIcon id={cat.id} />
-              {active && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-surface text-accent shadow-sm"><CircleCheck className="size-3.5" /></span>}
-            </button>
-          );
-        })}
-      </div>
+      <ToggleButtonGroup aria-label="Product categories" className="mb-6 flex gap-2 overflow-x-auto px-0.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mb-8 sm:gap-2.5" disallowEmptySelection isDetached selectedKeys={[selectedCat]} selectionMode="single" onSelectionChange={(keys) => { const next = Array.from(keys)[0]; if (next != null) handleCatChange(String(next)); }}>
+        <ToggleButton aria-label="All products" className={({ isSelected }) => categoryButtonClass(isSelected)} id="all">
+          {({ isSelected }) => (
+            <>
+              <ShoppingBag aria-hidden="true" className="size-[18px]" />
+              {isSelected && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-surface text-accent shadow-sm"><CircleCheck className="size-3.5" /></span>}
+            </>
+          )}
+        </ToggleButton>
+        {filterCategories.map((cat) => (
+          <ToggleButton key={cat.id} aria-label={cat.name} className={({ isSelected }) => categoryButtonClass(isSelected)} id={cat.id}>
+            {({ isSelected }) => (
+              <>
+                <CategoryIcon id={cat.id} />
+                {isSelected && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-surface text-accent shadow-sm"><CircleCheck className="size-3.5" /></span>}
+              </>
+            )}
+          </ToggleButton>
+        ))}
+      </ToggleButtonGroup>
 
-      {filtered.length > 0 ? <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">{filtered.map((p) => <ProductCard key={p.id} product={p} onClick={() => navigate(`/product/${p.id}`)} />)}</div> : <div className="mt-8 rounded-[28px] border border-border bg-surface-secondary p-8 text-center sm:p-12"><span className="mx-auto mb-4 flex size-[72px] items-center justify-center rounded-full bg-surface-tertiary text-accent"><Magnifier aria-hidden="true" className="size-9" /></span><h3 className="m-0 mb-2 text-2xl font-bold text-foreground">No matching products</h3><p className="mx-auto mb-6 max-w-[360px] text-muted">We couldn&rsquo;t find anything matching your search. Try resetting your filters.</p><button className="inline-flex h-11 items-center gap-2 rounded-full bg-accent px-6 font-semibold text-accent-foreground" type="button" onClick={() => { setSearch(""); handleCatChange("all"); }}><FunnelXmark aria-hidden="true" className="size-4" /><span>Clear Filters</span></button></div>}
+      {filtered.length > 0 ? <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">{filtered.map((p) => <ProductCard key={p.id} product={p} onClick={() => navigate(`/product/${p.id}`)} />)}</div> : <div className="mt-8 rounded-[28px] border border-border bg-surface-secondary p-8 text-center sm:p-12"><span className="mx-auto mb-4 flex size-[72px] items-center justify-center rounded-full bg-surface-tertiary text-accent"><Search aria-hidden="true" className="size-9" /></span><h3 className="m-0 mb-2 text-2xl font-bold text-foreground">No matching products</h3><p className="mx-auto mb-6 max-w-[360px] text-muted">We couldn&rsquo;t find anything matching your search. Try resetting your filters.</p><button className="inline-flex h-11 items-center gap-2 rounded-full bg-accent px-6 font-semibold text-accent-foreground" type="button" onClick={() => { setSearch(""); handleCatChange("all"); }}><FilterX aria-hidden="true" className="size-4" /><span>Clear Filters</span></button></div>}
     </main>
   );
 }

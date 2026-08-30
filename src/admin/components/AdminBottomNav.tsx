@@ -29,7 +29,7 @@ export default function AdminBottomNav({
   const pillClass = (active: boolean) =>
     `flex h-8 w-14 items-center justify-center rounded-2xl transition-colors ${active ? "bg-accent-soft text-accent" : "text-muted"}`;
   const labelClass = (active: boolean) =>
-    `text-[11px] transition-colors ${active ? "font-semibold text-foreground" : "font-medium text-muted"}`;
+    `text-caption transition-colors ${active ? "font-semibold text-foreground" : "font-medium text-muted"}`;
 
   return (
     <nav

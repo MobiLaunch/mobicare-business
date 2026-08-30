@@ -114,7 +114,7 @@ export default function AdminLogin() {
 
         <Card className="rounded-[32px] bg-surface/85 p-8 shadow-[0_4px_32px_rgba(0,0,0,0.08)] backdrop-blur-xl">
           <Card.Header className="mb-1 pb-0">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-widest text-accent">
+            <span className="mb-1 block text-caption font-bold uppercase tracking-widest text-accent">
               Store workspace
             </span>
             <Card.Title className="text-2xl">Welcome back</Card.Title>

@@ -25,6 +25,7 @@ import {
   sbFetchOrders,
   sbInsertOrder,
   sbUpdateOrderStatus,
+  sbRefundOrder,
   signInWithEmail,
   signOut as sbSignOut,
   getSession,
@@ -415,6 +416,7 @@ interface ProductState {
   deleteCategory: (id: string) => Promise<void>;
   addOrder: (order: Partial<Order>, alreadyPersisted?: boolean) => Promise<Order>;
   updateOrderStatus: (id: string, status: string) => Promise<void>;
+  refundOrder: (id: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 export const useProductStore = create<ProductState>()(
@@ -622,6 +624,18 @@ export const useProductStore = create<ProductState>()(
           await sbUpdateOrderStatus(id, status);
         }
       },
+
+      // Triggers a real Stripe refund. Does not set status optimistically —
+      // Stripe confirms asynchronously via the stripe-webhook function, so
+      // the order re-fetch below is a best-effort nudge, not the source of
+      // truth (the caller should tell the admin to check back if it hasn't
+      // updated yet).
+      refundOrder: async (id) => {
+        const result = await sbRefundOrder(id);
+        if (result.ok) await get().refresh();
+
+        return result;
+      },
     }),
     {
       name: "mobicare-store",
@@ -688,11 +702,15 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   // ── Session restore on app load ──
   restoreSession: async () => {
     if (!isSupabaseConfigured()) {
-      set({
+      // Local mode has no real session to restore — it's an in-memory flag
+      // set by login(). Only force-clear it when local auth isn't available
+      // at all; otherwise preserve whatever's already there so navigating
+      // between admin routes doesn't immediately bounce back to login.
+      set((state) => ({
         authMode: isLocalAuthAvailable ? "local" : "unavailable",
-        isAuthenticated: false,
-        user: null,
-      });
+        isAuthenticated: isLocalAuthAvailable ? state.isAuthenticated : false,
+        user: isLocalAuthAvailable ? state.user : null,
+      }));
 
       return;
     }

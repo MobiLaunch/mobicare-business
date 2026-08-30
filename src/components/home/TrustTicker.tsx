@@ -31,8 +31,8 @@ export default function TrustTicker() {
                 className="inline-flex items-center gap-2.5 whitespace-nowrap border-r border-border px-8 py-2.5 last:border-r-0"
               >
                 <IconComponent className="size-5 shrink-0 text-accent" />
-                <strong className="text-[15px]">{t.label}</strong>
-                <span className="text-[13px] text-muted">{t.desc}</span>
+                <strong className="text-body-sm">{t.label}</strong>
+                <span className="text-label text-muted">{t.desc}</span>
               </div>
             );
           })}

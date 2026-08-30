@@ -22,10 +22,10 @@ export default function CtaStrip() {
       <article className="overflow-hidden rounded-[28px] bg-accent text-accent-foreground">
         <div className="flex flex-wrap items-center gap-6 p-[clamp(20px,4vw,32px)]">
           <div className="min-w-0 flex-1 basis-60">
-            <h2 className="m-0 mb-1 text-[clamp(1.1rem,2.5vw,1.4rem)] font-semibold">
+            <h2 className="m-0 mb-1 text-heading-sm font-semibold">
               {ctaStrip.headline}
             </h2>
-            <p className="m-0 text-[clamp(13px,2vw,15px)] opacity-85">
+            <p className="m-0 text-body opacity-85">
               {ctaStrip.subtext}
             </p>
           </div>

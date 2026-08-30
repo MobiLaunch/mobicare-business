@@ -188,8 +188,8 @@ export default function CheckoutDrawer() {
                 <div className="mt-4 flex items-center gap-2" aria-label="Checkout progress">
                   {progressSteps.map((label, index) => (
                     <div key={label} className="flex min-w-0 flex-1 items-center gap-2">
-                      <span className={`flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${index <= progressIndex ? "bg-accent text-accent-foreground" : "border border-border bg-surface text-muted"}`}>{index < progressIndex ? <CheckCircle2 className="size-3.5" /> : index + 1}</span>
-                      <span className={`truncate text-[11px] font-semibold ${index <= progressIndex ? "text-foreground" : "text-muted"}`}>{label}</span>
+                      <span className={`flex size-6 shrink-0 items-center justify-center rounded-full text-caption font-bold ${index <= progressIndex ? "bg-accent text-accent-foreground" : "border border-border bg-surface text-muted"}`}>{index < progressIndex ? <CheckCircle2 className="size-3.5" /> : index + 1}</span>
+                      <span className={`truncate text-caption font-semibold ${index <= progressIndex ? "text-foreground" : "text-muted"}`}>{label}</span>
                       {index < progressSteps.length - 1 && <span className="h-px flex-1 bg-border" />}
                     </div>
                   ))}
@@ -216,7 +216,7 @@ export default function CheckoutDrawer() {
                           <img src={item.images?.[0]} alt="" className="size-20 shrink-0 rounded-xl bg-surface-secondary object-cover sm:size-24" />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0"><strong className="block truncate text-sm font-bold text-foreground sm:text-[15px]">{item.name}</strong><span className="mt-0.5 block text-xs text-muted">${item.price.toFixed(2)} each</span></div>
+                              <div className="min-w-0"><strong className="block truncate text-sm font-bold text-foreground sm:text-body-sm">{item.name}</strong><span className="mt-0.5 block text-xs text-muted">${item.price.toFixed(2)} each</span></div>
                               <button type="button" aria-label={`Remove ${item.name}`} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-danger/10 hover:text-danger focus-visible:outline-2 focus-visible:outline-accent" onClick={() => removeItem(item.id)}><Trash2 aria-hidden="true" className="size-4" /></button>
                             </div>
                             <div className="mt-3 flex items-end justify-between gap-3">
@@ -249,7 +249,7 @@ export default function CheckoutDrawer() {
             {step === "payment" && session && <Elements stripe={stripePromise} options={{ appearance: { theme: "stripe" } }}><PaymentStep session={session} shippingInfo={shippingInfo} items={items} shippingMethod={shippingMethod} onSuccess={finish} onBack={() => { setSession(null); setStep("shipping"); }} /></Elements>}
 
             {step === "success" && order && <Modal.Body className="flex flex-1 flex-col items-center gap-5 overflow-y-auto px-6 py-10 text-center"><div className="flex size-20 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg"><CheckCircle2 aria-hidden="true" className="size-10" /></div><div><span className="rounded-full bg-accent-soft px-3 py-1 text-xs font-bold text-accent">Order #{order.id}</span><h2 className="mt-4 text-2xl font-extrabold tracking-tight">Order confirmed</h2><p className="mt-1 max-w-sm text-sm leading-relaxed text-muted">Your payment was processed securely. A confirmation will be sent to {order.customer.email}.</p></div><div className="w-full rounded-2xl border border-border bg-surface-secondary/50 p-4 text-left"><div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-full bg-accent-soft text-accent"><Truck aria-hidden="true" className="size-4" /></span><div><strong className="block text-sm">{shippingInfo.name}</strong><span className="text-xs text-muted">{shipping.formattedCost}</span></div></div><div className="mt-3 flex justify-between border-t border-border pt-3"><span className="text-sm text-muted">Total paid</span><strong className="text-accent">${order.total.toFixed(2)}</strong></div></div><div className="flex w-full flex-col gap-2"><Button fullWidth variant="primary" onPress={() => { close(); navigate("/account"); }}>View order <ArrowRight aria-hidden="true" className="size-4" /></Button><Button fullWidth variant="outline" onPress={() => { close(); navigate("/shop"); }}>Continue shopping</Button></div></Modal.Body>}
-            {step !== "success" && <div className="flex items-center justify-center gap-2 border-t border-border bg-surface-secondary/30 px-4 py-2.5 text-[11px] text-muted"><Lock aria-hidden="true" className="size-3" />Secure checkout powered by Stripe</div>}
+            {step !== "success" && <div className="flex items-center justify-center gap-2 border-t border-border bg-surface-secondary/30 px-4 py-2.5 text-caption text-muted"><Lock aria-hidden="true" className="size-3" />Secure checkout powered by Stripe</div>}
           </Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>

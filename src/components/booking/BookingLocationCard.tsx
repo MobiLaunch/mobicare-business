@@ -1,4 +1,5 @@
 import { MapPin, Navigation } from "lucide-react";
+import { Button } from "@heroui/react";
 
 interface BookingLocationCardProps {
   onDirections: () => void;
@@ -16,14 +17,14 @@ export default function BookingLocationCard({ onDirections }: BookingLocationCar
           <span className="block truncate text-xs text-muted">920 Commerce Drive, Suite 3</span>
         </div>
       </div>
-      <button
+      <Button
         className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-accent transition-colors hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        type="button"
-        onClick={onDirections}
+        variant="ghost"
+        onPress={onDirections}
       >
         <Navigation aria-hidden="true" className="size-4" />
         Directions
-      </button>
+      </Button>
     </div>
   );
 }

@@ -16,10 +16,10 @@ export default function FeaturedProducts() {
     <section className="py-6" id="featured-products-section">
       <div className="mb-4 flex flex-wrap items-center gap-2 px-1">
         <div>
-          <p className="m-0 text-[11px] font-bold uppercase tracking-widest text-accent">
+          <p className="m-0 text-caption font-bold uppercase tracking-widest text-accent">
             Best Sellers
           </p>
-          <h2 className="m-0 text-[clamp(1.2rem,3vw,1.6rem)] font-semibold text-foreground">
+          <h2 className="m-0 text-heading font-semibold text-foreground">
             Featured Products
           </h2>
         </div>

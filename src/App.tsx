@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-
 import { ToastProvider } from "@heroui/react";
 
 import { useProductStore, useCartStore } from "@/lib/store";
-import { useSiteStore, applyAppearance } from "@/lib/siteStore";
+import { useSiteStore, applyAppearance, getEffectiveColorScheme } from "@/lib/siteStore";
 import { sbFetchSiteSettings, isSupabaseConfigured } from "@/lib/supabase";
 import PublicLayout from "@/layouts/PublicLayout";
 import RequireAdmin from "@/components/RequireAdmin";
@@ -36,8 +36,11 @@ let siteContentInitPromise: Promise<void> | null = null;
 function StoreInit() {
   const init = useProductStore((s) => s.init);
   const appearance = useSiteStore((s) => s.appearance);
+  const viewerColorScheme = useSiteStore((s) => s.viewerColorScheme);
 
-  useEffect(() => { if (appearance) applyAppearance(appearance); }, [appearance]);
+  useEffect(() => {
+    if (appearance) applyAppearance({ ...appearance, colorScheme: viewerColorScheme ?? appearance.colorScheme });
+  }, [appearance, viewerColorScheme]);
   useEffect(() => {
     if (!storeInitPromise) storeInitPromise = init().catch((error) => console.error("Product store initialization failed:", error));
     if (!siteContentInitPromise) {
@@ -54,13 +57,13 @@ function StoreInit() {
           const defaults = useSiteStore.getState();
           if (dbContent) {
             const appearance = sanitize({ ...(defaults.appearance as unknown as Record<string, unknown>), ...(dbContent.appearance ?? {}) }) as unknown as typeof defaults.appearance;
-            const merged = { ...defaults, ...dbContent, appearance, deviceTypes: dbContent.deviceTypes || defaults.deviceTypes || [], seo: dbContent.seo || defaults.seo, social: dbContent.social || defaults.social, footer: dbContent.footer || defaults.footer, ctaStrip: dbContent.ctaStrip || defaults.ctaStrip };
+            const merged = { ...defaults, ...dbContent, appearance, deviceManufacturers: dbContent.deviceManufacturers || defaults.deviceManufacturers || [], houseCallPricing: dbContent.houseCallPricing || defaults.houseCallPricing, seo: dbContent.seo || defaults.seo, social: dbContent.social || defaults.social, footer: dbContent.footer || defaults.footer, ctaStrip: dbContent.ctaStrip || defaults.ctaStrip };
             useSiteStore.setState(merged as Partial<ReturnType<typeof useSiteStore.getState>>);
-            applyAppearance(merged.appearance);
-          } else if (defaults.appearance) applyAppearance(defaults.appearance);
+            applyAppearance({ ...merged.appearance, colorScheme: getEffectiveColorScheme(merged) });
+          } else if (defaults.appearance) applyAppearance({ ...defaults.appearance, colorScheme: getEffectiveColorScheme(defaults) });
         } else {
           const current = useSiteStore.getState();
-          if (current.appearance) applyAppearance(current.appearance);
+          if (current.appearance) applyAppearance({ ...current.appearance, colorScheme: getEffectiveColorScheme(current) });
         }
       })().catch((error) => console.error("Site content initialization failed:", error));
     }

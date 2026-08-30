@@ -156,7 +156,7 @@ export default async function handler(req, res) {
         break;
 
       case "payment_intent.canceled":
-        if (order.status !== "paid") await updateOrder(order.id, { status: "canceled" });
+        if (order.status !== "paid") await updateOrder(order.id, { status: "cancelled" });
         break;
 
       case "charge.refunded":
