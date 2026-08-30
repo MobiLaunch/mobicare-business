@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { CalendarDays, CircleUserRound, House, Info, Moon, Shield, ShoppingBag, Store, Sun, Wrench } from "lucide-react";
 import { Badge, Button, Link } from "@heroui/react";
 
-import { useSiteStore } from "@/lib/siteStore";
+import { useSiteStore, getEffectiveColorScheme } from "@/lib/siteStore";
 import { useCartStore } from "@/lib/store";
 import { useAuth } from "@/lib/AuthContext";
 import localLogo from "@/assets/mobicare-logo.svg";
@@ -21,13 +21,14 @@ export default function Header() {
   const location = useLocation();
   const brand = useSiteStore((s) => s.brand);
   const appearance = useSiteStore((s) => s.appearance);
-  const setColorScheme = useSiteStore((s) => s.setColorScheme);
+  const viewerColorScheme = useSiteStore((s) => s.viewerColorScheme);
+  const setViewerColorScheme = useSiteStore((s) => s.setViewerColorScheme);
   const cart = useCartStore((s) => s.items);
   const setCartDrawerOpen = useCartStore((s) => s.setCartDrawerOpen);
   const { user, loading: authLoading } = useAuth();
   const [bookingOpen, setBookingOpen] = useState(false);
 
-  const theme = appearance?.colorScheme || "dark";
+  const theme = appearance ? getEffectiveColorScheme({ appearance, viewerColorScheme }) : "dark";
   const logoSrc = appearance?.logoUrl || localLogo;
   const isActive = (path: string) => path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
   const accountLabel = authLoading ? "Account" : user ? (user.user_metadata?.full_name as string | undefined)?.split(" ")[0] || "Account" : "Sign In";
@@ -39,7 +40,7 @@ export default function Header() {
     <header className="fixed inset-x-0 top-0 z-40 min-h-14 border-b border-border bg-surface/90 px-3 backdrop-blur-xl sm:px-4" id="site-header">
       <div className="mx-auto grid min-h-14 w-full max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4">
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-          <Button isIconOnly aria-label={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`} className="size-9 shrink-0" variant="ghost" onPress={() => setColorScheme?.(theme === "dark" ? "light" : "dark")}>
+          <Button isIconOnly aria-label={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`} className="size-9 shrink-0" variant="ghost" onPress={() => setViewerColorScheme?.(theme === "dark" ? "light" : "dark")}>
             {theme === "dark" ? <Sun aria-hidden="true" className="size-[17px]" /> : <Moon aria-hidden="true" className="size-[17px]" />}
           </Button>
 

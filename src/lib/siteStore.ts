@@ -553,6 +553,15 @@ export function applyAppearance(a: Appearance) {
   }
 }
 
+// The color scheme actually shown: this visitor's local override if they've
+// ever toggled it, otherwise the admin-configured site-wide default.
+export function getEffectiveColorScheme(state: {
+  appearance: Appearance;
+  viewerColorScheme: ColorScheme | null;
+}): ColorScheme {
+  return state.viewerColorScheme ?? state.appearance.colorScheme;
+}
+
 function pickForeground(hex: string): string {
   const h = hex.replace("#", "");
 
@@ -607,6 +616,16 @@ const syncToSupabase = (state: SiteContent) => {
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 interface SiteContentState extends SiteContent {
+  // This visitor's own light/dark override, kept ONLY in this browser's
+  // localStorage — never sent to Supabase, never touched by the
+  // site-content fetch/merge on load. `appearance.colorScheme` is the
+  // admin-configured site-wide DEFAULT (synced via Supabase, editable from
+  // Site Editor → Appearance); `viewerColorScheme` is this one visitor's
+  // personal override of that default, or null to just follow it. Without
+  // this split, the public header toggle and the shared site default were
+  // the same field, so every fresh page load re-fetched the site default
+  // from Supabase and silently stomped whatever the visitor had toggled.
+  viewerColorScheme: ColorScheme | null;
   updateBrand: (data: Partial<Brand>) => void;
   updateHero: (data: Partial<Hero>) => void;
   updateRepairBanner: (data: Partial<RepairBanner>) => void;
@@ -614,6 +633,7 @@ interface SiteContentState extends SiteContent {
   updateBusiness: (data: Partial<BusinessInfo>) => void;
   updateAppearance: (data: Partial<Appearance>) => void;
   setColorScheme: (scheme: ColorScheme) => void;
+  setViewerColorScheme: (scheme: ColorScheme | null) => void;
   updateTrustItem: (index: number, data: Partial<TrustItem>) => void;
   updateRepairService: (id: string, data: Partial<SiteRepairService>) => void;
   addRepairService: (service: SiteRepairService) => void;
@@ -632,6 +652,7 @@ export const useSiteStore = create<SiteContentState>()(
   persist(
     (set, get) => ({
       ...DEFAULT_SITE_CONTENT,
+      viewerColorScheme: null,
 
       updateBrand: (data) => {
         set({ brand: { ...get().brand, ...data } });
@@ -664,8 +685,18 @@ export const useSiteStore = create<SiteContentState>()(
         const next = { ...get().appearance, colorScheme: scheme };
 
         set({ appearance: next });
-        applyAppearance(next);
+        applyAppearance({ ...next, colorScheme: get().viewerColorScheme ?? scheme });
         syncToSupabase(get());
+      },
+      // Purely local — this browser's personal light/dark override. Never
+      // synced to Supabase, so it can never be clobbered by a site-content
+      // fetch and never affects other visitors.
+      setViewerColorScheme: (scheme) => {
+        set({ viewerColorScheme: scheme });
+        applyAppearance({
+          ...get().appearance,
+          colorScheme: scheme ?? get().appearance.colorScheme,
+        });
       },
       updateTrustItem: (index, data) => {
         const items = [...get().trustItems];
@@ -760,12 +791,16 @@ export const useSiteStore = create<SiteContentState>()(
 
 // Bootstrap initial appearance on module load.
 if (typeof document !== "undefined") {
-  const bootstrapAppearance = { ...useSiteStore.getState().appearance };
+  const bootstrapState = useSiteStore.getState();
+  const bootstrapAppearance = { ...bootstrapState.appearance };
   const LEGACY = ["#13522B", "#0A3318", "#13522b", "#0a3318"];
 
   if (LEGACY.includes(bootstrapAppearance.accentColor))
     bootstrapAppearance.accentColor = "";
   if (LEGACY.includes(bootstrapAppearance.accentColorDeep))
     bootstrapAppearance.accentColorDeep = "";
-  applyAppearance(bootstrapAppearance);
+  applyAppearance({
+    ...bootstrapAppearance,
+    colorScheme: getEffectiveColorScheme(bootstrapState),
+  });
 }
