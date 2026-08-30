@@ -702,11 +702,15 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   // ── Session restore on app load ──
   restoreSession: async () => {
     if (!isSupabaseConfigured()) {
-      set({
+      // Local mode has no real session to restore — it's an in-memory flag
+      // set by login(). Only force-clear it when local auth isn't available
+      // at all; otherwise preserve whatever's already there so navigating
+      // between admin routes doesn't immediately bounce back to login.
+      set((state) => ({
         authMode: isLocalAuthAvailable ? "local" : "unavailable",
-        isAuthenticated: false,
-        user: null,
-      });
+        isAuthenticated: isLocalAuthAvailable ? state.isAuthenticated : false,
+        user: isLocalAuthAvailable ? state.user : null,
+      }));
 
       return;
     }

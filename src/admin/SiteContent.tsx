@@ -2122,6 +2122,7 @@ export default function SiteContent() {
   const resetToDefaults = useSiteStore((s) => s.resetToDefaults);
   const addToast = useToastStore((s) => s.add);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>(TABS[0].id);
 
   const handleReset = () => {
     resetToDefaults();
@@ -2142,12 +2143,40 @@ export default function SiteContent() {
         title="Live Site Content & Branding"
       />
 
+      {/* Mobile section picker — the sidebar tab rail below only works at
+          lg+ width (see Tabs.ListContainer's lg:flex below); on narrow
+          screens it would squeeze the actual editing panel down to almost
+          nothing, so mobile gets a compact dropdown instead and the panel
+          keeps the full screen width. Both drive the same controlled
+          Tabs selection. */}
+      <Select
+        aria-label="Site content section"
+        className="mb-3 lg:hidden"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => setActiveTab(String(key))}
+      >
+        <Select.Trigger className="w-full rounded-2xl">
+          <Select.Value />
+        </Select.Trigger>
+        <Select.Popover>
+          <ListBox>
+            {TABS.map((tab) => (
+              <ListBox.Item key={tab.id} id={tab.id} textValue={tab.label}>
+                <tab.icon className="size-4 shrink-0" />
+                <span>{tab.label}</span>
+              </ListBox.Item>
+            ))}
+          </ListBox>
+        </Select.Popover>
+      </Select>
+
       <Tabs
         className="w-full overflow-hidden rounded-[28px] border border-border bg-surface-secondary"
-        defaultSelectedKey="brand"
         orientation="vertical"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => setActiveTab(String(key))}
       >
-        <Tabs.ListContainer className="shrink-0 border-border p-3 sm:border-r">
+        <Tabs.ListContainer className="hidden shrink-0 border-border p-3 sm:border-r lg:flex">
           <Tabs.List aria-label="Site content sections" className="gap-1">
             {TABS.map((tab) => (
               <Tabs.Tab
@@ -2163,7 +2192,7 @@ export default function SiteContent() {
         </Tabs.ListContainer>
 
         {TABS.map((tab) => (
-          <Tabs.Panel key={tab.id} className="flex-1 p-6 sm:p-8" id={tab.id}>
+          <Tabs.Panel key={tab.id} className="flex-1 p-4 sm:p-6 lg:p-8" id={tab.id}>
             {tab.id === "brand" && <BrandTab />}
             {tab.id === "hero" && <HeroTab />}
             {tab.id === "trust" && <TrustTab />}

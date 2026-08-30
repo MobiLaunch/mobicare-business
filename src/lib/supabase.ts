@@ -703,10 +703,13 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
   return true;
 }
 
-export async function sbFetchBookings(): Promise<BookingRecord[] | null> {
+export async function sbFetchBookings(): Promise<{
+  data: BookingRecord[] | null;
+  error: string | null;
+}> {
   const sb = getClient();
 
-  if (!sb) return null;
+  if (!sb) return { data: null, error: "Supabase client not configured." };
   const { data, error } = await sb
     .from("bookings")
     .select("*")
@@ -715,10 +718,10 @@ export async function sbFetchBookings(): Promise<BookingRecord[] | null> {
   if (error) {
     console.error("sbFetchBookings:", error);
 
-    return null;
+    return { data: null, error: error.message || "Unknown error." };
   }
 
-  return data as BookingRecord[];
+  return { data: data as BookingRecord[], error: null };
 }
 
 const VALID_BOOKING_STATUSES = [

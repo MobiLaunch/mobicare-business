@@ -366,52 +366,64 @@ export default function Settings() {
         icon={Mail}
         title="EmailJS Notifications"
       >
-        <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={emailjs.serviceId}
-            onChange={(v) => setEmailjs((s) => ({ ...s, serviceId: v }))}
-          >
-            <Label>EmailJS Service ID</Label>
-            <InputGroup>
-              <InputGroup.Input />
-            </InputGroup>
-          </TextField>
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={emailjs.publicKey}
-            onChange={(v) => setEmailjs((s) => ({ ...s, publicKey: v }))}
-          >
-            <Label>Public Key</Label>
-            <InputGroup>
-              <InputGroup.Input />
-            </InputGroup>
-          </TextField>
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={emailjs.bookingTemplate}
-            onChange={(v) => setEmailjs((s) => ({ ...s, bookingTemplate: v }))}
-          >
-            <Label>Booking Template ID</Label>
-            <InputGroup>
-              <InputGroup.Input />
-            </InputGroup>
-          </TextField>
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={emailjs.orderTemplate}
-            onChange={(v) => setEmailjs((s) => ({ ...s, orderTemplate: v }))}
-          >
-            <Label>Order Template ID</Label>
-            <InputGroup>
-              <InputGroup.Input />
-            </InputGroup>
-          </TextField>
-        </div>
-        <Button variant="primary" onClick={handleSaveEmailjs}>
-          <Save className="size-4" />
-          <span>Save EmailJS Settings</span>
-        </Button>
+        <SettingsStepItem
+          description={
+            <>
+              From <strong>dashboard.emailjs.com</strong> — your service,
+              public key, and the two template IDs for booking and order
+              confirmations.
+            </>
+          }
+          number={1}
+          title="EmailJS Credentials"
+        >
+          <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+            <TextField
+              className="flex flex-col gap-1.5"
+              value={emailjs.serviceId}
+              onChange={(v) => setEmailjs((s) => ({ ...s, serviceId: v }))}
+            >
+              <Label>EmailJS Service ID</Label>
+              <InputGroup>
+                <InputGroup.Input />
+              </InputGroup>
+            </TextField>
+            <TextField
+              className="flex flex-col gap-1.5"
+              value={emailjs.publicKey}
+              onChange={(v) => setEmailjs((s) => ({ ...s, publicKey: v }))}
+            >
+              <Label>Public Key</Label>
+              <InputGroup>
+                <InputGroup.Input />
+              </InputGroup>
+            </TextField>
+            <TextField
+              className="flex flex-col gap-1.5"
+              value={emailjs.bookingTemplate}
+              onChange={(v) => setEmailjs((s) => ({ ...s, bookingTemplate: v }))}
+            >
+              <Label>Booking Template ID</Label>
+              <InputGroup>
+                <InputGroup.Input />
+              </InputGroup>
+            </TextField>
+            <TextField
+              className="flex flex-col gap-1.5"
+              value={emailjs.orderTemplate}
+              onChange={(v) => setEmailjs((s) => ({ ...s, orderTemplate: v }))}
+            >
+              <Label>Order Template ID</Label>
+              <InputGroup>
+                <InputGroup.Input />
+              </InputGroup>
+            </TextField>
+          </div>
+          <Button variant="primary" onClick={handleSaveEmailjs}>
+            <Save className="size-4" />
+            <span>Save EmailJS Settings</span>
+          </Button>
+        </SettingsStepItem>
       </AdminSettingsCard>
 
       {/* Stripe */}
