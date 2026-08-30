@@ -352,7 +352,7 @@ export default function Settings() {
               </span>
             </Button>
             {!isSupabaseConfigured() && (
-              <span className="text-[13px] text-muted">
+              <span className="text-label text-muted">
                 Connect Supabase first
               </span>
             )}
@@ -464,14 +464,17 @@ export default function Settings() {
           title="Secret Key & Webhook Secret (server-side only)"
         >
           <div className="rounded-2xl bg-surface-tertiary p-5">
-            <p className="m-0 mb-1.5 text-[13px] text-muted">
+            <p className="m-0 mb-1.5 text-label text-muted">
               1. Set <code>STRIPE_SECRET_KEY</code> (starts with{" "}
               <code>sk_</code>) as an environment variable in your hosting
               platform.
             </p>
-            <p className="m-0 text-[13px] text-muted">
+            <p className="m-0 text-label text-muted">
               2. Point your Stripe Webhook to <code>/api/stripe-webhook</code>,
-              listening for <code>checkout.session.completed</code>, and set{" "}
+              listening for <code>payment_intent.succeeded</code>,{" "}
+              <code>payment_intent.payment_failed</code>,{" "}
+              <code>payment_intent.canceled</code>, and{" "}
+              <code>charge.refunded</code>, and set{" "}
               <code>STRIPE_WEBHOOK_SECRET</code> the same way.
             </p>
           </div>

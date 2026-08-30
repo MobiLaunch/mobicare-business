@@ -180,7 +180,7 @@ export default function Categories() {
                 <h5 className="m-0 mb-1.5 text-lg font-extrabold text-foreground">
                   {cat.name}
                 </h5>
-                <p className="m-0 mb-4 text-[13px] leading-relaxed text-muted">
+                <p className="m-0 mb-4 text-label leading-relaxed text-muted">
                   {cat.description ||
                     "No description specified for this category."}
                 </p>
@@ -191,7 +191,7 @@ export default function Categories() {
                   {count} active product{count !== 1 ? "s" : ""}
                 </span>
                 <div className="flex-1" />
-                <code className="rounded-md bg-surface-tertiary px-1.5 py-0.5 text-[11px] font-bold">
+                <code className="rounded-md bg-surface-tertiary px-1.5 py-0.5 text-caption font-bold">
                   {cat.id}
                 </code>
               </div>

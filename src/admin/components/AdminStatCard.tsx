@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
+import { Button } from "@heroui/react";
 
 interface AdminStatCardProps {
   icon: LucideIcon;
@@ -11,9 +12,6 @@ interface AdminStatCardProps {
   iconClassName?: string;
 }
 
-// A real <button>, not a clickable <div> — the original used
-// `<div onClick={...}>` for every card here with no keyboard support (same
-// class of bug fixed on ProductCard/BookingWizard earlier in this rebuild).
 export default function AdminStatCard({
   icon: Icon,
   path,
@@ -24,17 +22,17 @@ export default function AdminStatCard({
   const navigate = useNavigate();
 
   return (
-    <button
-      className={`w-full rounded-[24px] bg-surface-secondary p-5 text-left transition-transform hover:-translate-y-0.5 ${className}`}
-      type="button"
-      onClick={() => navigate(path)}
+    <Button
+      className={`group h-auto w-full rounded-[22px] border border-border bg-surface p-5 text-left whitespace-normal shadow-sm outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-md focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 ${className || "flex flex-col"}`}
+      variant="ghost"
+      onPress={() => navigate(path)}
     >
       <span
-        className={`flex size-11 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent ${iconClassName}`}
+        className={`flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground ${iconClassName}`}
       >
-        <Icon className="size-5" />
+        <Icon className="size-[18px]" />
       </span>
       {children}
-    </button>
+    </Button>
   );
 }

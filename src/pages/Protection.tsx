@@ -237,13 +237,13 @@ export default function Protection() {
             <span>Official AKKO Protection Partner</span>
           </div>
 
-          <h1 className="m-0 mb-4 text-[clamp(2.4rem,5.5vw,4.2rem)] font-extrabold leading-[1.12] tracking-tight text-foreground">
+          <h1 className="m-0 mb-4 text-display font-extrabold leading-[1.12] tracking-tight text-foreground">
             Full Tech Protection.
             <br />
             <span className="text-accent">Zero Headaches.</span>
           </h1>
 
-          <p className="mx-auto mb-8 max-w-[680px] text-[clamp(15px,2vw,19px)] leading-relaxed text-muted">
+          <p className="mx-auto mb-8 max-w-[680px] text-body-lg leading-relaxed text-muted">
             Protect your phone and up to 25 personal electronics from drops,
             spills, cracked screens, and theft. Lower monthly rates, $29
             deductibles, and claims repaired right here at Mobicare.
@@ -295,10 +295,10 @@ export default function Protection() {
       {/* ─── Plan Cards ─── */}
       <section className="mb-20 pt-6" id="plans-comparison-section">
         <div className="mb-10 text-center">
-          <p className="m-0 mb-1 text-[11px] font-bold uppercase tracking-widest text-accent">
+          <p className="m-0 mb-1 text-caption font-bold uppercase tracking-widest text-accent">
             Simple, Transparent Pricing
           </p>
-          <h2 className="m-0 text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold text-foreground">
+          <h2 className="m-0 text-heading-xl font-extrabold text-foreground">
             Choose Your Protection Plan
           </h2>
           <p className="mx-auto mt-2 max-w-[560px] text-sm text-muted">
@@ -330,7 +330,7 @@ export default function Protection() {
                     {plan.name}
                   </h3>
                   <div className="mt-3 flex items-baseline gap-1">
-                    <span className="text-[2.2rem] font-black text-foreground">
+                    <span className="text-heading-lg font-black text-foreground">
                       {plan.price}
                     </span>
                     <span className="text-xs text-muted">{plan.period}</span>
@@ -385,10 +385,10 @@ export default function Protection() {
         id="savings-comparison-table"
       >
         <div className="mb-8 text-center sm:text-left">
-          <span className="mb-1 block text-[11px] font-bold uppercase tracking-widest text-accent">
+          <span className="mb-1 block text-caption font-bold uppercase tracking-widest text-accent">
             Industry Comparison
           </span>
-          <h2 className="m-0 text-[clamp(1.6rem,3.5vw,2.2rem)] font-extrabold text-foreground">
+          <h2 className="m-0 text-heading-lg font-extrabold text-foreground">
             How AKKO Beats Carrier &amp; Retail Insurance
           </h2>
           <p className="m-0 mt-2 text-sm text-muted">
@@ -444,10 +444,10 @@ export default function Protection() {
       {/* ─── What's Covered Bento Grid ─── */}
       <section className="mb-20" id="coverage-grid-section">
         <div className="mb-10 text-center">
-          <p className="m-0 mb-1 text-[11px] font-bold uppercase tracking-widest text-accent">
+          <p className="m-0 mb-1 text-caption font-bold uppercase tracking-widest text-accent">
             Comprehensive Protection
           </p>
-          <h2 className="m-0 text-[clamp(1.8rem,4vw,2.5rem)] font-extrabold text-foreground">
+          <h2 className="m-0 text-heading-xl font-extrabold text-foreground">
             What Is Covered?
           </h2>
           <p className="mx-auto mt-2 max-w-[560px] text-sm text-muted">
@@ -484,10 +484,10 @@ export default function Protection() {
         id="how-claims-work"
       >
         <div className="mb-10 text-center">
-          <p className="m-0 mb-1 text-[11px] font-bold uppercase tracking-widest text-accent">
+          <p className="m-0 mb-1 text-caption font-bold uppercase tracking-widest text-accent">
             Frictionless Process
           </p>
-          <h2 className="m-0 text-[clamp(1.8rem,4vw,2.5rem)] font-extrabold text-foreground">
+          <h2 className="m-0 text-heading-xl font-extrabold text-foreground">
             How Claims Work at Mobicare
           </h2>
           <p className="mx-auto mt-2 max-w-[560px] text-sm text-muted">
@@ -541,10 +541,10 @@ export default function Protection() {
       {/* ─── FAQ Accordion ─── */}
       <section className="mx-auto mb-20 max-w-[840px]" id="protection-faq">
         <div className="mb-8 text-center">
-          <p className="m-0 mb-1 text-[11px] font-bold uppercase tracking-widest text-accent">
+          <p className="m-0 mb-1 text-caption font-bold uppercase tracking-widest text-accent">
             Got Questions?
           </p>
-          <h2 className="m-0 text-[clamp(1.6rem,3.5vw,2.2rem)] font-extrabold text-foreground">
+          <h2 className="m-0 text-heading-lg font-extrabold text-foreground">
             Frequently Asked Questions
           </h2>
         </div>
@@ -558,11 +558,11 @@ export default function Protection() {
                 key={faq.q}
                 className="overflow-hidden rounded-[18px] border border-border bg-surface shadow-sm transition-all duration-200"
               >
-                <button
+                <Button
                   aria-expanded={isOpen}
                   className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left font-bold text-foreground"
-                  type="button"
-                  onClick={() => setOpenFaq(isOpen ? null : index)}
+                  variant="ghost"
+                  onPress={() => setOpenFaq(isOpen ? null : index)}
                 >
                   <span>{faq.q}</span>
                   <ChevronDown
@@ -570,7 +570,7 @@ export default function Protection() {
                       isOpen ? "rotate-180" : ""
                     }`}
                   />
-                </button>
+                </Button>
                 <div
                   className={`grid transition-all duration-250 ease-in-out ${
                     isOpen
@@ -595,7 +595,7 @@ export default function Protection() {
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-[200px] w-4/5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-soft/70 blur-[50px]" />
 
         <div className="relative z-[1]">
-          <h2 className="m-0 mb-3 text-[clamp(1.8rem,4vw,2.6rem)] font-black text-foreground">
+          <h2 className="m-0 mb-3 text-heading-xl font-black text-foreground">
             Ready to Protect Your Devices?
           </h2>
           <p className="mx-auto mb-7 max-w-[580px] text-sm leading-relaxed text-muted">

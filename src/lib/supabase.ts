@@ -472,6 +472,7 @@ const VALID_ORDER_STATUSES = [
   "delivered",
   "cancelled",
   "refunded",
+  "payment_failed",
 ];
 
 export async function sbInsertOrder(order: Order): Promise<Order | null> {
@@ -568,6 +569,45 @@ export async function sbUpdateOrderStatus(
   }
 
   return true;
+}
+
+// Issues a real Stripe refund via /api/refund-payment-intent. Unlike
+// sbUpdateOrderStatus, this never writes the order row directly — the
+// stripe-webhook function's "charge.refunded" handler is what actually
+// flips the status once Stripe confirms.
+export async function sbRefundOrder(
+  orderId: string,
+): Promise<{ ok: boolean; error?: string; alreadyRefunded?: boolean }> {
+  const sb = getClient();
+  const { data: { session } = { session: null } } = sb?.auth
+    ? await sb.auth.getSession()
+    : { data: { session: null } };
+
+  if (!session?.access_token) {
+    return { ok: false, error: "You must be signed in as an admin to issue a refund." };
+  }
+
+  try {
+    const response = await fetch("/api/refund-payment-intent", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ orderId }),
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return { ok: false, error: data?.error || "Unable to issue refund." };
+    }
+
+    return { ok: true, alreadyRefunded: Boolean(data?.alreadyRefunded) };
+  } catch (error) {
+    console.error("sbRefundOrder:", error);
+
+    return { ok: false, error: "Unable to reach the refund service." };
+  }
 }
 
 // ─── Bookings ──────────────────────────────────────────────────────────────

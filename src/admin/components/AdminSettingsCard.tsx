@@ -23,7 +23,7 @@ export default function AdminSettingsCard({
           <Icon className="size-6" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 mb-1 text-[1.3rem] font-extrabold text-foreground">
+          <h3 className="m-0 mb-1 text-heading font-extrabold text-foreground">
             {title}
           </h3>
           <p className="m-0 text-sm text-muted">{description}</p>
@@ -52,7 +52,7 @@ export function SettingsStepItem({
         {number}
       </span>
       <div className="min-w-0 flex-1">
-        <h4 className="m-0 mb-1.5 text-[15px] font-extrabold text-foreground">
+        <h4 className="m-0 mb-1.5 text-body-sm font-extrabold text-foreground">
           {title}
         </h4>
         <p className="m-0 mb-3 text-sm text-muted">{description}</p>

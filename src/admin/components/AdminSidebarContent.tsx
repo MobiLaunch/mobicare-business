@@ -92,7 +92,7 @@ export default function AdminSidebarContent({
         aria-label="Admin navigation"
         className="flex flex-1 flex-col gap-1 px-3 py-4"
       >
-        <span className="mb-1 px-2 text-[11px] font-bold uppercase tracking-widest text-muted">
+        <span className="mb-1 px-2 text-caption font-bold uppercase tracking-widest text-muted">
           Navigation
         </span>
         {NAV_ITEMS.map((item) => {
@@ -114,7 +114,7 @@ export default function AdminSidebarContent({
               <span className="min-w-0 flex-1 truncate">{item.label}</span>
               {badgeValue && (
                 <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-caption font-bold ${
                     active ? "bg-accent-foreground/20" : "bg-surface-tertiary"
                   }`}
                 >
@@ -127,7 +127,7 @@ export default function AdminSidebarContent({
       </nav>
 
       <div className="px-5 pb-4">
-        <span className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-muted">
+        <span className="mb-2 block text-caption font-bold uppercase tracking-widest text-muted">
           Database State
         </span>
         <div className="flex items-center gap-3 rounded-2xl bg-surface-secondary p-3">
@@ -164,7 +164,7 @@ export default function AdminSidebarContent({
                   ? "Database Connection Error"
                   : "Local Storage Mode"}
             </span>
-            <p className="m-0 truncate text-[11px] text-muted">
+            <p className="m-0 truncate text-caption text-muted">
               {usingSupabase
                 ? "Real-time cloud database active"
                 : "Running in offline fallback mode"}

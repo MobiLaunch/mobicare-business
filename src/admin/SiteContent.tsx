@@ -151,7 +151,7 @@ function TabIntro({
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <h3 className="mb-3 mt-8 text-[11px] font-bold uppercase tracking-widest text-muted first:mt-0">
+    <h3 className="mb-3 mt-8 text-caption font-bold uppercase tracking-widest text-muted first:mt-0">
       {children}
     </h3>
   );

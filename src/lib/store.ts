@@ -25,6 +25,7 @@ import {
   sbFetchOrders,
   sbInsertOrder,
   sbUpdateOrderStatus,
+  sbRefundOrder,
   signInWithEmail,
   signOut as sbSignOut,
   getSession,
@@ -415,6 +416,7 @@ interface ProductState {
   deleteCategory: (id: string) => Promise<void>;
   addOrder: (order: Partial<Order>, alreadyPersisted?: boolean) => Promise<Order>;
   updateOrderStatus: (id: string, status: string) => Promise<void>;
+  refundOrder: (id: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 export const useProductStore = create<ProductState>()(
@@ -621,6 +623,18 @@ export const useProductStore = create<ProductState>()(
         if (isSupabaseConfigured()) {
           await sbUpdateOrderStatus(id, status);
         }
+      },
+
+      // Triggers a real Stripe refund. Does not set status optimistically —
+      // Stripe confirms asynchronously via the stripe-webhook function, so
+      // the order re-fetch below is a best-effort nudge, not the source of
+      // truth (the caller should tell the admin to check back if it hasn't
+      // updated yet).
+      refundOrder: async (id) => {
+        const result = await sbRefundOrder(id);
+        if (result.ok) await get().refresh();
+
+        return result;
       },
     }),
     {
