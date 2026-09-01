@@ -737,7 +737,7 @@ const VALID_BOOKING_STATUSES = [
 ];
 
 export async function sbUpdateBookingStatus(
-  id: string,
+  id: string | number,
   status: string,
 ): Promise<boolean | null> {
   const sb = getClient();
@@ -764,7 +764,7 @@ export async function sbUpdateBookingStatus(
 }
 
 export async function sbUpdateBooking(
-  id: string,
+  id: string | number,
   updates: Partial<BookingRecord>,
 ): Promise<boolean | null> {
   const sb = getClient();

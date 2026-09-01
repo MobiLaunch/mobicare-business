@@ -81,7 +81,7 @@ export interface Booking {
 // Caught while porting Bookings.tsx: the original `Booking` type's index
 // signature would have let every field silently type as `unknown` here.
 export interface BookingRecord {
-  id: string;
+  id: string | number;
   status: string;
   created_at?: string;
   customer_name: string;
