@@ -10,6 +10,7 @@ import { Button, FieldError, InputGroup, Label, Modal, TextField } from "@heroui
 import { useAuth } from "@/lib/AuthContext";
 import { useCartStore, useProductStore, useToastStore } from "@/lib/store";
 import { getDynamicShippingOptions } from "@/lib/shipping";
+import { getStripePublishableKey } from "@/lib/config";
 
 type Step = "cart" | "shipping" | "payment" | "success";
 type ShippingInfo = { name: string; email: string; phone: string; address: string; city: string; state: string; zip: string };
@@ -17,7 +18,7 @@ type Pricing = { subtotal: number; shipping: number; tax: number; total: number 
 type PaymentSession = Pricing & { id: string; clientSecret: string; idempotencyKey: string };
 
 const stripePromise = (() => {
-  const key = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
+  const key = getStripePublishableKey();
   return key ? loadStripe(key) : null;
 })();
 
@@ -246,7 +247,9 @@ export default function CheckoutDrawer() {
               <Modal.Footer className="flex flex-col gap-2 border-t border-border bg-surface px-5 py-4 sm:px-6"><Button fullWidth isDisabled={quoting} size="lg" variant="primary" onPress={proceedPayment}>{quoting ? "Preparing secure checkout…" : "Continue to payment"} {!quoting && <ArrowRight aria-hidden="true" className="size-4" />}</Button><Button fullWidth isDisabled={quoting} variant="ghost" onPress={() => setStep("cart")}><ArrowLeft aria-hidden="true" className="size-4" />Back to cart</Button></Modal.Footer>
             </>}
 
-            {step === "payment" && session && <Elements stripe={stripePromise} options={{ appearance: { theme: "stripe" } }}><PaymentStep session={session} shippingInfo={shippingInfo} items={items} shippingMethod={shippingMethod} onSuccess={finish} onBack={() => { setSession(null); setStep("shipping"); }} /></Elements>}
+            {step === "payment" && session && (stripePromise
+              ? <Elements stripe={stripePromise} options={{ appearance: { theme: "stripe" } }}><PaymentStep session={session} shippingInfo={shippingInfo} items={items} shippingMethod={shippingMethod} onSuccess={finish} onBack={() => { setSession(null); setStep("shipping"); }} /></Elements>
+              : <Modal.Body className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center"><p className="m-0 text-sm font-semibold text-foreground">Payments are temporarily unavailable.</p><p className="m-0 text-xs text-muted">Please call the shop to complete your order, or try again shortly.</p><Button variant="outline" onPress={() => { setSession(null); setStep("shipping"); }}><ArrowLeft aria-hidden="true" className="size-4" />Back</Button></Modal.Body>)}
 
             {step === "success" && order && <Modal.Body className="flex flex-1 flex-col items-center gap-5 overflow-y-auto px-6 py-10 text-center"><div className="flex size-20 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg"><CheckCircle2 aria-hidden="true" className="size-10" /></div><div><span className="rounded-full bg-accent-soft px-3 py-1 text-xs font-bold text-accent">Order #{order.id}</span><h2 className="mt-4 text-2xl font-extrabold tracking-tight">Order confirmed</h2><p className="mt-1 max-w-sm text-sm leading-relaxed text-muted">Your payment was processed securely. A confirmation will be sent to {order.customer.email}.</p></div><div className="w-full rounded-2xl border border-border bg-surface-secondary/50 p-4 text-left"><div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-full bg-accent-soft text-accent"><Truck aria-hidden="true" className="size-4" /></span><div><strong className="block text-sm">{shippingInfo.name}</strong><span className="text-xs text-muted">{shipping.formattedCost}</span></div></div><div className="mt-3 flex justify-between border-t border-border pt-3"><span className="text-sm text-muted">Total paid</span><strong className="text-accent">${order.total.toFixed(2)}</strong></div></div><div className="flex w-full flex-col gap-2"><Button fullWidth variant="primary" onPress={() => { close(); navigate("/account"); }}>View order <ArrowRight aria-hidden="true" className="size-4" /></Button><Button fullWidth variant="outline" onPress={() => { close(); navigate("/shop"); }}>Continue shopping</Button></div></Modal.Body>}
             {step !== "success" && <div className="flex items-center justify-center gap-2 border-t border-border bg-surface-secondary/30 px-4 py-2.5 text-caption text-muted"><Lock aria-hidden="true" className="size-3" />Secure checkout powered by Stripe</div>}
