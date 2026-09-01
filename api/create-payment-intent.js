@@ -91,7 +91,13 @@ export default async function handler(req, res) {
     const stripeData = await stripeResponse.json().catch(() => null);
 
     if (!stripeResponse.ok) {
-      console.error("Stripe API error:", stripeData?.error?.type || stripeResponse.status);
+      console.error(
+        "Stripe API error:",
+        stripeData?.error?.type || stripeResponse.status,
+        "-",
+        stripeData?.error?.message || "(no message)",
+        stripeData?.error?.param ? `[param: ${stripeData.error.param}]` : "",
+      );
       return res.status(502).json({ error: "Unable to create payment." });
     }
 
