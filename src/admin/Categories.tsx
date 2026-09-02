@@ -1,25 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import type { Category } from "@/types/domain";
 
-import { useState } from "react";
-import {
-  BatteryFull,
-  Cable,
-  Camera,
-  Headphones,
-  Layers,
-  Package,
-  Pencil,
-  Plug,
-  Plus,
-  Shapes,
-  Shield,
-  Smartphone,
-  Star,
-  Tag,
-  Trash2,
-  Zap,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { Pencil, Plus, Search, Shapes, Trash2, icons } from "lucide-react";
 import {
   Button,
   FieldError,
@@ -36,24 +19,42 @@ import AdminConfirmDialog from "@/admin/components/AdminConfirmDialog";
 // NOTE (HeroUI v3 rebuild): the original icon field was a plain <select>
 // listing raw Material-Symbols-style name strings (e.g. "battery_full") with
 // no visual preview — you had to already know what each name looked like.
-// Rebuilt as a real icon grid with previews below.
-const ICON_OPTIONS: { id: string; icon: LucideIcon }[] = [
-  { id: "bolt", icon: Zap },
-  { id: "shield", icon: Shield },
-  { id: "smartphone", icon: Smartphone },
-  { id: "power", icon: Plug },
-  { id: "star", icon: Star },
-  { id: "battery_full", icon: BatteryFull },
-  { id: "headphones", icon: Headphones },
-  { id: "photo_camera", icon: Camera },
-  { id: "inventory_2", icon: Package },
-  { id: "label", icon: Tag },
-  { id: "layers", icon: Layers },
-  { id: "cable", icon: Cable },
-  { id: "category", icon: Shapes },
+// Rebuilt as a real icon grid with previews below, then later widened from a
+// hand-picked ~13-icon subset to lucide-react's full ~1,767-icon set (see
+// `icons` import above — every lucide-react icon keyed by its PascalCase
+// component name). New selections store that PascalCase name directly
+// (e.g. "BatteryFull") so no lookup table is needed going forward.
+//
+// Categories saved before this change stored old Material-Symbols-style
+// snake_case ids (e.g. "battery_full") instead — LEGACY_ICON_MAP translates
+// those specific ids to their PascalCase equivalent so existing categories
+// keep rendering the same icon they always did.
+const LEGACY_ICON_MAP: Record<string, string> = {
+  bolt: "Zap",
+  shield: "Shield",
+  smartphone: "Smartphone",
+  power: "Plug",
+  star: "Star",
+  battery_full: "BatteryFull",
+  headphones: "Headphones",
+  photo_camera: "Camera",
+  inventory_2: "Package",
+  label: "Tag",
+  layers: "Layers",
+  cable: "Cable",
+  category: "Shapes",
+};
+// A handful of sensible defaults shown before the admin searches — not an
+// exhaustive list (that's what search is for), just familiar starting
+// points pulled from the old curated set.
+const QUICK_ICON_IDS = [
+  "Shapes", "Zap", "Shield", "Smartphone", "Plug", "Star",
+  "BatteryFull", "Headphones", "Camera", "Package", "Tag", "Layers", "Cable",
 ];
-const iconFor = (id: string) =>
-  ICON_OPTIONS.find((o) => o.id === id)?.icon || Shapes;
+const readableIconName = (name: string) =>
+  name.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+const iconFor = (id: string): LucideIcon =>
+  (icons as Record<string, LucideIcon>)[LEGACY_ICON_MAP[id] || id] || Shapes;
 
 interface CategoryForm {
   id?: string;
@@ -76,15 +77,29 @@ export default function Categories() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CategoryForm>({ ...EMPTY });
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [iconQuery, setIconQuery] = useState("");
+
+  const allIconNames = useMemo(() => Object.keys(icons).sort(), []);
+  const iconResults = useMemo(() => {
+    const q = iconQuery.trim().toLowerCase();
+
+    if (!q) return QUICK_ICON_IDS;
+
+    return allIconNames
+      .filter((name) => readableIconName(name).toLowerCase().includes(q))
+      .slice(0, 120);
+  }, [iconQuery, allIconNames]);
 
   const openAdd = () => {
     setEditingId(null);
     setForm({ ...EMPTY });
+    setIconQuery("");
     setModalOpen(true);
   };
   const openEdit = (cat: Category) => {
     setEditingId(cat.id);
     setForm({ ...cat });
+    setIconQuery("");
     setModalOpen(true);
   };
 
@@ -252,25 +267,58 @@ export default function Categories() {
                 )}
 
                 <div>
-                  <Label>Display Icon</Label>
-                  <div className="mt-1.5 grid grid-cols-7 gap-2">
-                    {ICON_OPTIONS.map(({ id, icon: OptIcon }) => (
-                      <button
-                        key={id}
-                        aria-label={id.replace("_", " ")}
-                        aria-pressed={form.icon === id}
-                        className={`flex aspect-square items-center justify-center rounded-2xl border transition-colors ${
-                          form.icon === id
-                            ? "border-accent bg-accent-soft text-accent"
-                            : "border-border bg-surface-secondary text-foreground"
-                        }`}
-                        type="button"
-                        onClick={() => setForm((f) => ({ ...f, icon: id }))}
-                      >
-                        <OptIcon className="size-5" />
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between gap-3">
+                    <Label>Display Icon</Label>
+                    <span className="text-caption text-muted">
+                      {allIconNames.length.toLocaleString()} icons available
+                    </span>
                   </div>
+                  <TextField
+                    aria-label="Search icons"
+                    className="mb-2 mt-1.5 flex flex-col gap-1.5"
+                    value={iconQuery}
+                    onChange={setIconQuery}
+                  >
+                    <InputGroup>
+                      <InputGroup.Prefix>
+                        <Search className="size-4 text-muted" />
+                      </InputGroup.Prefix>
+                      <InputGroup.Input placeholder="Search the full icon library…" />
+                    </InputGroup>
+                  </TextField>
+                  <div className="grid max-h-56 grid-cols-7 gap-2 overflow-y-auto rounded-2xl border border-border p-2 sm:grid-cols-9">
+                    {iconResults.length === 0 && (
+                      <p className="col-span-full m-0 py-4 text-center text-label text-muted">
+                        No icons match &ldquo;{iconQuery}&rdquo;.
+                      </p>
+                    )}
+                    {iconResults.map((name) => {
+                      const OptIcon = (icons as Record<string, LucideIcon>)[name];
+
+                      return (
+                        <button
+                          key={name}
+                          aria-label={readableIconName(name)}
+                          aria-pressed={form.icon === name}
+                          title={readableIconName(name)}
+                          className={`flex aspect-square items-center justify-center rounded-2xl border transition-colors ${
+                            form.icon === name
+                              ? "border-accent bg-accent-soft text-accent"
+                              : "border-border bg-surface-secondary text-foreground hover:bg-surface-tertiary"
+                          }`}
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, icon: name }))}
+                        >
+                          <OptIcon className="size-5" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!iconQuery.trim() && (
+                    <p className="m-0 mt-1.5 text-caption text-muted">
+                      Showing quick picks — search above for the rest of the library.
+                    </p>
+                  )}
                 </div>
               </Modal.Body>
               <Modal.Footer className="justify-end gap-2">
