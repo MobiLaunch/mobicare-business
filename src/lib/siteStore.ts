@@ -588,6 +588,13 @@ export function applyAppearance(a: Appearance) {
     s.setProperty("--heroui-primary-foreground", foregroundColor);
     s.setProperty("--color-primary", primaryColor);
     s.setProperty("--color-primary-foreground", foregroundColor);
+
+    // Soft/tinted accent (icon chips, badges, hover backgrounds) has no
+    // dedicated admin field — derive it from the custom accent so it
+    // doesn't sit stuck at the stylesheet's default green next to a
+    // customized primary color.
+    s.setProperty("--accent-soft", hexToRgba(primaryColor, isDark ? 0.16 : 0.12));
+    s.setProperty("--accent-soft-foreground", primaryColor);
   } else {
     s.removeProperty("--accent");
     s.removeProperty("--accent-foreground");
@@ -601,10 +608,17 @@ export function applyAppearance(a: Appearance) {
     s.removeProperty("--heroui-primary-foreground");
     s.removeProperty("--color-primary");
     s.removeProperty("--color-primary-foreground");
+    s.removeProperty("--accent-soft");
+    s.removeProperty("--accent-soft-foreground");
   }
 
-  // Handle custom background overrides cleanly
-  if (a.bgBase && a.bgBase.trim()) {
+  // Handle custom background overrides cleanly. These are picked by an
+  // admin looking at one specific theme, so they only apply in that same
+  // theme — otherwise a light-mode background pick permanently overrides
+  // dark mode's own palette (inline styles beat the stylesheet's
+  // [data-theme="dark"] rules regardless of what data-theme says), leaving
+  // dark-mode text rendered on a stuck-light background.
+  if (!isDark && a.bgBase && a.bgBase.trim()) {
     s.setProperty("--background", a.bgBase);
     s.setProperty("--heroui-background", a.bgBase);
   } else {
@@ -612,13 +626,13 @@ export function applyAppearance(a: Appearance) {
     s.removeProperty("--heroui-background");
   }
 
-  if (a.bgSurface && a.bgSurface.trim()) {
+  if (!isDark && a.bgSurface && a.bgSurface.trim()) {
     s.setProperty("--surface", a.bgSurface);
   } else {
     s.removeProperty("--surface");
   }
 
-  if (a.bgElevated && a.bgElevated.trim()) {
+  if (!isDark && a.bgElevated && a.bgElevated.trim()) {
     s.setProperty("--surface-secondary", a.bgElevated);
   } else {
     s.removeProperty("--surface-secondary");
@@ -657,6 +671,17 @@ function pickForeground(hex: string): string {
   const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
   return luminance > 0.6 ? "#0a0a0a" : "#fafafa";
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+
+  if (h.length !== 6) return hex;
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 function injectFontLink(id: string, url: string) {
