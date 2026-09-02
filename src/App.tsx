@@ -57,7 +57,7 @@ function StoreInit() {
           const defaults = useSiteStore.getState();
           if (dbContent) {
             const appearance = sanitize({ ...(defaults.appearance as unknown as Record<string, unknown>), ...(dbContent.appearance ?? {}) }) as unknown as typeof defaults.appearance;
-            const merged = { ...defaults, ...dbContent, appearance, deviceManufacturers: dbContent.deviceManufacturers || defaults.deviceManufacturers || [], houseCallPricing: dbContent.houseCallPricing || defaults.houseCallPricing, seo: dbContent.seo || defaults.seo, social: dbContent.social || defaults.social, footer: dbContent.footer || defaults.footer, ctaStrip: dbContent.ctaStrip || defaults.ctaStrip };
+            const merged = { ...defaults, ...dbContent, appearance, deviceManufacturers: dbContent.deviceManufacturers || defaults.deviceManufacturers || [], houseCallPricing: dbContent.houseCallPricing || defaults.houseCallPricing, repairServices: dbContent.repairServices || defaults.repairServices, seo: dbContent.seo || defaults.seo, social: dbContent.social || defaults.social, footer: dbContent.footer || defaults.footer, ctaStrip: dbContent.ctaStrip || defaults.ctaStrip };
             useSiteStore.setState(merged as Partial<ReturnType<typeof useSiteStore.getState>>);
             applyAppearance({ ...merged.appearance, colorScheme: getEffectiveColorScheme(merged) });
           } else if (defaults.appearance) applyAppearance({ ...defaults.appearance, colorScheme: getEffectiveColorScheme(defaults) });
