@@ -35,6 +35,7 @@ export interface Category {
   description: string;
   icon: string;
   sortOrder: number;
+  parentId: string | null;
 }
 
 // A cart item is a full Product snapshot at add-time, plus a quantity — see

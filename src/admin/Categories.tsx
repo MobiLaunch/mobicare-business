@@ -1,69 +1,33 @@
-import type { LucideIcon } from "lucide-react";
 import type { Category } from "@/types/domain";
 
-import { useMemo, useState } from "react";
-import { Pencil, Plus, Search, Shapes, Trash2, icons } from "lucide-react";
+import { useState } from "react";
+import { FolderPlus, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import {
   Button,
   FieldError,
   InputGroup,
   Label,
+  ListBox,
   Modal,
+  Select,
   TextField,
 } from "@heroui/react";
 
 import { useProductStore, useToastStore } from "@/lib/store";
+import { allIconNames, iconFor, readableIconName, searchIcons } from "@/lib/icons";
 import AdminPageHeader from "@/admin/components/AdminPageHeader";
 import AdminConfirmDialog from "@/admin/components/AdminConfirmDialog";
-
-// NOTE (HeroUI v3 rebuild): the original icon field was a plain <select>
-// listing raw Material-Symbols-style name strings (e.g. "battery_full") with
-// no visual preview — you had to already know what each name looked like.
-// Rebuilt as a real icon grid with previews below, then later widened from a
-// hand-picked ~13-icon subset to lucide-react's full ~1,767-icon set (see
-// `icons` import above — every lucide-react icon keyed by its PascalCase
-// component name). New selections store that PascalCase name directly
-// (e.g. "BatteryFull") so no lookup table is needed going forward.
-//
-// Categories saved before this change stored old Material-Symbols-style
-// snake_case ids (e.g. "battery_full") instead — LEGACY_ICON_MAP translates
-// those specific ids to their PascalCase equivalent so existing categories
-// keep rendering the same icon they always did.
-const LEGACY_ICON_MAP: Record<string, string> = {
-  bolt: "Zap",
-  shield: "Shield",
-  smartphone: "Smartphone",
-  power: "Plug",
-  star: "Star",
-  battery_full: "BatteryFull",
-  headphones: "Headphones",
-  photo_camera: "Camera",
-  inventory_2: "Package",
-  label: "Tag",
-  layers: "Layers",
-  cable: "Cable",
-  category: "Shapes",
-};
-// A handful of sensible defaults shown before the admin searches — not an
-// exhaustive list (that's what search is for), just familiar starting
-// points pulled from the old curated set.
-const QUICK_ICON_IDS = [
-  "Shapes", "Zap", "Shield", "Smartphone", "Plug", "Star",
-  "BatteryFull", "Headphones", "Camera", "Package", "Tag", "Layers", "Cable",
-];
-const readableIconName = (name: string) =>
-  name.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
-const iconFor = (id: string): LucideIcon =>
-  (icons as Record<string, LucideIcon>)[LEGACY_ICON_MAP[id] || id] || Shapes;
 
 interface CategoryForm {
   id?: string;
   name: string;
   description: string;
   icon: string;
+  parentId: string | null;
 }
 
-const EMPTY: CategoryForm = { name: "", description: "", icon: "category" };
+const NONE_PARENT = "__none__";
+const EMPTY: CategoryForm = { name: "", description: "", icon: "category", parentId: null };
 
 export default function Categories() {
   const categories = useProductStore((s) => s.categories);
@@ -79,20 +43,13 @@ export default function Categories() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [iconQuery, setIconQuery] = useState("");
 
-  const allIconNames = useMemo(() => Object.keys(icons).sort(), []);
-  const iconResults = useMemo(() => {
-    const q = iconQuery.trim().toLowerCase();
+  const topLevel = categories.filter((c) => !c.parentId);
+  const subcategoriesOf = (id: string) => categories.filter((c) => c.parentId === id);
+  const iconResults = searchIcons(iconQuery);
 
-    if (!q) return QUICK_ICON_IDS;
-
-    return allIconNames
-      .filter((name) => readableIconName(name).toLowerCase().includes(q))
-      .slice(0, 120);
-  }, [iconQuery, allIconNames]);
-
-  const openAdd = () => {
+  const openAdd = (parentId: string | null = null) => {
     setEditingId(null);
-    setForm({ ...EMPTY });
+    setForm({ ...EMPTY, parentId });
     setIconQuery("");
     setModalOpen(true);
   };
@@ -122,7 +79,7 @@ export default function Categories() {
         return;
       }
       addCategory(form);
-      addToast("New category created", "success");
+      addToast(form.parentId ? "New subcategory created" : "New category created", "success");
     }
     setModalOpen(false);
   };
@@ -146,22 +103,23 @@ export default function Categories() {
     <div>
       <AdminPageHeader
         action={
-          <Button variant="primary" onPress={openAdd}>
+          <Button variant="primary" onPress={() => openAdd()}>
             <Plus className="size-4" />
             <span>Add New Category</span>
           </Button>
         }
-        description={`${categories.length} active store categories & product groupings`}
+        description={`${topLevel.length} top-level categor${topLevel.length !== 1 ? "ies" : "y"} · ${categories.length - topLevel.length} subcategor${categories.length - topLevel.length !== 1 ? "ies" : "y"}`}
         eyebrow="Taxonomy Structure"
         title="Category Management"
       />
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {categories.map((cat) => {
+        {topLevel.map((cat) => {
           const count = products.filter(
             (p) => p.category === cat.id && p.active,
           ).length;
           const CatIcon = iconFor(cat.icon);
+          const subs = subcategoriesOf(cat.id);
 
           return (
             <div
@@ -199,6 +157,50 @@ export default function Categories() {
                   {cat.description ||
                     "No description specified for this category."}
                 </p>
+
+                {subs.length > 0 && (
+                  <div className="mb-4 flex flex-col gap-1.5 border-t border-border pt-3">
+                    {subs.map((sub) => {
+                      const SubIcon = iconFor(sub.icon);
+
+                      return (
+                        <div key={sub.id} className="flex items-center gap-2 rounded-xl px-1 py-1">
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-accent">
+                            <SubIcon className="size-3.5" />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{sub.name}</span>
+                          <Button
+                            isIconOnly
+                            aria-label={`Edit ${sub.name}`}
+                            className="size-7 min-h-0"
+                            variant="ghost"
+                            onPress={() => openEdit(sub)}
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            isIconOnly
+                            aria-label={`Delete ${sub.name}`}
+                            className="size-7 min-h-0"
+                            variant="ghost"
+                            onPress={() => setDeleteConfirm(sub.id)}
+                          >
+                            <Trash2 className="size-3.5 text-danger" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <Button
+                  className="mb-4 w-full justify-center"
+                  variant="outline"
+                  onPress={() => openAdd(cat.id)}
+                >
+                  <FolderPlus className="size-4" />
+                  <span>Add Subcategory</span>
+                </Button>
               </div>
 
               <div className="flex items-center gap-2 border-t border-border pt-3">
@@ -222,7 +224,7 @@ export default function Categories() {
             <Modal.Dialog>
               <Modal.Header>
                 <Modal.Heading>
-                  {editingId ? "Edit Category" : "Create New Category"}
+                  {editingId ? "Edit Category" : form.parentId ? "Create New Subcategory" : "Create New Category"}
                 </Modal.Heading>
                 <Modal.CloseTrigger />
               </Modal.Header>
@@ -266,6 +268,36 @@ export default function Categories() {
                   </TextField>
                 )}
 
+                <div className="flex flex-col gap-1.5">
+                  <Label>Parent Category</Label>
+                  <Select
+                    selectedKey={form.parentId || NONE_PARENT}
+                    onSelectionChange={(key) =>
+                      setForm((f) => ({
+                        ...f,
+                        parentId: String(key) === NONE_PARENT ? null : String(key),
+                      }))
+                    }
+                  >
+                    <Select.Trigger>
+                      <Select.Value />
+                    </Select.Trigger>
+                    <Select.Popover>
+                      <ListBox>
+                        <ListBox.Item id={NONE_PARENT}>None (top-level category)</ListBox.Item>
+                        {topLevel
+                          .filter((c) => c.id !== editingId)
+                          .map((c) => (
+                            <ListBox.Item key={c.id} id={c.id}>{c.name}</ListBox.Item>
+                          ))}
+                      </ListBox>
+                    </Select.Popover>
+                  </Select>
+                  <p className="m-0 text-caption text-muted">
+                    Categories only nest one level deep — a subcategory can&rsquo;t have its own subcategories.
+                  </p>
+                </div>
+
                 <div>
                   <div className="flex items-center justify-between gap-3">
                     <Label>Display Icon</Label>
@@ -293,7 +325,7 @@ export default function Categories() {
                       </p>
                     )}
                     {iconResults.map((name) => {
-                      const OptIcon = (icons as Record<string, LucideIcon>)[name];
+                      const OptIcon = iconFor(name);
 
                       return (
                         <button
@@ -335,7 +367,7 @@ export default function Categories() {
       </Modal>
 
       <AdminConfirmDialog
-        description="Products currently linked to this category will lose their category association."
+        description="Products currently linked to this category will lose their category association. If this is a top-level category, any of its subcategories will be promoted to top-level rather than deleted."
         isOpen={!!deleteConfirm}
         title="Delete Category?"
         onClose={() => setDeleteConfirm(null)}

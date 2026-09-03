@@ -921,6 +921,9 @@ function categoryToDb(c: Partial<Category>): Record<string, unknown> {
   if (c.description !== undefined) out.description = c.description;
   if (c.icon !== undefined) out.icon = c.icon;
   if (c.sortOrder !== undefined) out.sort_order = c.sortOrder;
+  // !== undefined (not a truthy check) — parentId: null is a real value
+  // meaning "clear this subcategory back to top-level", not "unset".
+  if (c.parentId !== undefined) out.parent_id = c.parentId;
 
   return out;
 }
@@ -932,6 +935,7 @@ function dbToCategory(row: any): Category {
     description: row.description || "",
     icon: row.icon || "Star",
     sortOrder: row.sort_order || 0,
+    parentId: row.parent_id ?? null,
   };
 }
 

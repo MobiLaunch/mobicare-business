@@ -3,7 +3,7 @@ import type { Product } from "@/types/domain";
 import { ShoppingCart, Tag } from "lucide-react";
 import { Button, Chip } from "@heroui/react";
 
-import { useCartStore, useToastStore } from "@/lib/store";
+import { useCartStore, useProductStore, useToastStore } from "@/lib/store";
 
 interface ProductCardProps {
   product: Product;
@@ -13,6 +13,9 @@ interface ProductCardProps {
 export default function ProductCard({ product, onClick }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
   const addToast = useToastStore((s) => s.add);
+  const categoryName = useProductStore(
+    (s) => s.categories.find((c) => c.id === product.category)?.name,
+  );
 
   const handleAddToCart = () => {
     if (product.stock < 1) return;
@@ -76,7 +79,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
 
       <div className="flex flex-1 flex-col gap-1">
         <p className="m-0 text-xs font-bold uppercase tracking-wide text-accent">
-          {product.category.split("-").join(" ")}
+          {categoryName || product.category.split("-").join(" ")}
         </p>
 
         <h3 className="m-0 line-clamp-2 text-base font-semibold leading-snug text-foreground">

@@ -13,6 +13,9 @@ export default function ProductDetail() {
   const navigate = useNavigate();
   const product = useProductStore((s) => s.getProduct(id || ""));
   const related = useProductStore(useShallow((s) => s.products.filter((p) => p.active && p.category === product?.category && p.id !== id).slice(0, 4)));
+  const categoryName = useProductStore(
+    (s) => s.categories.find((c) => c.id === product?.category)?.name,
+  );
   const addItem = useCartStore((s) => s.addItem);
   const addToast = useToastStore((s) => s.add);
   const [qty, setQty] = useState(1);
@@ -47,7 +50,7 @@ export default function ProductDetail() {
           <div className="relative z-[1] overflow-hidden rounded-[24px] border border-border bg-surface-secondary shadow-[0_8px_32px_rgba(0,0,0,0.08)] sm:rounded-[28px]"><img alt={product.name} className="aspect-square w-full object-cover" decoding="async" fetchPriority="high" src={product.images[0]} />{discount && <span className="absolute right-3 top-3 rounded-xl bg-accent px-3 py-1.5 font-extrabold text-accent-foreground sm:right-4 sm:top-4">{discount}% OFF</span>}</div>
         </div>
         <div className="flex min-w-0 flex-col lg:pt-2">
-          <span className="mb-3 inline-flex w-max items-center gap-1.5 self-start rounded-full bg-accent-soft px-3 py-1 text-caption font-bold uppercase tracking-widest text-accent"><Tag aria-hidden="true" className="size-3.5" />{product.category.replace("-", " ")}</span>
+          <span className="mb-3 inline-flex w-max items-center gap-1.5 self-start rounded-full bg-accent-soft px-3 py-1 text-caption font-bold uppercase tracking-widest text-accent"><Tag aria-hidden="true" className="size-3.5" />{categoryName || product.category.replace("-", " ")}</span>
           <h1 className="m-0 mb-3 break-words text-display font-extrabold leading-[1.12] tracking-tight text-foreground sm:mb-4">{product.name}</h1>
           <div className="mb-4 flex flex-wrap items-center gap-2.5 sm:mb-5 sm:gap-3"><strong className="text-heading-xl font-extrabold leading-none text-accent">${product.price.toFixed(2)}</strong>{product.comparePrice && <><span className="text-lg text-muted line-through">${product.comparePrice.toFixed(2)}</span><span className="rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">Save ${(product.comparePrice - product.price).toFixed(2)}</span></>}</div>
           <p className="mb-5 break-words text-body-sm leading-relaxed text-muted sm:mb-6 sm:text-base">{product.description}</p>
@@ -60,7 +63,7 @@ export default function ProductDetail() {
           <p className="m-0 text-xs font-semibold text-muted">SKU: {product.sku}</p>
         </div>
       </div>
-      {related.length > 0 && <div className="mt-12 sm:mt-16"><div className="mb-5 flex items-end justify-between sm:mb-6"><div><p className="m-0 text-caption font-bold uppercase tracking-widest text-accent">Explore More</p><h3 className="m-0 mt-1 text-heading-lg font-extrabold text-foreground">More in {product.category.replace("-", " ")}</h3></div></div><div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{related.map((p) => <ProductCard key={p.id} product={p} onClick={() => navigate(`/product/${p.id}`)} />)}</div></div>}
+      {related.length > 0 && <div className="mt-12 sm:mt-16"><div className="mb-5 flex items-end justify-between sm:mb-6"><div><p className="m-0 text-caption font-bold uppercase tracking-widest text-accent">Explore More</p><h3 className="m-0 mt-1 text-heading-lg font-extrabold text-foreground">More in {categoryName || product.category.replace("-", " ")}</h3></div></div><div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{related.map((p) => <ProductCard key={p.id} product={p} onClick={() => navigate(`/product/${p.id}`)} />)}</div></div>}
     </main>
   );
 }

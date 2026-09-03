@@ -64,9 +64,12 @@ create table if not exists public.categories (
   description text not null default '',
   icon        text not null default 'Star',
   sort_order  integer not null default 0,
+  parent_id   text references public.categories(id) on delete set null,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+
+create index if not exists categories_parent_id_idx on public.categories(parent_id);
 
 -- ────────────────────────────────────────────────────────────
 -- PRODUCTS
@@ -229,6 +232,33 @@ create or replace trigger products_updated_at
 create or replace trigger categories_updated_at
   before update on public.categories
   for each row execute procedure public.touch_updated_at();
+
+-- ────────────────────────────────────────────────────────────
+-- CATEGORY HIERARCHY DEPTH CAP (2 levels: category -> subcategory only)
+-- ────────────────────────────────────────────────────────────
+create or replace function public.enforce_category_depth()
+returns trigger language plpgsql as $$
+declare
+  parent_has_parent boolean;
+begin
+  if new.parent_id is not null then
+    if new.parent_id = new.id then
+      raise exception 'A category cannot be its own parent.';
+    end if;
+    select (parent_id is not null) into parent_has_parent
+    from public.categories where id = new.parent_id;
+    if parent_has_parent then
+      raise exception 'Categories only support 2 levels — the selected parent is itself a subcategory.';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists categories_enforce_depth on public.categories;
+create trigger categories_enforce_depth
+  before insert or update on public.categories
+  for each row execute procedure public.enforce_category_depth();
 
 create or replace trigger orders_updated_at
   before update on public.orders
