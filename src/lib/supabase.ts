@@ -10,7 +10,7 @@ import type {
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { NOVAOPS_PROFILE_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "./config";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config";
 
 // ─── Input sanitization (XSS prevention) ──────────────────────────────────
 // NOTE: React already escapes interpolated text, so this is only needed for
@@ -279,14 +279,15 @@ export async function sbSendCustomerChatMessage(
   const sb = getClient();
 
   if (!sb) return { data: null, error: { message: "Supabase not configured." } };
-  if (!NOVAOPS_PROFILE_ID) {
-    return { data: null, error: { message: "Chat isn't configured yet — missing VITE_NOVAOPS_PROFILE_ID." } };
-  }
 
+  // profile_id (the shop's NovaOps account) is intentionally omitted — a
+  // database trigger on the NovaOps side (customer_messages_fill_profile_id,
+  // supabase/migrations/20260906_customer_messages_auto_profile.sql in the
+  // novaops-updated repo) fills it in from staff_users, so the website never
+  // needs to know or configure the shop's internal Supabase Auth user id.
   const { data, error } = await sb
     .from("customer_messages")
     .insert({
-      profile_id: NOVAOPS_PROFILE_ID,
       customer_user_id: userId,
       customer_name: customerName,
       customer_email: customerEmail,

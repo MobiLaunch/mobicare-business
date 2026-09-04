@@ -18,13 +18,6 @@ function requireEnv(key: string): string {
 export const SUPABASE_URL = requireEnv("VITE_SUPABASE_URL");
 export const SUPABASE_ANON_KEY = requireEnv("VITE_SUPABASE_ANON_KEY");
 
-// ─── NovaOps POS ────────────────────────────────────────────────────────────
-// The shop's NovaOps (Supabase Auth) user id — customer_messages rows are
-// scoped to it so the POS's Messages -> Customer Chat can find them. Single
-// shop, so this is one fixed id; get it from Supabase Dashboard ->
-// Authentication -> Users (the account signed into NovaOps).
-export const NOVAOPS_PROFILE_ID = requireEnv("VITE_NOVAOPS_PROFILE_ID");
-
 // ─── Stripe ───────────────────────────────────────────────────────────────────
 // Publishable key for client-side card elements / payment redirects.
 // Can be configured in Admin Settings (stored in localStorage) or via VITE_STRIPE_PUBLISHABLE_KEY.
