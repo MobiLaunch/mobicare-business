@@ -5,11 +5,12 @@ import type {
   CustomerProfile,
   Booking,
   BookingRecord,
+  CustomerChatMessage,
 } from "@/types/domain";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config";
+import { NOVAOPS_PROFILE_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "./config";
 
 // ─── Input sanitization (XSS prevention) ──────────────────────────────────
 // NOTE: React already escapes interpolated text, so this is only needed for
@@ -246,6 +247,56 @@ export async function sbFetchCustomerOrders(userId: string) {
     .order("created_at", { ascending: false });
 
   return { data: data || [], error };
+}
+
+// ─── Customer <-> shop chat (NovaOps Messages -> Customer Chat) ────────────
+// customer_messages lives in the NovaOps repo's migrations; RLS there lets a
+// signed-in customer read/insert only their own thread (direction must be
+// 'inbound' on insert — the shop is the only side allowed to post 'outbound').
+
+export async function sbFetchCustomerChat(
+  userId: string,
+): Promise<{ data: CustomerChatMessage[]; error: unknown }> {
+  const sb = getClient();
+
+  if (!sb || !userId) return { data: [], error: null };
+
+  const { data, error } = await sb
+    .from("customer_messages")
+    .select("*")
+    .eq("customer_user_id", userId)
+    .order("created_at", { ascending: true });
+
+  return { data: (data as CustomerChatMessage[] | null) || [], error };
+}
+
+export async function sbSendCustomerChatMessage(
+  userId: string,
+  customerName: string,
+  customerEmail: string,
+  body: string,
+): Promise<{ data: CustomerChatMessage | null; error: unknown }> {
+  const sb = getClient();
+
+  if (!sb) return { data: null, error: { message: "Supabase not configured." } };
+  if (!NOVAOPS_PROFILE_ID) {
+    return { data: null, error: { message: "Chat isn't configured yet — missing VITE_NOVAOPS_PROFILE_ID." } };
+  }
+
+  const { data, error } = await sb
+    .from("customer_messages")
+    .insert({
+      profile_id: NOVAOPS_PROFILE_ID,
+      customer_user_id: userId,
+      customer_name: customerName,
+      customer_email: customerEmail,
+      direction: "inbound",
+      body: sanitizeInput(body) as string,
+    })
+    .select()
+    .single();
+
+  return { data: data as CustomerChatMessage | null, error };
 }
 
 export async function sendCustomerPasswordReset(email: string) {

@@ -100,6 +100,23 @@ export interface BookingRecord {
   home_address?: string;
 }
 
+// A direct customer <-> shop message. Lives in `customer_messages`, a table
+// owned by the NovaOps POS repo (mobilaunch/novaops-updated) — see that
+// repo's supabase/migrations/20260905_customer_messages.sql for the schema
+// and RLS. The shop reads/replies from NovaOps Messages -> Customer Chat.
+export interface CustomerChatMessage {
+  id: number;
+  profile_id: string;
+  customer_user_id: string | null;
+  ticket_id: number | null;
+  customer_name: string;
+  customer_email: string;
+  direction: "inbound" | "outbound";
+  body: string;
+  read: boolean;
+  created_at: string;
+}
+
 export interface CustomerProfile {
   id: string;
   full_name: string;

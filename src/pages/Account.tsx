@@ -1,13 +1,20 @@
-import type { BookingRecord, Order } from "../types/domain";
+import type { BookingRecord, CustomerChatMessage, Order } from "../types/domain";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, CheckCircle2, Clock, Key, LogOut, Mail, Package, Phone, RefreshCw, ShieldCheck, User, Wrench, AlertTriangle, ArrowRight } from "lucide-react";
-import { Alert, Button, Card, Chip, FieldError, Form, InputGroup, Label, Spinner, Tabs, TextField } from "@heroui/react";
+import { Calendar, CheckCircle2, Clock, Key, LogOut, Mail, MessageCircle, Package, Phone, RefreshCw, Send, ShieldCheck, User, Wrench, AlertTriangle, ArrowRight } from "lucide-react";
+import { Alert, Button, Card, Chip, FieldError, Form, InputGroup, Label, Spinner, Tabs, TextArea, TextField } from "@heroui/react";
 import { useAuth } from "../lib/AuthContext";
-import { updateCustomerProfile, updateCustomerPassword, sbFetchCustomerBookings, sbFetchCustomerOrders } from "../lib/supabase";
+import {
+  updateCustomerProfile,
+  updateCustomerPassword,
+  sbFetchCustomerBookings,
+  sbFetchCustomerOrders,
+  sbFetchCustomerChat,
+  sbSendCustomerChatMessage,
+} from "../lib/supabase";
 import PageMeta from "../components/PageMeta";
 
-type AccountTab = "profile" | "bookings" | "orders" | "settings";
+type AccountTab = "profile" | "bookings" | "orders" | "messages" | "settings";
 
 export default function Account() {
   const { user, profile, loading, reloadProfile, logout } = useAuth();
@@ -20,6 +27,10 @@ export default function Account() {
   const [profileError, setProfileError] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
+  const [chatMessages, setChatMessages] = useState<CustomerChatMessage[]>([]);
+  const [chatDraft, setChatDraft] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const [chatError, setChatError] = useState("");
   const [dataLoading, setDataLoading] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,13 +48,33 @@ export default function Account() {
     if (!user) return;
     setDataLoading(true);
     try {
-      const [ordersRes, bookingsRes] = await Promise.all([sbFetchCustomerOrders(user.id), sbFetchCustomerBookings(user.id)]);
+      const [ordersRes, bookingsRes, chatRes] = await Promise.all([
+        sbFetchCustomerOrders(user.id),
+        sbFetchCustomerBookings(user.id),
+        sbFetchCustomerChat(user.id),
+      ]);
       if (ordersRes.data) setOrders(ordersRes.data as Order[]);
       if (bookingsRes.data) setBookings(bookingsRes.data as BookingRecord[]);
+      if (chatRes.data) setChatMessages(chatRes.data);
     } catch (error) { console.error("Error loading account data:", error); }
     finally { setDataLoading(false); }
   };
   useEffect(() => { if (user?.id) loadUserData(); }, [user?.id]);
+
+  const handleSendChat = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!user || !chatDraft.trim()) return;
+    setChatSending(true);
+    setChatError("");
+    try {
+      const name = profile?.full_name || fullName || user.email?.split("@")[0] || "Customer";
+      const { data, error } = await sbSendCustomerChatMessage(user.id, name, user.email || "", chatDraft.trim());
+
+      if (error) setChatError(typeof error === "object" && error && "message" in error ? (error as { message: string }).message : "Failed to send message.");
+      else if (data) { setChatMessages((msgs) => [...msgs, data]); setChatDraft(""); }
+    } catch { setChatError("Failed to send message."); }
+    finally { setChatSending(false); }
+  };
 
   const handleUpdateProfile = async (event: FormEvent) => {
     event.preventDefault(); if (!user) return;
@@ -77,6 +108,7 @@ export default function Account() {
     { id: "profile" as const, label: "Profile", description: "Contact information", icon: User },
     { id: "bookings" as const, label: "Bookings", description: "Repair appointments", count: bookings.length, icon: Wrench },
     { id: "orders" as const, label: "Orders", description: "Shopping history", count: orders.length, icon: Package },
+    { id: "messages" as const, label: "Messages", description: "Chat with the shop", count: chatMessages.length, icon: MessageCircle },
     { id: "settings" as const, label: "Security", description: "Password & security", icon: ShieldCheck },
   ];
 
@@ -154,6 +186,47 @@ export default function Account() {
         <Tabs.Panel id="orders">
           <AccountSectionHeader title="Order History" action="Refresh" icon={<RefreshCw className="size-3.5" />} onAction={loadUserData} />
           {dataLoading ? <LoadingCard /> : orders.length === 0 ? <EmptyCard icon={<Package className="size-10" />} title="No orders yet" description="Your order history is currently empty." action="Browse Shop" onAction={() => navigate("/shop")} /> : <div className="grid grid-cols-1 gap-3">{orders.map((order) => <Card key={order.id} className="rounded-[22px] p-4 transition-shadow hover:shadow-md sm:p-5"><div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3"><div><span className="text-xs font-semibold text-muted">Order ID</span><p className="font-mono text-sm font-bold text-foreground">#{order.id.slice(0, 8)}</p></div><div className="text-right"><Chip color={order.status === "delivered" ? "success" : order.status === "cancelled" || order.status === "refunded" ? "danger" : "warning"} size="sm" variant="soft"><Chip.Label className="capitalize">{order.status}</Chip.Label></Chip><p className="mt-1 text-xs text-muted">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : ""}</p></div></div><div className="flex flex-col gap-2">{order.items?.map((item, index) => <div key={index} className="flex items-start justify-between gap-4 text-sm"><span className="min-w-0 text-foreground">{item.name} <span className="text-muted">× {item.qty}</span></span><span className="shrink-0 font-semibold text-foreground">${(item.price * item.qty).toFixed(2)}</span></div>)}</div><div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-sm"><span className="font-bold text-foreground">Total</span><span className="text-base font-bold text-accent">${order.total?.toFixed(2) || "0.00"}</span></div></Card>)}</div>}
+        </Tabs.Panel>
+
+        <Tabs.Panel id="messages">
+          <AccountSectionHeader title="Messages" action="Refresh" icon={<RefreshCw className="size-3.5" />} onAction={loadUserData} />
+          <Card className="rounded-[24px] p-4 sm:p-6">
+            {dataLoading ? (
+              <LoadingCard />
+            ) : (
+              <>
+                <div className="mb-4 flex max-h-[420px] flex-col gap-3 overflow-y-auto">
+                  {chatMessages.length === 0 ? (
+                    <p className="m-0 py-8 text-center text-sm text-muted">
+                      No messages yet — send one below and the shop will reply here.
+                    </p>
+                  ) : (
+                    chatMessages.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`max-w-[80%] rounded-2xl p-3 text-sm ${
+                          m.direction === "inbound" ? "ml-auto bg-accent text-accent-foreground" : "bg-surface-secondary text-foreground"
+                        }`}
+                      >
+                        <p className="m-0 whitespace-pre-wrap">{m.body}</p>
+                        <span className={`mt-1 block text-[10px] ${m.direction === "inbound" ? "text-accent-foreground/70" : "text-muted"}`}>
+                          {new Date(m.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {chatError && <Alert className="mb-3" status="danger"><Alert.Indicator><AlertTriangle className="size-4" /></Alert.Indicator><Alert.Content><Alert.Description>{chatError}</Alert.Description></Alert.Content></Alert>}
+                <Form className="flex items-end gap-2" onSubmit={handleSendChat}>
+                  <TextArea className="flex-1" disabled={chatSending} rows={2} value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} />
+                  <Button className="min-h-11 shrink-0" isDisabled={chatSending || !chatDraft.trim()} type="submit" variant="primary">
+                    {chatSending ? <Spinner size="sm" /> : <Send className="size-4" />}
+                    <span className="hidden sm:inline">Send</span>
+                  </Button>
+                </Form>
+              </>
+            )}
+          </Card>
         </Tabs.Panel>
 
         <Tabs.Panel id="settings">
