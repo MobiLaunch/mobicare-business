@@ -4,7 +4,7 @@ import emailjs from "@emailjs/browser";
 import { Check, CheckCircle2, ChevronLeft, ChevronRight, Home, MapPin, Shield, Store, Wrench } from "lucide-react";
 import { Button, FieldError, InputGroup, Label, Modal, TextField, ToggleButton } from "@heroui/react";
 import { BUSINESS, getEmailJSConfig } from "@/lib/config";
-import { useSiteStore } from "@/lib/siteStore";
+import { DEVICE_KIND_ORDER, useSiteStore } from "@/lib/siteStore";
 import { useToastStore } from "@/lib/store";
 import { isSupabaseConfigured, sbInsertBooking } from "@/lib/supabase";
 import { useAuth } from "@/lib/AuthContext";
@@ -27,7 +27,7 @@ function getNextDays(n = 14) {
 
 interface BookingForm {
   service: string; variant: string;
-  deviceManufacturer: string; deviceCategory: string; deviceModel: string; deviceGeneration: string;
+  deviceKind: string; deviceManufacturer: string; deviceCategory: string; deviceModel: string; deviceGeneration: string;
   issue: string;
   date: string; time: string; name: string; phone: string; email: string; notes: string;
   visitType: "in-store" | "home" | ""; visitLocationType: "residential" | "commercial" | "";
@@ -74,7 +74,7 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
   const STEPS = visitType === "home" ? HOME_STEPS : IN_STORE_STEPS;
   const buildInitialForm = (): BookingForm => {
     const initialContact = { name: profile?.full_name || "", phone: profile?.phone || "", email: user?.email || "" };
-    const base: BookingForm = { service: "", variant: "", deviceManufacturer: "", deviceCategory: "", deviceModel: "", deviceGeneration: "", issue: "", date: "", time: "", notes: "", visitType: "", visitLocationType: "", homeAddress: "", homeCity: "", homeState: "", homeZip: "", ...initialContact };
+    const base: BookingForm = { service: "", variant: "", deviceKind: "", deviceManufacturer: "", deviceCategory: "", deviceModel: "", deviceGeneration: "", issue: "", date: "", time: "", notes: "", visitType: "", visitLocationType: "", homeAddress: "", homeCity: "", homeState: "", homeZip: "", ...initialContact };
     if (defaultService) {
       const match = repairServices.find((s) => s.name.toLowerCase() === defaultService.toLowerCase());
       if (match) return { ...base, service: match.id };
@@ -96,8 +96,21 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
     setForm(buildInitialForm());
   };
   const selectedService = repairServices.find((s) => s.id === form.service);
+  // Device type comes first now. The catalogue is stored brand-first
+  // (manufacturer -> type -> model -> generation) because that is the shape
+  // both apps read, so the type list is derived rather than stored: with 40
+  // brands across 7 types, opening on 40 manufacturer chips asked the
+  // customer to answer the harder question first.
+  const deviceKinds = DEVICE_KIND_ORDER.filter((kind) =>
+    deviceManufacturers.some((m) => m.categories.some((c) => c.name === kind)),
+  );
+  const brandsForKind = form.deviceKind
+    ? deviceManufacturers.filter((m) =>
+        m.categories.some((c) => c.name === form.deviceKind),
+      )
+    : [];
   const selectedManufacturer = deviceManufacturers.find((m) => m.id === form.deviceManufacturer);
-  const selectedCategory = selectedManufacturer?.categories.find((c) => c.id === form.deviceCategory);
+  const selectedCategory = selectedManufacturer?.categories.find((c) => c.name === form.deviceKind);
   const selectedModelObj = selectedCategory?.models.find((m) => m.id === form.deviceModel);
   const modelIsOther = form.deviceModel === "__other__";
   const needsGeneration = !!selectedModelObj && selectedModelObj.generations.length > 0;
@@ -107,8 +120,8 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
   const canNext = () => {
     if (step === 0) return !!form.service && (!selectedService?.variants?.length || !!form.variant);
     if (step === 1) {
-      if (modelIsOther) return !!form.deviceCategory && !!form.deviceModel;
-      return !!form.deviceCategory && !!form.deviceModel && (!needsGeneration || !!form.deviceGeneration);
+      if (modelIsOther) return !!form.deviceKind && !!form.deviceModel;
+      return !!form.deviceKind && !!selectedCategory && !!form.deviceModel && (!needsGeneration || !!form.deviceGeneration);
     }
     if (step === 2) return !!form.date && !!form.time;
     if (isHomeAddressStep) return !!form.homeAddress && !!form.homeCity && !!form.homeState && !!form.homeZip;
@@ -119,7 +132,7 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
   // columns, and EmailJS — keeps the two existing text columns compatible
   // with the older flat device-type/model data instead of needing a schema
   // change for the new manufacturer/category/model/generation levels.
-  const deviceTypeLabel = [selectedManufacturer?.name, selectedCategory?.name].filter(Boolean).join(" ") || form.deviceCategory;
+  const deviceTypeLabel = [selectedManufacturer?.name, selectedCategory?.name].filter(Boolean).join(" ") || form.deviceKind;
   const deviceModelLabel = modelIsOther
     ? form.deviceModel === "__other__" ? "" : form.deviceModel
     : [selectedModelObj?.name, form.deviceGeneration].filter(Boolean).join(" ");
@@ -134,7 +147,7 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
     setSending(true);
     const service = repairServices.find((s) => s.id === form.service);
     const serviceLabel = form.variant ? `${service?.name} (${form.variant})` : service?.name || form.service;
-    const bookingPayload = { ...form, service: serviceLabel, device_type: deviceTypeLabel, device_model: deviceModelLabel, visit_type: visitType, visit_location_type: visitType === "home" ? form.visitLocationType : undefined, home_address: visitType === "home" ? `${form.homeAddress}, ${form.homeCity}, ${form.homeState} ${form.homeZip}` : undefined };
+    const bookingPayload = { ...form, service: serviceLabel, deviceType: deviceTypeLabel, deviceModel: deviceModelLabel, device_type: deviceTypeLabel, device_model: deviceModelLabel, visit_type: visitType, visit_location_type: visitType === "home" ? form.visitLocationType : undefined, home_address: visitType === "home" ? `${form.homeAddress}, ${form.homeCity}, ${form.homeState} ${form.homeZip}` : undefined };
     if (!import.meta.env.DEV || isSupabaseConfigured()) {
       try { await sbInsertBooking(bookingPayload as never); }
       catch (bookingError) { addToast(bookingError instanceof Error ? bookingError.message : "Submission blocked. Please try again.", "error"); setSending(false); return; }
@@ -224,9 +237,9 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
         {visitType === "home" && <div className="flex items-center gap-2.5 rounded-2xl bg-accent-soft px-4 py-2.5 text-sm"><MapPin className="size-4 shrink-0 text-accent" /><span className="text-accent"><strong>House Call Rate</strong> — {activeHouseCallRate}, collected at service time.</span></div>}
         {step === 0 && <div className="flex flex-col gap-4"><div><h3 className="m-0 text-base font-semibold text-foreground">What needs fixing?</h3><p className="m-0 text-sm text-muted">Select the repair service you need.</p></div><div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">{repairServices.map((svc) => <ToggleButton key={svc.id} isSelected={form.service === svc.id} className={`${selectableCard(form.service === svc.id)} flex flex-col`} variant="default" onChange={() => { update("service", svc.id); update("variant", ""); }}><Wrench className="mx-auto mb-1 size-5 text-accent" /><strong className="block text-sm text-foreground">{svc.name}</strong><span className="block text-xs text-foreground">{svc.priceRange}</span><span className="block text-xs text-muted">{svc.duration}</span></ToggleButton>)}</div>{selectedService?.variants && selectedService.variants.length > 0 && <div><h4 className="m-0 mb-2 text-sm font-semibold text-foreground">Select Part Option</h4><div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{selectedService.variants.map((v) => <ToggleButton key={v.name} isSelected={form.variant === v.name} className={`${selectableCard(form.variant === v.name)} flex items-center justify-between text-left`} variant="default" onChange={() => update("variant", v.name)}><div><strong className="block text-sm text-foreground">{v.name}</strong><span className="text-xs text-muted">{v.price}</span></div>{form.variant === v.name && <CheckCircle2 className="size-4 shrink-0 text-accent" />}</ToggleButton>)}</div></div>}</div>}
         {step === 1 && <div className="flex flex-col gap-4">
-          <div><h3 className="m-0 text-base font-semibold text-foreground">Tell us about your device</h3><p className="m-0 text-sm text-muted">Pick the manufacturer, then narrow down to your exact model.</p></div>
-          <div><p className="m-0 mb-2 text-sm font-semibold text-foreground">Manufacturer</p><div className="flex flex-wrap gap-2">{deviceManufacturers.map((m) => <ToggleButton key={m.id} isSelected={form.deviceManufacturer === m.id} className={chipButton(form.deviceManufacturer === m.id)} variant="default" onChange={() => { update("deviceManufacturer", m.id); update("deviceCategory", ""); update("deviceModel", ""); update("deviceGeneration", ""); }}>{m.name}</ToggleButton>)}</div></div>
-          {selectedManufacturer && selectedManufacturer.categories.length > 0 && <div><p className="m-0 mb-2 text-sm font-semibold text-foreground">Device Type</p><div className="flex flex-wrap gap-2">{selectedManufacturer.categories.map((c) => <ToggleButton key={c.id} isSelected={form.deviceCategory === c.id} className={chipButton(form.deviceCategory === c.id)} variant="default" onChange={() => { update("deviceCategory", c.id); update("deviceModel", ""); update("deviceGeneration", ""); }}>{c.name}</ToggleButton>)}</div></div>}
+          <div><h3 className="m-0 text-base font-semibold text-foreground">Tell us about your device</h3><p className="m-0 text-sm text-muted">Pick the device type, then the brand, then narrow down to your exact model.</p></div>
+          <div><p className="m-0 mb-2 text-sm font-semibold text-foreground">Device Type</p><div className="flex flex-wrap gap-2">{deviceKinds.map((kind) => <ToggleButton key={kind} isSelected={form.deviceKind === kind} className={chipButton(form.deviceKind === kind)} variant="default" onChange={() => { update("deviceKind", kind); update("deviceManufacturer", ""); update("deviceCategory", ""); update("deviceModel", ""); update("deviceGeneration", ""); }}>{kind}</ToggleButton>)}</div></div>
+          {form.deviceKind && brandsForKind.length > 0 && <div><p className="m-0 mb-2 text-sm font-semibold text-foreground">Brand</p><div className="flex flex-wrap gap-2">{brandsForKind.map((m) => <ToggleButton key={m.id} isSelected={form.deviceManufacturer === m.id} className={chipButton(form.deviceManufacturer === m.id)} variant="default" onChange={() => { const cat = m.categories.find((c) => c.name === form.deviceKind); update("deviceManufacturer", m.id); update("deviceCategory", cat?.id || ""); update("deviceModel", ""); update("deviceGeneration", ""); }}>{m.name}</ToggleButton>)}</div></div>}
           {selectedCategory && <div><p className="m-0 mb-2 text-sm font-semibold text-foreground">Model</p><div className="flex flex-wrap gap-2">{selectedCategory.models.map((m) => <ToggleButton key={m.id} isSelected={form.deviceModel === m.id} className={chipButton(form.deviceModel === m.id)} variant="default" onChange={() => { update("deviceModel", m.id); update("deviceGeneration", ""); }}>{m.name}</ToggleButton>)}<ToggleButton isSelected={modelIsOther} className={chipButton(modelIsOther)} variant="default" onChange={() => { update("deviceModel", "__other__"); update("deviceGeneration", ""); }}>Other Model…</ToggleButton></div></div>}
           {needsGeneration && <div><p className="m-0 mb-2 text-sm font-semibold text-foreground">Generation</p><div className="flex flex-wrap gap-2">{selectedModelObj!.generations.map((g) => <ToggleButton key={g} isSelected={form.deviceGeneration === g} className={chipButton(form.deviceGeneration === g)} variant="default" onChange={() => update("deviceGeneration", g)}>{g}</ToggleButton>)}</div></div>}
           {modelIsOther && <TextField className="flex flex-col gap-1.5" value={form.deviceModel === "__other__" ? "" : form.deviceModel} onChange={(v) => update("deviceModel", v)}><Label>Exact model name</Label><InputGroup><InputGroup.Input placeholder="e.g. iPhone 15 Pro Max" /></InputGroup></TextField>}
