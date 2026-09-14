@@ -1,87 +1,75 @@
 // Vercel Serverless Function: /api/create-booking
-// Handles repair appointment submissions and persists directly to Supabase.
+// Website booking -> shared Supabase booking -> NovaOps ticket trigger.
 
 export default async function handler(req, res) {
-  // Set CORS headers
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,OPTIONS,PATCH,DELETE,POST,PUT",
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization",
-  );
+  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
+  if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST", "OPTIONS"]);
-    return res.status(405).json({
-      error: `Method ${req.method} Not Allowed. Please send a POST request.`,
-    });
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
     const booking = req.body || {};
-
-    // Basic server-side validation — the client validates too, but never
-    // trust the wire. Required: name, email, phone, service, date, time.
-    const name = booking.name || booking.customer_name || "";
-    const email = booking.email || booking.customer_email || "";
-    const phone = booking.phone || booking.customer_phone || "";
-    const service = booking.service || "";
+    const name = String(booking.name || booking.customer_name || "").trim();
+    const email = String(booking.email || booking.customer_email || "").trim().toLowerCase();
+    const phone = String(booking.phone || booking.customer_phone || "").trim();
+    const service = String(booking.service || "").trim();
     const apptDate = booking.date || booking.appt_date || "";
     const apptTime = booking.time || booking.appt_time || "";
 
-    if (!name.trim() || !service.trim() || !apptDate || !apptTime) {
-      return res.status(400).json({
-        error:
-          "Missing required booking fields (name, service, date, and time are required).",
-      });
+    if (!name || !service || !apptDate || !apptTime) {
+      return res.status(400).json({ error: "Missing required booking fields." });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: "A valid email is required." });
     }
-    if (!phone.trim()) {
-      return res.status(400).json({ error: "A phone number is required." });
+    if (!phone) return res.status(400).json({ error: "A phone number is required." });
+
+    const sbUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!sbUrl || !serviceKey) {
+      return res.status(503).json({ error: "Booking service is not configured." });
     }
+    const base = sbUrl.replace(/\/$/, "");
+    const headers = {
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+      "Content-Type": "application/json",
+    };
 
-    const sbUrl =
-      process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-    const sbKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.SUPABASE_ANON_KEY ||
-      process.env.VITE_SUPABASE_ANON_KEY;
+    // Resolve the single Mobicare business profile server-side. The browser
+    // never supplies profile_id, preventing cross-tenant booking injection.
+    const profileResponse = await fetch(
+      `${base}/rest/v1/profiles?email=eq.mobicarehello%40gmail.com&select=id&limit=1`,
+      { headers },
+    );
+    if (!profileResponse.ok) throw new Error("Unable to resolve business profile.");
+    const profiles = await profileResponse.json();
+    const profileId = profiles?.[0]?.id;
+    if (!profileId) throw new Error("Mobicare business profile was not found.");
 
-    // If the customer is signed in, tie the booking to their account so it
-    // shows up in their order/booking history. Best-effort: an invalid or
-    // missing token just leaves the booking unattached, it never blocks
-    // the submission.
+    // Optional customer auth is retained, but is never required for booking.
     let userId = null;
     const authHeader = req.headers.authorization || "";
-    const accessToken = authHeader.startsWith("Bearer ")
-      ? authHeader.slice("Bearer ".length)
-      : null;
-
-    if (accessToken && sbUrl) {
+    if (authHeader.startsWith("Bearer ")) {
       try {
-        const whoResponse = await fetch(`${sbUrl.replace(/\/$/, "")}/auth/v1/user`, {
-          headers: { apikey: sbKey, Authorization: `Bearer ${accessToken}` },
+        const whoResponse = await fetch(`${base}/auth/v1/user`, {
+          headers: { apikey: serviceKey, Authorization: authHeader },
         });
-        if (whoResponse.ok) {
-          const who = await whoResponse.json().catch(() => null);
-          userId = who?.id || null;
-        }
+        if (whoResponse.ok) userId = (await whoResponse.json())?.id || null;
       } catch {
-        // Ignore — booking still proceeds unattached.
+        // Guest bookings remain valid.
       }
     }
 
     const payload = {
+      profile_id: profileId,
+      ...(userId ? { user_id: userId } : {}),
       customer_name: name,
       customer_email: email,
       customer_phone: phone,
@@ -96,45 +84,33 @@ export default async function handler(req, res) {
       visit_location_type: booking.visit_location_type || booking.visitLocationType || null,
       home_address: booking.home_address || booking.homeAddress || "",
       status: "pending",
-      ...(userId ? { user_id: userId } : {}),
     };
 
-    if (sbUrl && sbKey) {
-      const dbResponse = await fetch(`${sbUrl.replace(/\/$/, "")}/rest/v1/bookings`, {
-        method: "POST",
-        headers: {
-          apikey: sbKey,
-          Authorization: `Bearer ${sbKey}`,
-          "Content-Type": "application/json",
-          Prefer: "return=representation",
-        },
-        body: JSON.stringify(payload),
-      });
+    const dbResponse = await fetch(`${base}/rest/v1/bookings?select=*`, {
+      method: "POST",
+      headers: { ...headers, Prefer: "return=representation" },
+      body: JSON.stringify(payload),
+    });
 
-      if (!dbResponse.ok) {
-        const errorData = await dbResponse.json().catch(() => ({}));
-        console.error("Supabase booking insert error:", errorData);
-        return res.status(500).json({
-          error: errorData.message || "Failed to persist booking in database",
-        });
-      }
-
-      const created = await dbResponse.json().catch(() => [payload]);
-      return res.status(200).json({
-        ok: true,
-        booking: created[0] || payload,
-      });
+    if (!dbResponse.ok) {
+      const detail = await dbResponse.text();
+      console.error("Supabase booking insert error:", detail);
+      return res.status(500).json({ error: "Failed to create booking." });
     }
+
+    const created = await dbResponse.json();
+    const bookingRow = created?.[0];
 
     return res.status(200).json({
       ok: true,
-      simulated: true,
-      booking: payload,
+      booking: bookingRow || payload,
+      ticket_id: bookingRow?.novaops_ticket_id || null,
+      message: bookingRow?.novaops_ticket_id
+        ? "Booking confirmed and NovaOps ticket created."
+        : "Booking received.",
     });
   } catch (error) {
     console.error("Booking API error:", error);
-    return res.status(500).json({
-      error: error.message || "Internal server error creating booking",
-    });
+    return res.status(500).json({ error: error.message || "Internal server error." });
   }
 }
