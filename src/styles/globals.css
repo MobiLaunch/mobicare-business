@@ -27,6 +27,38 @@
   --text-caption: 11px;
   --text-label: 13px;
   --text-body-sm: 15px;
+
+  /* ── Optical tracking ──────────────────────────────────────────────────
+     Large type set at default tracking reads loose and generic; small caps
+     set tight reads muddy. Both directions are corrections the browser will
+     not make for you. */
+  --tracking-display: -0.032em;
+  --tracking-heading: -0.018em;
+  --tracking-eyebrow: 0.14em;
+
+  /* ── Radius scale ─────────────────────────────────────────────────────
+     Deliberately not named sm/md/lg: those are Tailwind built-ins already
+     in use across the app, and redefining them would silently reshape
+     every existing component. */
+  --radius-field: 12px;
+  --radius-card: 18px;
+  --radius-panel: 26px;
+  --radius-pill: 999px;
+
+  /* ── Elevation ────────────────────────────────────────────────────────
+     Two channels per step: a contact shadow that anchors the element and a
+     diffuse one that gives it air. Values differ per theme — a shadow tuned
+     for white simply disappears on near-black — so the tokens below are
+     redefined in each theme block. */
+  --shadow-lift-1: var(--elev-1);
+  --shadow-lift-2: var(--elev-2);
+  --shadow-lift-3: var(--elev-3);
+
+  /* ── Accent ramp and counterpoint ─────────────────────────────────────*/
+  --color-accent-dim: var(--accent-dim);
+  --color-accent-bright: var(--accent-bright);
+  --color-highlight: var(--highlight);
+  --color-highlight-soft: var(--highlight-soft);
 }
 
 /* ─── Light Mode Theme Tokens ─── */
@@ -52,6 +84,27 @@
   --focus: #15803D;
   --default: #EAEFEA;
   --default-foreground: #111B14;
+
+  /* One green doing every job is what makes a page read flat. A ramp lets
+     weight follow importance: dim for resting chrome, accent for action,
+     bright for the one thing that should pull the eye. */
+  --accent-dim: #166534;
+  --accent-bright: #22C55E;
+  --accent-glow: rgba(21, 128, 61, 0.18);
+
+  /* A warm counterpoint so price, savings and rating are not competing with
+     every button for the same green. */
+  --highlight: #B45309;
+  --highlight-soft: rgba(180, 83, 9, 0.12);
+
+  --elev-1: 0 1px 2px rgba(17, 27, 20, 0.05), 0 1px 3px rgba(17, 27, 20, 0.04);
+  --elev-2: 0 2px 4px rgba(17, 27, 20, 0.05), 0 8px 20px -6px rgba(17, 27, 20, 0.10);
+  --elev-3: 0 4px 8px rgba(17, 27, 20, 0.06), 0 24px 48px -16px rgba(17, 27, 20, 0.16);
+
+  /* A card lit from above reads as an object; a flat fill reads as a div. */
+  --edge-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --surface-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 120px);
+  --hairline: rgba(17, 27, 20, 0.07);
 }
 
 /* ─── Dark Mode Theme Tokens ─── */
@@ -76,6 +129,23 @@
   --focus: #22C55E;
   --default: #172F21;
   --default-foreground: #F3F7F4;
+
+  --accent-dim: #15803D;
+  --accent-bright: #4ADE80;
+  --accent-glow: rgba(34, 197, 94, 0.30);
+
+  --highlight: #FBBF24;
+  --highlight-soft: rgba(251, 191, 36, 0.14);
+
+  /* Dark needs deeper, wider shadows — a shadow tuned for white vanishes on
+     near-black — and leans on the lit top edge to separate planes. */
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.30);
+  --elev-2: 0 2px 6px rgba(0, 0, 0, 0.50), 0 10px 28px -8px rgba(0, 0, 0, 0.55);
+  --elev-3: 0 6px 14px rgba(0, 0, 0, 0.55), 0 30px 60px -20px rgba(0, 0, 0, 0.70);
+
+  --edge-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --surface-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 140px);
+  --hairline: rgba(255, 255, 255, 0.07);
 }
 
 /* ─── Base HTML & Body Styles ─── */
@@ -132,3 +202,92 @@ body {
   100% { transform: translateX(-50%); }
 }
 
+
+/* ─── Material ──────────────────────────────────────────────────────────
+   The difference between "a div with a background colour" and "a surface"
+   is three things the token layer alone cannot express: a lit top edge, a
+   sheen that falls off, and a border that is lighter where light would hit
+   it. These compose with any background utility. */
+
+.surface-raised {
+  position: relative;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--elev-2), var(--edge-highlight);
+}
+
+/* The sheen rides in a pseudo-element so it never tints child content and
+   never has to be undone by a nested background. */
+.surface-raised::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface-sheen);
+  pointer-events: none;
+}
+
+.surface-raised > * {
+  position: relative;
+}
+
+.surface-sunken {
+  background-color: var(--surface-secondary);
+  border: 1px solid var(--hairline);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* A wash of accent that stays legible in both themes — for the one panel
+   per page that should feel like the destination. */
+.surface-accent {
+  background-image: linear-gradient(145deg, var(--accent-soft), transparent 70%);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  box-shadow: var(--elev-2), var(--edge-highlight), 0 0 40px -12px var(--accent-glow);
+}
+
+/* Display type: tight tracking, tight leading, and a weight that survives
+   being set very large. Browsers do neither for you. */
+.type-display {
+  letter-spacing: var(--tracking-display);
+  line-height: 0.95;
+  font-weight: 800;
+  text-wrap: balance;
+}
+
+.type-heading {
+  letter-spacing: var(--tracking-heading);
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+/* Eyebrows only work when they are unmistakably not body copy. */
+.type-eyebrow {
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: var(--text-caption);
+}
+
+/* Lift on hover, but only where a pointer can actually hover, and never for
+   someone who has asked the OS for less motion. */
+@media (hover: hover) {
+  .lift {
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.22s ease;
+  }
+
+  .lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--elev-3), var(--edge-highlight);
+    border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lift,
+  .lift:hover {
+    transition: none;
+    transform: none;
+  }
+}

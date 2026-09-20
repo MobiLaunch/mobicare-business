@@ -1,4 +1,5 @@
 import type { Product } from "@/types/domain";
+import ProductImage from "@/components/ProductImage";
 
 import { ShoppingCart, Tag } from "lucide-react";
 import { Button, Chip } from "@heroui/react";
@@ -50,10 +51,9 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
       onKeyDown={handleCardKeyDown}
     >
       <div className="relative aspect-square overflow-hidden rounded-2xl bg-surface-secondary">
-        <img
+        <ProductImage
           alt={product.name}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          loading="lazy"
+          className="transition-transform duration-300 group-hover:scale-105"
           src={product.images?.[0]}
         />
 

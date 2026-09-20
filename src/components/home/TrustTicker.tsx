@@ -19,7 +19,10 @@ export default function TrustTicker() {
   const items = [...trustItems, ...trustItems];
 
   return (
-    <section className="overflow-hidden py-2" id="trust-banner-section">
+    <section
+      className="overflow-hidden py-2 [mask-image:linear-gradient(90deg,transparent,#000_5%,#000_95%,transparent)]"
+      id="trust-banner-section"
+    >
       <div className="overflow-hidden rounded-none border-y border-border bg-surface/90 py-1 shadow-[inset_0_1px_0_var(--accent-soft),0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-xl backdrop-saturate-150 dark:bg-surface-secondary/85">
         <div className="flex w-max animate-[ticker-scroll_28s_linear_infinite] items-center gap-0 hover:[animation-play-state:paused]">
           {items.map((t, i) => {

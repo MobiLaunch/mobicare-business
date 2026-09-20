@@ -32,7 +32,7 @@ export default function Home() {
       <BackgroundCanvas />
 
       <div
-        className="relative z-[1] mx-auto max-w-[1400px] px-[clamp(12px,3vw,24px)] pb-8 pt-24"
+        className="relative z-[1] mx-auto max-w-[1400px] px-[clamp(12px,3vw,24px)] pb-8 pt-[clamp(80px,7vh,104px)]"
         id="homepage-content-wrapper"
       >
         <div className="mb-8">

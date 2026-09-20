@@ -255,7 +255,7 @@ export default function LocationCard() {
 
   return (
     <div
-      className="w-full overflow-hidden rounded-[28px] bg-surface"
+      className="surface-raised w-full overflow-hidden rounded-panel"
       id="location-card"
     >
       {/* Map frame */}
