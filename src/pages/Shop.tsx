@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { CircleCheck, FilterX, Layers, Search, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
+import { FilterX, Layers, Search, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
 import { InputGroup, ListBox, Menu, Select, TextField, ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -119,8 +119,8 @@ export default function Shop() {
   const selectedSort = SORT_OPTIONS.find((option) => option.value === sort) || SORT_OPTIONS[0];
   const applySearch = (value: string) => { setSearch(value); setSearchMenuOpen(false); };
   const applyCategorySuggestion = (catId: string) => { handleCatChange(catId); setSearch(""); setSearchMenuOpen(false); };
-  const categoryButtonClass = (active: boolean) => `relative flex size-10 shrink-0 items-center justify-center rounded-full border transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:size-11 ${active ? "border-accent bg-accent text-accent-foreground shadow-sm" : "border-border bg-surface-secondary text-foreground hover:-translate-y-0.5 hover:bg-surface-tertiary"}`;
-  const subcatChipClass = (active: boolean) => `rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${active ? "border-accent bg-accent text-accent-foreground" : "border-border bg-surface text-foreground hover:bg-surface-secondary"}`;
+  const categoryButtonClass = (active: boolean) => `relative flex shrink-0 items-center gap-2 rounded-pill border px-3.5 py-2 text-label font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${active ? "border-accent bg-accent text-accent-foreground shadow-[var(--elev-1)]" : "border-border bg-surface text-muted hover:border-accent/40 hover:bg-surface-secondary hover:text-foreground"}`;
+  const subcatChipClass = (active: boolean) => `rounded-pill border px-3.5 py-1.5 text-label font-medium transition-colors ${active ? "border-accent bg-accent-soft text-accent-soft-foreground" : "border-border bg-surface text-muted hover:text-foreground"}`;
 
   return (
     <main className="mx-auto max-w-[1400px] overflow-x-hidden px-[clamp(12px,3vw,24px)] pb-16 pt-4 sm:pt-6">
@@ -129,10 +129,10 @@ export default function Shop() {
         <div className="pointer-events-none absolute left-[10%] top-[30%] h-[140px] w-[clamp(200px,40vw,400px)] rounded-full bg-accent-soft/40 blur-[50px]" />
         <div className="relative z-[1] flex items-end justify-between gap-3 sm:gap-4">
           <div className="min-w-0">
-            <span className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-micro font-bold uppercase tracking-widest text-accent sm:px-3 sm:text-caption"><ShoppingBag aria-hidden="true" className="size-3" /> Accessories &amp; Gear</span>
-            <h1 className="m-0 text-display font-extrabold leading-[1.05] tracking-tight text-foreground">Shop Catalog</h1>
+            <span className="type-eyebrow mb-2 inline-flex items-center gap-1.5 rounded-pill bg-accent-soft px-2.5 py-1 text-accent-soft-foreground sm:px-3"><ShoppingBag aria-hidden="true" className="size-3" /> Accessories &amp; Gear</span>
+            <h1 className="type-display m-0 text-display text-foreground">Shop Catalog</h1>
           </div>
-          <span aria-live="polite" className="shrink-0 rounded-full border border-border bg-surface-secondary px-3 py-1.5 text-xs font-bold shadow-sm sm:px-4 sm:text-sm">{filtered.length} Product{filtered.length !== 1 ? "s" : ""}</span>
+          <span aria-live="polite" className="shrink-0 rounded-pill border border-border bg-surface px-3 py-1.5 text-label font-bold tabular-nums shadow-[var(--elev-1)] sm:px-4">{filtered.length} Product{filtered.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
 
@@ -173,21 +173,17 @@ export default function Shop() {
 
       <ToggleButtonGroup aria-label="Product categories" className={`flex gap-2 overflow-x-auto px-0.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-2.5 ${activeSubcategories.length > 0 ? "mb-2.5" : "mb-6 sm:mb-8"}`} disallowEmptySelection isDetached selectedKeys={[selectedCat]} selectionMode="single" onSelectionChange={(keys) => { const next = Array.from(keys)[0]; if (next != null) handleCatChange(String(next)); }}>
         <ToggleButton aria-label="All products" className={({ isSelected }) => categoryButtonClass(isSelected)} id="all">
-          {({ isSelected }) => (
-            <>
-              <ShoppingBag aria-hidden="true" className="size-[18px]" />
-              {isSelected && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-surface text-accent shadow-sm"><CircleCheck className="size-3.5" /></span>}
-            </>
-          )}
+          <>
+            <ShoppingBag aria-hidden="true" className="size-4 shrink-0" />
+            <span>All</span>
+          </>
         </ToggleButton>
         {filterCategories.map((cat) => (
           <ToggleButton key={cat.id} aria-label={cat.name} className={({ isSelected }) => categoryButtonClass(isSelected)} id={cat.id}>
-            {({ isSelected }) => (
-              <>
-                <CategoryIcon className="size-[18px]" iconId={categories.find((c) => c.id === cat.id)?.icon || "Shapes"} />
-                {isSelected && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-surface text-accent shadow-sm"><CircleCheck className="size-3.5" /></span>}
-              </>
-            )}
+            <>
+              <CategoryIcon className="size-4 shrink-0" iconId={categories.find((c) => c.id === cat.id)?.icon || "Shapes"} />
+              <span>{cat.name}</span>
+            </>
           </ToggleButton>
         ))}
       </ToggleButtonGroup>

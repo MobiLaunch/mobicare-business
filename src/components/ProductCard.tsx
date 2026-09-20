@@ -44,13 +44,13 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
 
   return (
     <article
-      className="group flex h-full flex-col gap-3 rounded-3xl bg-surface p-3.5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-4"
+      className="surface-raised lift group flex h-full cursor-pointer flex-col gap-3 rounded-panel p-3.5 sm:p-4"
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
       onKeyDown={handleCardKeyDown}
     >
-      <div className="relative aspect-square overflow-hidden rounded-2xl bg-surface-secondary">
+      <div className="surface-sunken relative aspect-square overflow-hidden rounded-card">
         <ProductImage
           alt={product.name}
           className="transition-transform duration-300 group-hover:scale-105"
@@ -58,10 +58,10 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
         />
 
         {discount && (
-          <Chip className="absolute left-2 top-2 gap-1" color="accent" size="sm">
-            <Tag className="size-3" />
-            <Chip.Label>{discount}% OFF</Chip.Label>
-          </Chip>
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-pill bg-highlight px-2 py-1 text-caption font-extrabold text-background shadow-[var(--elev-1)]">
+            <Tag aria-hidden="true" className="size-3" />
+            {discount}% OFF
+          </span>
         )}
 
         {product.stock > 0 && product.stock < 5 && (
@@ -71,18 +71,20 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
         )}
 
         {product.stock === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-            <span className="font-bold text-white">Sold Out</span>
+          <div className="absolute inset-0 flex items-center justify-center bg-background/78 backdrop-blur-[2px]">
+            <span className="type-eyebrow rounded-pill border border-border bg-surface px-3 py-1.5 text-foreground">
+              Sold Out
+            </span>
           </div>
         )}
       </div>
 
       <div className="flex flex-1 flex-col gap-1">
-        <p className="m-0 text-xs font-bold uppercase tracking-wide text-accent">
+        <p className="type-eyebrow m-0 text-accent-bright">
           {categoryName || product.category.split("-").join(" ")}
         </p>
 
-        <h3 className="m-0 line-clamp-2 text-base font-semibold leading-snug text-foreground">
+        <h3 className="type-heading m-0 line-clamp-2 text-base font-bold text-foreground">
           {product.name}
         </h3>
 
@@ -93,12 +95,12 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
 
       <div className="flex items-center gap-2 pt-1">
         <div className="min-w-0 flex-1">
-          <strong className="text-lg text-foreground">
+          <strong className="text-heading-sm font-extrabold tabular-nums tracking-[var(--tracking-heading)] text-foreground">
             ${product.price?.toFixed(2)}
           </strong>
 
           {product.comparePrice && (
-            <span className="ml-2 text-sm text-muted line-through">
+            <span className="ml-2 text-label tabular-nums text-muted line-through">
               ${product.comparePrice.toFixed(2)}
             </span>
           )}

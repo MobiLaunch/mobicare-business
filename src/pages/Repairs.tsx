@@ -51,7 +51,7 @@ export default function Repairs() {
         <p className="m-0 mb-1.5 text-caption font-bold uppercase tracking-widest text-accent">
           Device Repair Services
         </p>
-        <h1 className="m-0 mb-3 text-display font-extrabold leading-[1.15] text-foreground">
+        <h1 className="type-display m-0 mb-3 text-display text-foreground">
           We Fix What&rsquo;s Broken.
         </h1>
         <p className="mx-auto mb-7 max-w-[640px] text-body-lg leading-relaxed text-muted">

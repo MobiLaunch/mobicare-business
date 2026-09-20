@@ -176,8 +176,8 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
   // h-auto + whitespace-normal override HeroUI's base .toggle-button chrome
   // (fixed h-10/h-9 height, whitespace-nowrap) — without them, this
   // multi-line stacked content gets squeezed into a ~40px pill.
-  const selectableCard = (selected: boolean) => `h-auto w-full cursor-pointer whitespace-normal rounded-2xl border p-3 text-center transition-colors ${selected ? "border-accent bg-accent-soft" : "border-border bg-surface hover:bg-surface-secondary"}`;
-  const chipButton = (selected: boolean) => `rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${selected ? "border-accent bg-accent text-accent-foreground" : "border-border bg-surface text-foreground hover:bg-surface-secondary"}`;
+  const selectableCard = (selected: boolean) => `h-auto w-full cursor-pointer whitespace-normal rounded-card border p-3 text-center transition-[background-color,border-color,box-shadow] duration-200 ${selected ? "border-accent bg-accent-soft ring-1 ring-accent shadow-[var(--elev-1)]" : "border-border bg-surface hover:border-accent/35 hover:bg-surface-secondary"}`;
+  const chipButton = (selected: boolean) => `rounded-pill border px-3.5 py-1.5 text-label font-semibold transition-colors duration-150 ${selected ? "border-accent bg-accent text-accent-foreground shadow-[var(--elev-1)]" : "border-border bg-surface text-muted hover:border-accent/40 hover:bg-surface-secondary hover:text-foreground"}`;
   const goBack = () => {
     if (step > 0) { setStep((s) => s - 1); return; }
     if (visitType === "home" && form.visitLocationType) { update("visitLocationType", ""); return; }

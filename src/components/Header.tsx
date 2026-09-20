@@ -37,7 +37,7 @@ export default function Header() {
   const cartItemCount = cart.reduce((total, item) => total + (item?.qty || 0), 0);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 min-h-14 border-b border-border bg-surface/90 px-3 backdrop-blur-xl sm:px-4" id="site-header">
+    <header className="fixed inset-x-0 top-0 z-40 min-h-14 border-b border-[var(--hairline)] bg-surface/80 px-3 shadow-[var(--elev-1)] backdrop-blur-xl backdrop-saturate-150 sm:px-4" id="site-header">
       <div className="mx-auto grid min-h-14 w-full max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4">
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <Button isIconOnly aria-label={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`} className="size-9 shrink-0" variant="ghost" onPress={() => setViewerColorScheme?.(theme === "dark" ? "light" : "dark")}>
@@ -47,12 +47,12 @@ export default function Header() {
           <nav aria-label="Primary navigation" className="hidden items-center gap-0.5 rounded-full bg-surface-secondary p-0.5 lg:flex">
             {NAV_LINKS.map(({ to, label, icon: Icon }) => {
               const active = isActive(to);
-              return <Link key={to} aria-current={active ? "page" : undefined} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-label font-medium transition-colors ${active ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-surface"}`} href={to}>
+              return <Link key={to} aria-current={active ? "page" : undefined} className={`inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-label font-medium transition-colors ${active ? "bg-accent text-accent-foreground shadow-[var(--elev-1)]" : "text-muted hover:bg-surface hover:text-foreground"}`} href={to}>
                 <Icon aria-hidden="true" className="size-3.5" />
                 <span>{label}</span>
               </Link>;
             })}
-            <Button aria-label={`Open Shopping Cart${cartItemCount > 0 ? `, ${cartItemCount} items` : ""}`} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-label font-medium text-foreground transition-colors hover:bg-surface" variant="ghost" onPress={() => setCartDrawerOpen(true)}>
+            <Button aria-label={`Open Shopping Cart${cartItemCount > 0 ? `, ${cartItemCount} items` : ""}`} className="inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-label font-medium text-muted transition-colors hover:bg-surface hover:text-foreground" variant="ghost" onPress={() => setCartDrawerOpen(true)}>
               <Badge.Anchor><ShoppingBag aria-hidden="true" className="size-3.5" />{cartItemCount > 0 && <Badge color="danger" size="sm"><Badge.Label>{cartItemCount}</Badge.Label></Badge>}</Badge.Anchor>
               <span>Cart</span>
             </Button>

@@ -211,24 +211,29 @@ body {
 
 .surface-raised {
   position: relative;
+  /* Establishes a stacking context so the sheen below can sit at z-index -1:
+     behind the card's content but still in front of its own background. */
+  isolation: isolate;
   background-color: var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--elev-2), var(--edge-highlight);
 }
 
 /* The sheen rides in a pseudo-element so it never tints child content and
-   never has to be undone by a nested background. */
+   never has to be undone by a nested background.
+   It must NOT be paired with `.surface-raised > * { position: relative }` to
+   lift content above it: that silently overrides `position: absolute` on
+   every direct child, which turned the "Most Popular" ribbon on the pricing
+   cards from a floating tab into a full-width bar. Negative z-index inside
+   an isolated context does the same job and touches no children. */
 .surface-raised::before {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: -1;
   border-radius: inherit;
   background: var(--surface-sheen);
   pointer-events: none;
-}
-
-.surface-raised > * {
-  position: relative;
 }
 
 .surface-sunken {
