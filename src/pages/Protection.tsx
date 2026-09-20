@@ -480,7 +480,7 @@ export default function Protection() {
 
       {/* ─── How Claims Work (3-Step Timeline) ─── */}
       <section
-        className="mb-20 rounded-[32px] bg-surface-secondary/70 p-8 sm:p-12"
+        className="mb-20 rounded-panel bg-surface-secondary/70 p-8 sm:p-12"
         id="how-claims-work"
       >
         <div className="mb-10 text-center">
@@ -556,7 +556,7 @@ export default function Protection() {
             return (
               <div
                 key={faq.q}
-                className="overflow-hidden rounded-[18px] border border-border bg-surface shadow-sm transition-all duration-200"
+                className="surface-raised overflow-hidden rounded-card transition-all duration-200"
               >
                 <Button
                   aria-expanded={isOpen}

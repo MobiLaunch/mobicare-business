@@ -105,7 +105,7 @@ export default function About() {
           {VALUE_PROPS.map((v) => (
             <article
               key={v.title}
-              className="h-full min-w-0 rounded-[24px] bg-surface p-6 transition-all duration-250 hover:-translate-y-1 hover:shadow-[0_12px_28px_-8px_rgba(0,0,0,0.25)]"
+              className="surface-raised lift h-full min-w-0 rounded-card p-6"
             >
               <span className="mb-5 flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
                 <v.icon className="size-6" />
@@ -122,7 +122,7 @@ export default function About() {
       </section>
 
       {/* Story & Find Us */}
-      <section className="my-4 overflow-hidden rounded-[32px] bg-surface shadow-[0_8px_32px_rgba(0,0,0,0.05)]">
+      <section className="surface-raised my-4 overflow-hidden rounded-panel">
         <div className="flex w-full flex-wrap gap-10 p-[clamp(24px,5vw,56px)]">
           {/* Story */}
           <div className="min-w-0 flex-[1_1_340px] break-words">
@@ -142,7 +142,7 @@ export default function About() {
               </p>
             ))}
 
-            <div className="my-7 grid grid-cols-3 gap-4 rounded-2xl bg-surface-secondary p-5">
+            <div className="surface-sunken my-7 grid grid-cols-3 gap-4 rounded-card p-5">
               <div>
                 <strong className="block text-xl font-extrabold text-accent">
                   100%
@@ -173,7 +173,7 @@ export default function About() {
                 <ArrowRight className="size-4" />
               </Button>
               <Button
-                className="h-12 rounded-full border border-border bg-surface-secondary px-6 text-sm font-bold text-foreground"
+                className="h-12 rounded-pill border border-border bg-surface px-6 text-label font-bold text-foreground"
                 variant="outline"
                 onPress={() => navigate("/repairs")}
               >
@@ -184,7 +184,7 @@ export default function About() {
 
           {/* Find Us */}
           <div className="min-w-0 flex-[1_1_280px]">
-            <article className="rounded-[24px] bg-surface-secondary p-6 shadow-[0_4px_20px_rgba(0,0,0,0.1)]">
+            <article className="surface-raised rounded-card p-6">
               <h3 className="m-0 mb-5 text-heading font-extrabold text-foreground">
                 Find Us
               </h3>

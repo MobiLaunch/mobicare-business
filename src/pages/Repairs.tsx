@@ -93,7 +93,7 @@ export default function Repairs() {
           {FAQS.map((faq) => (
             <Accordion.Item
               key={faq.q}
-              className="overflow-hidden rounded-[18px] border border-border bg-surface shadow-sm transition-all duration-200"
+              className="surface-raised overflow-hidden rounded-card transition-all duration-200"
               id={faq.q}
             >
               <Accordion.Heading>

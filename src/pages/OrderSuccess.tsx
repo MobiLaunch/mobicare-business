@@ -67,7 +67,7 @@ export default function OrderSuccess() {
         </p>
 
         {order && (
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-surface-secondary px-4 py-1.5 text-sm font-semibold text-foreground">
+          <div className="mt-4 inline-flex items-center gap-2 rounded-pill border border-border bg-surface px-4 py-1.5 text-label font-semibold text-foreground">
             <span>Order ID:</span>
             <span className="font-mono text-accent">{order.id}</span>
           </div>
@@ -76,7 +76,7 @@ export default function OrderSuccess() {
 
       {/* Dynamic Delivery Timeline */}
       <section
-        className="mt-10 overflow-hidden rounded-[28px] border border-border bg-surface p-6 shadow-sm sm:p-8"
+        className="surface-raised mt-10 overflow-hidden rounded-panel p-6 sm:p-8"
         id="delivery-timeline"
       >
         <h3 className="m-0 mb-6 text-lg font-bold text-foreground">
@@ -133,7 +133,7 @@ export default function OrderSuccess() {
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
           {/* Items Summary */}
           <section
-            className="rounded-[28px] border border-border bg-surface p-6 sm:p-8"
+            className="surface-raised rounded-panel p-6 sm:p-8"
             id="order-items"
           >
             <h3 className="m-0 mb-4 text-base font-bold text-foreground">
@@ -201,7 +201,7 @@ export default function OrderSuccess() {
 
           {/* Delivery & Customer Info */}
           <section className="flex flex-col gap-6" id="delivery-info">
-            <div className="rounded-[28px] border border-border bg-surface p-6">
+            <div className="surface-raised rounded-panel p-6">
               <h3 className="m-0 mb-3 text-sm font-bold text-foreground">
                 Shipping Destination
               </h3>
@@ -219,7 +219,7 @@ export default function OrderSuccess() {
               </p>
             </div>
 
-            <div className="rounded-[28px] border border-border bg-accent-soft p-6">
+            <div className="surface-accent rounded-panel p-6">
               <h3 className="m-0 mb-2 text-sm font-bold text-accent">
                 Need Help with Your Order?
               </h3>
