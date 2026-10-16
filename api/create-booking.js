@@ -93,6 +93,7 @@ export default async function handler(req, res) {
       appt_time: apptTime,
       notes: booking.notes || "",
       visit_type: booking.visit_type || booking.visitType || "in-store",
+      visit_location_type: booking.visit_location_type || booking.visitLocationType || null,
       home_address: booking.home_address || booking.homeAddress || "",
       status: "pending",
       ...(userId ? { user_id: userId } : {}),

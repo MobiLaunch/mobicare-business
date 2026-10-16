@@ -35,6 +35,7 @@ export interface Category {
   description: string;
   icon: string;
   sortOrder: number;
+  parentId: string | null;
 }
 
 // A cart item is a full Product snapshot at add-time, plus a quantity — see
@@ -81,7 +82,7 @@ export interface Booking {
 // Caught while porting Bookings.tsx: the original `Booking` type's index
 // signature would have let every field silently type as `unknown` here.
 export interface BookingRecord {
-  id: string;
+  id: string | number;
   status: string;
   created_at?: string;
   customer_name: string;
@@ -95,7 +96,25 @@ export interface BookingRecord {
   issue?: string;
   notes?: string;
   visit_type?: string;
+  visit_location_type?: string;
   home_address?: string;
+}
+
+// A direct customer <-> shop message. Lives in `customer_messages`, a table
+// owned by the NovaOps POS repo (mobilaunch/novaops-updated) — see that
+// repo's supabase/migrations/20260905_customer_messages.sql for the schema
+// and RLS. The shop reads/replies from NovaOps Messages -> Customer Chat.
+export interface CustomerChatMessage {
+  id: number;
+  profile_id: string;
+  customer_user_id: string | null;
+  ticket_id: number | null;
+  customer_name: string;
+  customer_email: string;
+  direction: "inbound" | "outbound";
+  body: string;
+  read: boolean;
+  created_at: string;
 }
 
 export interface CustomerProfile {

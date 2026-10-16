@@ -107,10 +107,46 @@ export interface CtaStrip {
   primaryCta: string;
   secondaryCta: string;
 }
-export interface DeviceType {
+// Device taxonomy: Manufacturer → Device Type → Model → Generation(s).
+// Generation is optional per model — a model with no generations listed is
+// bookable on its own (e.g. a one-off product with no year/variant split).
+export interface DeviceModel {
   id: string;
   name: string;
-  models: string[];
+  generations: string[];
+}
+export interface DeviceCategory {
+  id: string;
+  name: string;
+  models: DeviceModel[];
+}
+/**
+ * Device types, in the order a repair counter meets them rather than
+ * alphabetically. The catalogue is stored brand-first, so the booking wizard
+ * derives its first step from this list and shows only the brands that make
+ * that kind of device.
+ */
+export const DEVICE_KIND_ORDER = [
+  "Phone",
+  "Tablet",
+  "Laptop",
+  "Desktop",
+  "Watch",
+  "Audio",
+  "Smart Home",
+] as const;
+
+export interface DeviceManufacturer {
+  id: string;
+  name: string;
+  categories: DeviceCategory[];
+}
+
+export interface HouseCallPricing {
+  residentialFirstHour: number;
+  residentialAdditionalHourRate: number;
+  commercialFirstHour: number;
+  commercialAdditionalHourRate: number;
 }
 
 export interface SiteContent {
@@ -126,7 +162,8 @@ export interface SiteContent {
   social: Social;
   footer: SiteFooter;
   ctaStrip: CtaStrip;
-  deviceTypes: DeviceType[];
+  deviceManufacturers: DeviceManufacturer[];
+  houseCallPricing: HouseCallPricing;
 }
 
 // ─── Default site content ──────────────────────────────────────────────────
@@ -154,12 +191,12 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     {
       icon: "shield",
       label: "90-Day Warranty",
-      desc: "All repairs covered, no questions asked",
+      desc: "Every part we replace is covered",
     },
     {
       icon: "schedule",
-      label: "Free Diagnostics",
-      desc: "No charge to find out what's wrong",
+      label: "$35 Bench Fee",
+      desc: "Flat diagnostic fee on any device",
     },
     {
       icon: "star",
@@ -171,7 +208,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     eyebrow: "Device Repair",
     headline: "Broken device?\nWe fix it fast.",
     description:
-      "Cracked screens, dead batteries, water damage, charging ports, cameras \u2014 if it's broken, there's a good chance we can fix it same-day. Free diagnostic on every device.",
+      "Cracked screens, dead batteries, water damage, charging ports, cameras \u2014 if it's broken, there's a good chance we can fix it same-day. $35 bench fee to diagnose any device.",
     primaryCta: "See Repair Services",
     secondaryCta: "Call First",
   },
@@ -199,7 +236,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       name: "Water Damage Recovery",
       icon: "water_drop",
       duration: "24\u201348 hours",
-      priceRange: "Free diagnostic",
+      priceRange: "$35 Bench Fee",
       description:
         "Dropped your phone in water? Bring it in immediately. Our ultrasonic cleaning process saves most devices.",
     },
@@ -255,7 +292,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     lead: "We're a locally-owned electronics repair shop in Fairfield, Illinois \u2014 serving Wayne County and surrounding areas with honest, fast, quality repairs.",
     story: [
       "Mobicare started with a simple belief: your devices should be repaired by someone who actually cares about doing the job right. As a locally-owned shop, we're not chasing volume \u2014 we're building a reputation, one repair at a time.",
-      "We fix what the big-box stores won't touch, and we're honest about what can and can't be done. Free diagnostics mean you'll always know the cost before committing to a repair. No surprises, no hidden fees.",
+      "We fix what the big-box stores won't touch, and we're honest about what can and can't be done. A $35 bench fee covers full diagnostics on every device, so you'll always know the cost before committing to a repair. No surprises, no hidden fees.",
       "We're also expanding into accessories and certified pre-owned devices \u2014 making it easier for everyone in southern Illinois to get the gear they need at fair prices.",
     ],
   },
@@ -320,74 +357,1024 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     primaryCta: "Book Appointment",
     secondaryCta: "Browse Shop",
   },
-  deviceTypes: [
+  deviceManufacturers: [
     {
-      id: "iphone",
-      name: "iPhone",
-      models: [
-        "iPhone 15 Pro Max",
-        "iPhone 15 Pro",
-        "iPhone 15",
-        "iPhone 14 Pro Max",
-        "iPhone 14 Pro",
-        "iPhone 14",
-        "iPhone 13",
-        "iPhone 12",
-        "iPhone 11",
-        "iPhone SE",
+      id: "apple",
+      name: "Apple",
+      categories: [
+        {
+          id: "apple-phone",
+          name: "Phone",
+          models: [
+            {
+              id: "apple-iphone",
+              name: "iPhone",
+              generations: [
+                "17 Pro Max",
+                "17 Pro",
+                "17",
+                "Air",
+                "16e",
+                "16 Pro Max",
+                "16 Pro",
+                "16 Plus",
+                "16",
+                "15 Pro Max",
+                "15 Pro",
+                "15 Plus",
+                "15",
+                "SE (3rd gen)",
+                "14 Pro Max",
+                "14 Pro",
+                "14 Plus",
+                "14",
+                "13 Pro Max",
+                "13 Pro",
+                "13",
+                "13 mini",
+                "12 Pro Max",
+                "12 Pro",
+                "12",
+                "12 mini",
+                "SE (2nd gen)",
+                "11 Pro Max",
+                "11 Pro",
+                "11",
+              ],
+            },
+          ],
+        },
+        {
+          id: "apple-tablet",
+          name: "Tablet",
+          models: [
+            {
+              id: "apple-ipad-pro",
+              name: "iPad Pro",
+              generations: [
+                "(8th gen, M5)",
+                "(7th gen, M4)",
+                "(6th gen, M2)",
+                "(5th gen, M1)",
+                "(4th gen, A12Z)",
+              ],
+            },
+            {
+              id: "apple-ipad-air",
+              name: "iPad Air",
+              generations: [
+                "(8th gen, M4)",
+                "(7th gen, M3)",
+                "(6th gen, M2)",
+                "(5th gen, M1)",
+                "(4th gen)",
+                "(3rd gen)",
+              ],
+            },
+            {
+              id: "apple-ipad",
+              name: "iPad",
+              generations: [
+                "(11th gen, A16)",
+                "(10th gen)",
+                "(9th gen)",
+                "(8th gen)",
+                "(7th gen)",
+              ],
+            },
+            {
+              id: "apple-ipad-mini",
+              name: "iPad mini",
+              generations: ["(7th gen, A17 Pro)", "(6th gen)", "(5th gen)"],
+            },
+          ],
+        },
+        {
+          id: "apple-laptop",
+          name: "Laptop",
+          models: [
+            {
+              id: "apple-macbook-pro",
+              name: "MacBook Pro",
+              generations: [
+                '16" (M5 Pro/Max)',
+                '14" (M5)',
+                '16" (M4 Pro/Max)',
+                '14" (M4)',
+                '16" (M3 Pro/Max)',
+                '14" (M3)',
+                '16" (M2 Pro/Max)',
+                '14" (M2 Pro/Max)',
+                '13" (M2)',
+                '16" (M1 Pro/Max)',
+                '14" (M1 Pro/Max)',
+                '13" (M1)',
+                '16" (Intel)',
+                '13" (Intel)',
+              ],
+            },
+            {
+              id: "apple-macbook-air",
+              name: "MacBook Air",
+              generations: [
+                '15" (M5)',
+                '13" (M5)',
+                '15" (M4)',
+                '13" (M4)',
+                '15" (M3)',
+                '13" (M3)',
+                '15" (M2)',
+                '13" (M2)',
+                '13" (M1)',
+                '13" (Intel)',
+              ],
+            },
+            { id: "apple-macbook-neo", name: "MacBook Neo", generations: [] },
+          ],
+        },
+        {
+          id: "apple-desktop",
+          name: "Desktop",
+          models: [
+            {
+              id: "apple-mac-studio",
+              name: "Mac Studio",
+              generations: [
+                "(M5 Max/Ultra)",
+                "(M3 Ultra)",
+                "(M2 Max/Ultra)",
+                "(M1 Max/Ultra)",
+              ],
+            },
+            {
+              id: "apple-mac-mini",
+              name: "Mac mini",
+              generations: ["(M6/M5 Pro)", "(M4/M4 Pro)", "(M1)", "(Intel)"],
+            },
+            {
+              id: "apple-imac",
+              name: "iMac",
+              generations: ['24" (M4)', '24" (M3)', '24" (M1)', "(Intel)"],
+            },
+            {
+              id: "apple-mac-pro",
+              name: "Mac Pro",
+              generations: ["(M2 Ultra)", "(2019, Intel Xeon)"],
+            },
+          ],
+        },
+        {
+          id: "apple-watch",
+          name: "Watch",
+          models: [
+            {
+              id: "apple-series",
+              name: "Series",
+              generations: ["11", "10", "9", "8", "7", "6", "5"],
+            },
+            {
+              id: "apple-se",
+              name: "SE",
+              generations: ["(3rd gen)", "(2nd gen)", "(1st gen)"],
+            },
+            {
+              id: "apple-ultra",
+              name: "Ultra",
+              generations: ["3", "2", "(1st gen)"],
+            },
+          ],
+        },
+        {
+          id: "apple-audio",
+          name: "Audio",
+          models: [
+            {
+              id: "apple-airpods-pro",
+              name: "AirPods Pro",
+              generations: ["3", "(2nd gen)", "(1st gen)"],
+            },
+            {
+              id: "apple-airpods-max",
+              name: "AirPods Max",
+              generations: ["2", "(1st gen)"],
+            },
+            {
+              id: "apple-airpods",
+              name: "AirPods",
+              generations: ["4 (ANC)", "4", "(3rd gen)", "(2nd gen)"],
+            },
+          ],
+        },
+        {
+          id: "apple-smart-home",
+          name: "Smart Home",
+          models: [
+            {
+              id: "apple-homepod",
+              name: "HomePod",
+              generations: ["(2nd gen)", "(1st gen)"],
+            },
+            { id: "apple-homepod-mini", name: "HomePod mini", generations: [] },
+          ],
+        },
       ],
     },
     {
-      id: "android",
-      name: "Android / Samsung",
-      models: [
-        "Galaxy S24 Ultra",
-        "Galaxy S24",
-        "Galaxy S23 Ultra",
-        "Galaxy S23",
-        "Galaxy S22 Ultra",
-        "Galaxy A54",
-        "Pixel 8 Pro",
-        "Pixel 8",
+      id: "samsung",
+      name: "Samsung",
+      categories: [
+        {
+          id: "samsung-phone",
+          name: "Phone",
+          models: [
+            {
+              id: "samsung-galaxy",
+              name: "Galaxy",
+              generations: [
+                "S26 Ultra",
+                "S25 Ultra",
+                "S24 FE",
+                "Z Fold 7",
+                "Z Flip 7",
+                "A57 5G",
+                "A56",
+                "A36",
+                "A27 5G",
+                "A17 5G",
+                "A17 4G",
+                "A07 4G",
+              ],
+            },
+          ],
+        },
+        {
+          id: "samsung-tablet",
+          name: "Tablet",
+          models: [
+            {
+              id: "samsung-galaxy-tab",
+              name: "Galaxy Tab",
+              generations: ["S11 Ultra", "S10 FE+", "A11+", "A11"],
+            },
+          ],
+        },
+        {
+          id: "samsung-laptop",
+          name: "Laptop",
+          models: [
+            {
+              id: "samsung-galaxy",
+              name: "Galaxy",
+              generations: ["Book6 Pro", 'Chromebook Go 14"'],
+            },
+          ],
+        },
+        {
+          id: "samsung-watch",
+          name: "Watch",
+          models: [
+            {
+              id: "samsung-galaxy-watch",
+              name: "Galaxy Watch",
+              generations: ["8", "FE"],
+            },
+          ],
+        },
+        {
+          id: "samsung-audio",
+          name: "Audio",
+          models: [
+            {
+              id: "samsung-galaxy-buds",
+              name: "Galaxy Buds",
+              generations: ["4 Pro", "4"],
+            },
+          ],
+        },
       ],
     },
     {
-      id: "ipad",
-      name: "iPad / Tablet",
-      models: [
-        "iPad Pro 12.9",
-        "iPad Pro 11",
-        "iPad Air",
-        "iPad Mini",
-        "iPad 10th Gen",
-        "Galaxy Tab S9",
+      id: "google",
+      name: "Google",
+      categories: [
+        {
+          id: "google-phone",
+          name: "Phone",
+          models: [
+            {
+              id: "google-pixel",
+              name: "Pixel",
+              generations: ["10 Pro Fold", "10 Pro", "10a", "8a"],
+            },
+          ],
+        },
+        {
+          id: "google-tablet",
+          name: "Tablet",
+          models: [
+            {
+              id: "google-pixel-tablet",
+              name: "Pixel Tablet",
+              generations: [],
+            },
+          ],
+        },
+        {
+          id: "google-watch",
+          name: "Watch",
+          models: [
+            {
+              id: "google-pixel-watch",
+              name: "Pixel Watch",
+              generations: ["4"],
+            },
+          ],
+        },
+        {
+          id: "google-audio",
+          name: "Audio",
+          models: [
+            {
+              id: "google-pixel-buds",
+              name: "Pixel Buds",
+              generations: ["Pro 2"],
+            },
+          ],
+        },
+        {
+          id: "google-smart-home",
+          name: "Smart Home",
+          models: [
+            {
+              id: "google-nest",
+              name: "Nest",
+              generations: [
+                "Hub Max",
+                "Learning Thermostat (4th gen)",
+                "Thermostat (2020)",
+                "Doorbell (3rd gen, wired)",
+              ],
+            },
+            {
+              id: "google-nest-x-yale",
+              name: "Nest x Yale",
+              generations: ["Smart Lock"],
+            },
+          ],
+        },
       ],
     },
     {
-      id: "laptop",
-      name: "Laptop / PC",
-      models: [
-        "MacBook Pro M-Series",
-        "MacBook Air M-Series",
-        "Dell XPS",
-        "Lenovo ThinkPad",
-        "HP Spectre",
+      id: "motorola",
+      name: "Motorola",
+      categories: [
+        {
+          id: "motorola-phone",
+          name: "Phone",
+          models: [
+            {
+              id: "motorola-moto",
+              name: "Moto",
+              generations: [
+                "G 2025",
+                "G Stylus",
+                "G Power",
+                "G Play",
+                "G85 5G",
+                "G56",
+              ],
+            },
+            { id: "motorola-edge", name: "Edge", generations: ["70 Fusion"] },
+          ],
+        },
+        {
+          id: "motorola-tablet",
+          name: "Tablet",
+          models: [
+            {
+              id: "motorola-motopad",
+              name: "MotoPad",
+              generations: ["(2026)"],
+            },
+          ],
+        },
       ],
     },
     {
-      id: "console",
-      name: "Game Console",
-      models: [
-        "PlayStation 5",
-        "PlayStation 4",
-        "Xbox Series X",
-        "Xbox Series S",
-        "Nintendo Switch OLED",
-        "Nintendo Switch",
+      id: "oneplus",
+      name: "OnePlus",
+      categories: [
+        {
+          id: "oneplus-phone",
+          name: "Phone",
+          models: [
+            { id: "oneplus-oneplus", name: "OnePlus", generations: ["13R"] },
+            { id: "oneplus-nord", name: "Nord", generations: ["N-series"] },
+          ],
+        },
+        {
+          id: "oneplus-watch",
+          name: "Watch",
+          models: [{ id: "oneplus-watch", name: "Watch", generations: ["2R"] }],
+        },
       ],
     },
-    { id: "other", name: "Other Device", models: [] },
+    {
+      id: "nothing",
+      name: "Nothing",
+      categories: [
+        {
+          id: "nothing-phone",
+          name: "Phone",
+          models: [
+            {
+              id: "nothing-phone",
+              name: "Phone",
+              generations: ["(4b)", "(3a)"],
+            },
+          ],
+        },
+        {
+          id: "nothing-watch",
+          name: "Watch",
+          models: [
+            { id: "nothing-cmf", name: "CMF", generations: ["Watch 3 Pro"] },
+          ],
+        },
+      ],
+    },
+    {
+      id: "tcl",
+      name: "TCL",
+      categories: [
+        {
+          id: "tcl-phone",
+          name: "Phone",
+          models: [
+            {
+              id: "tcl-tcl",
+              name: "TCL",
+              generations: ["50 series", "40 series"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "hp",
+      name: "HP",
+      categories: [
+        {
+          id: "hp-laptop",
+          name: "Laptop",
+          models: [
+            {
+              id: "hp-hp",
+              name: "HP",
+              generations: ["17 series", "15 series", "14 series"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "dell",
+      name: "Dell",
+      categories: [
+        {
+          id: "dell-laptop",
+          name: "Laptop",
+          models: [{ id: "dell-xps", name: "XPS", generations: [] }],
+        },
+      ],
+    },
+    {
+      id: "alienware",
+      name: "Alienware",
+      categories: [
+        {
+          id: "alienware-laptop",
+          name: "Laptop",
+          models: [
+            {
+              id: "alienware-alienware",
+              name: "Alienware",
+              generations: ["16X Aurora"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "lenovo",
+      name: "Lenovo",
+      categories: [
+        {
+          id: "lenovo-tablet",
+          name: "Tablet",
+          models: [
+            { id: "lenovo-tab", name: "Tab", generations: ["Plus"] },
+            { id: "lenovo-idea-tab", name: "Idea Tab", generations: [] },
+          ],
+        },
+        {
+          id: "lenovo-laptop",
+          name: "Laptop",
+          models: [
+            { id: "lenovo-yoga", name: "Yoga", generations: [] },
+            {
+              id: "lenovo-ideapad",
+              name: "IdeaPad",
+              generations: ["Pro series"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "asus",
+      name: "Asus",
+      categories: [
+        {
+          id: "asus-laptop",
+          name: "Laptop",
+          models: [
+            { id: "asus-zenbook", name: "Zenbook", generations: ["A14"] },
+            { id: "asus-proart", name: "ProArt", generations: ["PZ14"] },
+            {
+              id: "asus-chromebook-plus",
+              name: "Chromebook Plus",
+              generations: ["CX34"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "acer",
+      name: "Acer",
+      categories: [
+        {
+          id: "acer-laptop",
+          name: "Laptop",
+          models: [
+            {
+              id: "acer-swift",
+              name: "Swift",
+              generations: ["16 AI", "Go 16 AI"],
+            },
+            { id: "acer-nitro", name: "Nitro", generations: ["V 16 AI"] },
+          ],
+        },
+      ],
+    },
+    {
+      id: "msi",
+      name: "MSI",
+      categories: [
+        {
+          id: "msi-laptop",
+          name: "Laptop",
+          models: [
+            { id: "msi-prestige", name: "Prestige", generations: ["16 AI+"] },
+          ],
+        },
+      ],
+    },
+    {
+      id: "lg",
+      name: "LG",
+      categories: [
+        {
+          id: "lg-laptop",
+          name: "Laptop",
+          models: [{ id: "lg-gram", name: "gram", generations: ["Pro 16"] }],
+        },
+      ],
+    },
+    {
+      id: "framework",
+      name: "Framework",
+      categories: [
+        {
+          id: "framework-laptop",
+          name: "Laptop",
+          models: [
+            {
+              id: "framework-framework-laptop",
+              name: "Framework Laptop",
+              generations: ["13"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "gateway",
+      name: "Gateway",
+      categories: [
+        {
+          id: "gateway-laptop",
+          name: "Laptop",
+          models: [
+            {
+              id: "gateway-gateway",
+              name: "Gateway",
+              generations: ['16" FHD Windows 11'],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "microsoft",
+      name: "Microsoft",
+      categories: [
+        {
+          id: "microsoft-tablet",
+          name: "Tablet",
+          models: [
+            {
+              id: "microsoft-surface",
+              name: "Surface",
+              generations: ["Pro 11"],
+            },
+          ],
+        },
+        {
+          id: "microsoft-laptop",
+          name: "Laptop",
+          models: [
+            {
+              id: "microsoft-surface",
+              name: "Surface",
+              generations: ["Pro (base)"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "amazon",
+      name: "Amazon",
+      categories: [
+        {
+          id: "amazon-tablet",
+          name: "Tablet",
+          models: [
+            {
+              id: "amazon-fire",
+              name: "Fire",
+              generations: [
+                "Max 11",
+                "HD 10 Kids",
+                "HD 8 Kids Pro",
+                "HD 8",
+                "7 Kids",
+              ],
+            },
+          ],
+        },
+        {
+          id: "amazon-smart-home",
+          name: "Smart Home",
+          models: [
+            {
+              id: "amazon-echo",
+              name: "Echo",
+              generations: ["Hub", "Show 8", "(4th gen)", "Dot Max", "Pop"],
+            },
+            {
+              id: "amazon-smart-thermostat",
+              name: "Smart Thermostat",
+              generations: [],
+            },
+            { id: "amazon-smart-plug", name: "Smart Plug", generations: [] },
+          ],
+        },
+      ],
+    },
+    {
+      id: "blink",
+      name: "Blink",
+      categories: [
+        {
+          id: "blink-smart-home",
+          name: "Smart Home",
+          models: [
+            {
+              id: "blink-blink",
+              name: "Blink",
+              generations: ["Battery Doorbell 2K+", "Mini 2"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "ring",
+      name: "Ring",
+      categories: [
+        {
+          id: "ring-smart-home",
+          name: "Smart Home",
+          models: [
+            {
+              id: "ring-ring",
+              name: "Ring",
+              generations: ["Battery Doorbell Pro"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "remarkable",
+      name: "reMarkable",
+      categories: [
+        {
+          id: "remarkable-tablet",
+          name: "Tablet",
+          models: [
+            { id: "remarkable-paper-pro", name: "Paper Pro", generations: [] },
+          ],
+        },
+      ],
+    },
+    {
+      id: "garmin",
+      name: "Garmin",
+      categories: [
+        {
+          id: "garmin-watch",
+          name: "Watch",
+          models: [
+            { id: "garmin-venu", name: "Venu", generations: ["4"] },
+            {
+              id: "garmin-forerunner",
+              name: "Forerunner",
+              generations: ["165"],
+            },
+            { id: "garmin-vivosmart", name: "vivosmart", generations: ["5"] },
+          ],
+        },
+      ],
+    },
+    {
+      id: "fitbit",
+      name: "Fitbit",
+      categories: [
+        {
+          id: "fitbit-watch",
+          name: "Watch",
+          models: [
+            { id: "fitbit-sense", name: "Sense", generations: ["2"] },
+            { id: "fitbit-charge", name: "Charge", generations: ["6"] },
+            { id: "fitbit-inspire", name: "Inspire", generations: ["3"] },
+          ],
+        },
+      ],
+    },
+    {
+      id: "amazfit",
+      name: "Amazfit",
+      categories: [
+        {
+          id: "amazfit-watch",
+          name: "Watch",
+          models: [
+            { id: "amazfit-active", name: "Active", generations: ["2"] },
+            { id: "amazfit-bip", name: "Bip", generations: ["6"] },
+          ],
+        },
+      ],
+    },
+    {
+      id: "bose",
+      name: "Bose",
+      categories: [
+        {
+          id: "bose-audio",
+          name: "Audio",
+          models: [
+            {
+              id: "bose-quietcomfort",
+              name: "QuietComfort",
+              generations: ["Ultra Earbuds (2nd gen)", "Earbuds (2024)"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "sennheiser",
+      name: "Sennheiser",
+      categories: [
+        {
+          id: "sennheiser-audio",
+          name: "Audio",
+          models: [
+            {
+              id: "sennheiser-momentum",
+              name: "Momentum",
+              generations: ["True Wireless 4"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "master-dynamic",
+      name: "Master & Dynamic",
+      categories: [
+        {
+          id: "master-dynamic-audio",
+          name: "Audio",
+          models: [
+            { id: "master-dynamic-mw08", name: "MW08", generations: [] },
+          ],
+        },
+      ],
+    },
+    {
+      id: "anker-soundcore",
+      name: "Anker Soundcore",
+      categories: [
+        {
+          id: "anker-soundcore-audio",
+          name: "Audio",
+          models: [
+            {
+              id: "anker-soundcore-space",
+              name: "Space",
+              generations: ["A40"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "sony",
+      name: "Sony",
+      categories: [
+        {
+          id: "sony-audio",
+          name: "Audio",
+          models: [{ id: "sony-wf-c710n", name: "WF-C710N", generations: [] }],
+        },
+      ],
+    },
+    {
+      id: "ecobee",
+      name: "ecobee",
+      categories: [
+        {
+          id: "ecobee-smart-home",
+          name: "Smart Home",
+          models: [
+            {
+              id: "ecobee-smart-thermostat",
+              name: "Smart Thermostat",
+              generations: ["Premium", "Enhanced"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "schlage",
+      name: "Schlage",
+      categories: [
+        {
+          id: "schlage-smart-home",
+          name: "Smart Home",
+          models: [{ id: "schlage-encode", name: "Encode", generations: [] }],
+        },
+      ],
+    },
+    {
+      id: "kwikset",
+      name: "Kwikset",
+      categories: [
+        {
+          id: "kwikset-smart-home",
+          name: "Smart Home",
+          models: [{ id: "kwikset-kevo", name: "Kevo", generations: [] }],
+        },
+      ],
+    },
+    {
+      id: "august",
+      name: "August",
+      categories: [
+        {
+          id: "august-smart-home",
+          name: "Smart Home",
+          models: [
+            {
+              id: "august-smart-lock",
+              name: "Smart Lock",
+              generations: ["Pro"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "dreame",
+      name: "Dreame",
+      categories: [
+        {
+          id: "dreame-smart-home",
+          name: "Smart Home",
+          models: [
+            {
+              id: "dreame-x60",
+              name: "X60",
+              generations: ["Max Ultra Complete"],
+            },
+            { id: "dreame-d10", name: "D10", generations: ["Plus Gen 2"] },
+          ],
+        },
+      ],
+    },
+    {
+      id: "roborock",
+      name: "Roborock",
+      categories: [
+        {
+          id: "roborock-smart-home",
+          name: "Smart Home",
+          models: [
+            { id: "roborock-saros", name: "Saros", generations: ["20"] },
+            { id: "roborock-qv", name: "QV", generations: ["35S"] },
+          ],
+        },
+      ],
+    },
+    {
+      id: "dyson",
+      name: "Dyson",
+      categories: [
+        {
+          id: "dyson-smart-home",
+          name: "Smart Home",
+          models: [
+            {
+              id: "dyson-spot-scrub-ai",
+              name: "Spot+Scrub Ai",
+              generations: [],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "shark",
+      name: "Shark",
+      categories: [
+        {
+          id: "shark-smart-home",
+          name: "Smart Home",
+          models: [
+            {
+              id: "shark-powerdetect",
+              name: "PowerDetect",
+              generations: ["UV Reveal"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "eero",
+      name: "eero",
+      categories: [
+        {
+          id: "eero-smart-home",
+          name: "Smart Home",
+          models: [{ id: "eero-eero", name: "eero", generations: ["7"] }],
+        },
+      ],
+    },
+    {
+      id: "philips",
+      name: "Philips",
+      categories: [
+        {
+          id: "philips-smart-home",
+          name: "Smart Home",
+          models: [{ id: "philips-hue", name: "Hue", generations: ["bulbs"] }],
+        },
+      ],
+    },
   ],
+  houseCallPricing: {
+    residentialFirstHour: 110,
+    residentialAdditionalHourRate: 55,
+    commercialFirstHour: 175,
+    commercialAdditionalHourRate: 87.5,
+  },
 };
 
 // ─── Font presets ───────────────────────────────────────────────────────────
@@ -503,6 +1490,13 @@ export function applyAppearance(a: Appearance) {
     s.setProperty("--heroui-primary-foreground", foregroundColor);
     s.setProperty("--color-primary", primaryColor);
     s.setProperty("--color-primary-foreground", foregroundColor);
+
+    // Soft/tinted accent (icon chips, badges, hover backgrounds) has no
+    // dedicated admin field — derive it from the custom accent so it
+    // doesn't sit stuck at the stylesheet's default green next to a
+    // customized primary color.
+    s.setProperty("--accent-soft", hexToRgba(primaryColor, isDark ? 0.16 : 0.12));
+    s.setProperty("--accent-soft-foreground", primaryColor);
   } else {
     s.removeProperty("--accent");
     s.removeProperty("--accent-foreground");
@@ -516,10 +1510,17 @@ export function applyAppearance(a: Appearance) {
     s.removeProperty("--heroui-primary-foreground");
     s.removeProperty("--color-primary");
     s.removeProperty("--color-primary-foreground");
+    s.removeProperty("--accent-soft");
+    s.removeProperty("--accent-soft-foreground");
   }
 
-  // Handle custom background overrides cleanly
-  if (a.bgBase && a.bgBase.trim()) {
+  // Handle custom background overrides cleanly. These are picked by an
+  // admin looking at one specific theme, so they only apply in that same
+  // theme — otherwise a light-mode background pick permanently overrides
+  // dark mode's own palette (inline styles beat the stylesheet's
+  // [data-theme="dark"] rules regardless of what data-theme says), leaving
+  // dark-mode text rendered on a stuck-light background.
+  if (!isDark && a.bgBase && a.bgBase.trim()) {
     s.setProperty("--background", a.bgBase);
     s.setProperty("--heroui-background", a.bgBase);
   } else {
@@ -527,13 +1528,13 @@ export function applyAppearance(a: Appearance) {
     s.removeProperty("--heroui-background");
   }
 
-  if (a.bgSurface && a.bgSurface.trim()) {
+  if (!isDark && a.bgSurface && a.bgSurface.trim()) {
     s.setProperty("--surface", a.bgSurface);
   } else {
     s.removeProperty("--surface");
   }
 
-  if (a.bgElevated && a.bgElevated.trim()) {
+  if (!isDark && a.bgElevated && a.bgElevated.trim()) {
     s.setProperty("--surface-secondary", a.bgElevated);
   } else {
     s.removeProperty("--surface-secondary");
@@ -574,6 +1575,17 @@ function pickForeground(hex: string): string {
   return luminance > 0.6 ? "#0a0a0a" : "#fafafa";
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+
+  if (h.length !== 6) return hex;
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function injectFontLink(id: string, url: string) {
   if (document.getElementById(`font-link-${id}`)) return;
   const link = document.createElement("link");
@@ -601,7 +1613,8 @@ const syncToSupabase = (state: SiteContent) => {
       social: state.social,
       footer: state.footer,
       ctaStrip: state.ctaStrip,
-      deviceTypes: state.deviceTypes,
+      deviceManufacturers: state.deviceManufacturers,
+      houseCallPricing: state.houseCallPricing,
     };
 
     void sb.auth.getSession().then(({ data }) => {
@@ -639,7 +1652,8 @@ interface SiteContentState extends SiteContent {
   addRepairService: (service: SiteRepairService) => void;
   deleteRepairService: (id: string) => void;
   setRepairServices: (services: SiteRepairService[]) => void;
-  setDeviceTypes: (deviceTypes: DeviceType[]) => void;
+  setDeviceManufacturers: (manufacturers: DeviceManufacturer[]) => void;
+  updateHouseCallPricing: (data: Partial<HouseCallPricing>) => void;
   updateBusinessHour: (index: number, data: Partial<BusinessHour>) => void;
   updateSeo: (data: Partial<Seo>) => void;
   updateSocial: (data: Partial<Social>) => void;
@@ -727,8 +1741,12 @@ export const useSiteStore = create<SiteContentState>()(
         set({ repairServices: services });
         syncToSupabase(get());
       },
-      setDeviceTypes: (deviceTypes) => {
-        set({ deviceTypes });
+      setDeviceManufacturers: (manufacturers) => {
+        set({ deviceManufacturers: manufacturers });
+        syncToSupabase(get());
+      },
+      updateHouseCallPricing: (data) => {
+        set({ houseCallPricing: { ...get().houseCallPricing, ...data } });
         syncToSupabase(get());
       },
       updateBusinessHour: (index, data) => {
@@ -762,7 +1780,7 @@ export const useSiteStore = create<SiteContentState>()(
     }),
     {
       name: "mobicare-site-content",
-      version: 2,
+      version: 3,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== "object")
           return persistedState as SiteContent;
@@ -782,6 +1800,12 @@ export const useSiteStore = create<SiteContentState>()(
           }
           state.appearance = app;
         }
+
+        // v2 → v3: deviceTypes (flat 2-level) replaced by deviceManufacturers
+        // (Manufacturer → Category → Model → Generation). Old shape doesn't
+        // convert cleanly, so drop it and let the new default seed data
+        // through instead of leaving orphaned/incompatible data around.
+        delete state.deviceTypes;
 
         return state as unknown as SiteContent;
       },

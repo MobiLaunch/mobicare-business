@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { ToastProvider } from "@heroui/react";
+import { Spinner, ToastProvider } from "@heroui/react";
 
 import { useProductStore, useCartStore } from "@/lib/store";
 import { useSiteStore, applyAppearance, getEffectiveColorScheme } from "@/lib/siteStore";
@@ -19,7 +19,10 @@ import About from "@/pages/About";
 import AdminLogin from "@/admin/AdminLogin";
 import AdminLayout from "@/admin/AdminLayout";
 import AdminProducts from "@/admin/Products";
-import AdminCategories from "@/admin/Categories";
+// Lazy-loaded: pulls in lucide-react's full ~1,767-icon dictionary for its
+// icon picker (~120KB gzipped), which would otherwise ship to every visitor
+// in the main bundle even though only admins ever load this page.
+const AdminCategories = lazy(() => import("@/admin/Categories"));
 import AdminOrders from "@/admin/Orders";
 import AdminBookings from "@/admin/Bookings";
 import AdminDashboard from "@/admin/Dashboard";
@@ -57,7 +60,7 @@ function StoreInit() {
           const defaults = useSiteStore.getState();
           if (dbContent) {
             const appearance = sanitize({ ...(defaults.appearance as unknown as Record<string, unknown>), ...(dbContent.appearance ?? {}) }) as unknown as typeof defaults.appearance;
-            const merged = { ...defaults, ...dbContent, appearance, deviceTypes: dbContent.deviceTypes || defaults.deviceTypes || [], seo: dbContent.seo || defaults.seo, social: dbContent.social || defaults.social, footer: dbContent.footer || defaults.footer, ctaStrip: dbContent.ctaStrip || defaults.ctaStrip };
+            const merged = { ...defaults, ...dbContent, appearance, deviceManufacturers: dbContent.deviceManufacturers || defaults.deviceManufacturers || [], houseCallPricing: dbContent.houseCallPricing || defaults.houseCallPricing, repairServices: dbContent.repairServices || defaults.repairServices, seo: dbContent.seo || defaults.seo, social: dbContent.social || defaults.social, footer: dbContent.footer || defaults.footer, ctaStrip: dbContent.ctaStrip || defaults.ctaStrip };
             useSiteStore.setState(merged as Partial<ReturnType<typeof useSiteStore.getState>>);
             applyAppearance({ ...merged.appearance, colorScheme: getEffectiveColorScheme(merged) });
           } else if (defaults.appearance) applyAppearance({ ...defaults.appearance, colorScheme: getEffectiveColorScheme(defaults) });
@@ -87,6 +90,7 @@ function CartRedirect() {
 export default function App() {
   return <>
     <StoreInit /><ScrollToTop /><ToastProvider /><CheckoutDrawer />
+    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Spinner size="lg" /></div>}>
     <Routes>
       <Route element={<PublicLayout><Home /></PublicLayout>} path="/" />
       <Route element={<PublicLayout><Shop /></PublicLayout>} path="/shop" />
@@ -107,5 +111,6 @@ export default function App() {
       <Route path="/admin"><Route index element={<Navigate replace to="login" />} /><Route element={<AdminLogin />} path="login" /><Route element={<RequireAdmin><AdminLayout /></RequireAdmin>}><Route element={<AdminDashboard />} path="dashboard" /><Route element={<AdminProducts />} path="products" /><Route element={<AdminCategories />} path="categories" /><Route element={<AdminOrders />} path="orders" /><Route element={<AdminBookings />} path="bookings" /><Route element={<AdminSettings />} path="settings" /><Route element={<SiteContent />} path="content" /><Route index element={<Navigate replace to="dashboard" />} /></Route></Route>
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
+    </Suspense>
   </>;
 }

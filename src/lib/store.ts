@@ -279,6 +279,7 @@ export const SEED_CATEGORIES: Category[] = [
     icon: "Zap",
     description: "Fast charging solutions",
     sortOrder: 0,
+    parentId: null,
   },
   {
     id: "cases",
@@ -286,6 +287,7 @@ export const SEED_CATEGORIES: Category[] = [
     icon: "Shield",
     description: "Protection for every style",
     sortOrder: 1,
+    parentId: null,
   },
   {
     id: "screen-protectors",
@@ -293,6 +295,7 @@ export const SEED_CATEGORIES: Category[] = [
     icon: "Layers",
     description: "Guard your display",
     sortOrder: 2,
+    parentId: null,
   },
   {
     id: "cables",
@@ -300,6 +303,7 @@ export const SEED_CATEGORIES: Category[] = [
     icon: "Cable",
     description: "Connect everything",
     sortOrder: 3,
+    parentId: null,
   },
   {
     id: "audio",
@@ -307,6 +311,7 @@ export const SEED_CATEGORIES: Category[] = [
     icon: "Headphones",
     description: "Sound without wires",
     sortOrder: 4,
+    parentId: null,
   },
   {
     id: "power",
@@ -314,6 +319,7 @@ export const SEED_CATEGORIES: Category[] = [
     icon: "Battery",
     description: "Power on the go",
     sortOrder: 5,
+    parentId: null,
   },
   {
     id: "accessories",
@@ -321,6 +327,7 @@ export const SEED_CATEGORIES: Category[] = [
     icon: "Star",
     description: "Desk & lifestyle gear",
     sortOrder: 6,
+    parentId: null,
   },
 ];
 
@@ -574,7 +581,14 @@ export const useProductStore = create<ProductState>()(
       },
 
       deleteCategory: async (id) => {
-        set({ categories: get().categories.filter((c) => c.id !== id) });
+        // Mirrors the DB's `on delete set null`: a deleted category's own
+        // subcategories get promoted to top-level, not orphaned with a
+        // parentId pointing at a row that no longer exists locally.
+        set({
+          categories: get()
+            .categories.filter((c) => c.id !== id)
+            .map((c) => (c.parentId === id ? { ...c, parentId: null } : c)),
+        });
         if (isSupabaseConfigured()) {
           await sbDeleteCategory(id);
         }

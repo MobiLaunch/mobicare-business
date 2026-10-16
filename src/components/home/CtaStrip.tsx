@@ -19,7 +19,7 @@ export default function CtaStrip() {
 
   return (
     <section className="py-6 pb-12" id="cta-banner-section">
-      <article className="overflow-hidden rounded-[28px] bg-accent text-accent-foreground">
+      <article className="overflow-hidden rounded-panel bg-accent text-accent-foreground">
         <div className="flex flex-wrap items-center gap-6 p-[clamp(20px,4vw,32px)]">
           <div className="min-w-0 flex-1 basis-60">
             <h2 className="m-0 mb-1 text-heading-sm font-semibold">

@@ -86,6 +86,20 @@ export default function Products() {
   const [searchParams] = useSearchParams();
   const products = useProductStore((s) => s.products);
   const categories = useProductStore((s) => s.categories);
+  const topLevelCategories = categories.filter((c) => !c.parentId);
+  const categoryName = (id: string) =>
+    categories.find((c) => c.id === id)?.name || id;
+  // Flat list, not react-aria's ListBox.Section+Header: that combination
+  // reproducibly crashed the popover on open in this HeroUI/react-aria
+  // version (a "recovered from concurrent render error" + hang on click) —
+  // this is the fallback the implementation plan called out in advance for
+  // exactly that possibility. Subcategories are visually indented instead.
+  const categoryListItems = topLevelCategories.flatMap((top) => [
+    { id: top.id, label: top.name, indent: false },
+    ...categories
+      .filter((c) => c.parentId === top.id)
+      .map((sub) => ({ id: sub.id, label: sub.name, indent: true })),
+  ]);
   const addProduct = useProductStore((s) => s.addProduct);
   const updateProduct = useProductStore((s) => s.updateProduct);
   const deleteProduct = useProductStore((s) => s.deleteProduct);
@@ -250,7 +264,7 @@ export default function Products() {
       header: "Category",
       render: (p) => (
         <span className="rounded-full bg-surface-tertiary px-2.5 py-1 text-xs font-semibold">
-          {p.category}
+          {categoryName(p.category)}
         </span>
       ),
     },
@@ -368,9 +382,9 @@ export default function Products() {
           <Select.Popover>
             <ListBox>
               <ListBox.Item id="all">All Categories</ListBox.Item>
-              {categories.map((c) => (
-                <ListBox.Item key={c.id} id={c.id}>
-                  {c.name}
+              {categoryListItems.map((item) => (
+                <ListBox.Item key={item.id} className={item.indent ? "pl-7 text-muted" : ""} id={item.id}>
+                  {item.indent ? `— ${item.label}` : item.label}
                 </ListBox.Item>
               ))}
             </ListBox>
@@ -430,9 +444,9 @@ export default function Products() {
                     </Select.Trigger>
                     <Select.Popover>
                       <ListBox>
-                        {categories.map((c) => (
-                          <ListBox.Item key={c.id} id={c.id}>
-                            {c.name}
+                        {categoryListItems.map((item) => (
+                          <ListBox.Item key={item.id} className={item.indent ? "pl-7 text-muted" : ""} id={item.id}>
+                            {item.indent ? `— ${item.label}` : item.label}
                           </ListBox.Item>
                         ))}
                       </ListBox>

@@ -40,8 +40,8 @@ export default function Footer() {
   const logoSrc = appearance?.logoUrl || localLogo;
 
   return (
-    <footer className="bg-surface-secondary px-4 pb-8 pt-6" id="site-footer">
-      <div className="mx-auto max-w-[1400px] rounded-[28px] bg-surface p-6 sm:p-8">
+    <footer className="border-t border-[var(--hairline)] bg-surface-secondary px-4 pb-8 pt-6" id="site-footer">
+      <div className="mx-auto max-w-[1400px] rounded-panel bg-surface p-6 sm:p-8">
         {/* Call Shop CTA */}
         {business?.phone && (
           <div className="mb-8 flex flex-wrap items-center gap-4 rounded-2xl bg-accent-soft p-5">

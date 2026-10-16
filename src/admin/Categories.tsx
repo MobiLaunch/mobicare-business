@@ -1,68 +1,33 @@
-import type { LucideIcon } from "lucide-react";
 import type { Category } from "@/types/domain";
 
 import { useState } from "react";
-import {
-  BatteryFull,
-  Cable,
-  Camera,
-  Headphones,
-  Layers,
-  Package,
-  Pencil,
-  Plug,
-  Plus,
-  Shapes,
-  Shield,
-  Smartphone,
-  Star,
-  Tag,
-  Trash2,
-  Zap,
-} from "lucide-react";
+import { FolderPlus, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import {
   Button,
   FieldError,
   InputGroup,
   Label,
+  ListBox,
   Modal,
+  Select,
   TextField,
 } from "@heroui/react";
 
 import { useProductStore, useToastStore } from "@/lib/store";
+import { allIconNames, iconFor, readableIconName, searchIcons } from "@/lib/icons";
 import AdminPageHeader from "@/admin/components/AdminPageHeader";
 import AdminConfirmDialog from "@/admin/components/AdminConfirmDialog";
-
-// NOTE (HeroUI v3 rebuild): the original icon field was a plain <select>
-// listing raw Material-Symbols-style name strings (e.g. "battery_full") with
-// no visual preview — you had to already know what each name looked like.
-// Rebuilt as a real icon grid with previews below.
-const ICON_OPTIONS: { id: string; icon: LucideIcon }[] = [
-  { id: "bolt", icon: Zap },
-  { id: "shield", icon: Shield },
-  { id: "smartphone", icon: Smartphone },
-  { id: "power", icon: Plug },
-  { id: "star", icon: Star },
-  { id: "battery_full", icon: BatteryFull },
-  { id: "headphones", icon: Headphones },
-  { id: "photo_camera", icon: Camera },
-  { id: "inventory_2", icon: Package },
-  { id: "label", icon: Tag },
-  { id: "layers", icon: Layers },
-  { id: "cable", icon: Cable },
-  { id: "category", icon: Shapes },
-];
-const iconFor = (id: string) =>
-  ICON_OPTIONS.find((o) => o.id === id)?.icon || Shapes;
 
 interface CategoryForm {
   id?: string;
   name: string;
   description: string;
   icon: string;
+  parentId: string | null;
 }
 
-const EMPTY: CategoryForm = { name: "", description: "", icon: "category" };
+const NONE_PARENT = "__none__";
+const EMPTY: CategoryForm = { name: "", description: "", icon: "category", parentId: null };
 
 export default function Categories() {
   const categories = useProductStore((s) => s.categories);
@@ -76,15 +41,22 @@ export default function Categories() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CategoryForm>({ ...EMPTY });
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [iconQuery, setIconQuery] = useState("");
 
-  const openAdd = () => {
+  const topLevel = categories.filter((c) => !c.parentId);
+  const subcategoriesOf = (id: string) => categories.filter((c) => c.parentId === id);
+  const iconResults = searchIcons(iconQuery);
+
+  const openAdd = (parentId: string | null = null) => {
     setEditingId(null);
-    setForm({ ...EMPTY });
+    setForm({ ...EMPTY, parentId });
+    setIconQuery("");
     setModalOpen(true);
   };
   const openEdit = (cat: Category) => {
     setEditingId(cat.id);
     setForm({ ...cat });
+    setIconQuery("");
     setModalOpen(true);
   };
 
@@ -107,7 +79,7 @@ export default function Categories() {
         return;
       }
       addCategory(form);
-      addToast("New category created", "success");
+      addToast(form.parentId ? "New subcategory created" : "New category created", "success");
     }
     setModalOpen(false);
   };
@@ -131,22 +103,23 @@ export default function Categories() {
     <div>
       <AdminPageHeader
         action={
-          <Button variant="primary" onPress={openAdd}>
+          <Button variant="primary" onPress={() => openAdd()}>
             <Plus className="size-4" />
             <span>Add New Category</span>
           </Button>
         }
-        description={`${categories.length} active store categories & product groupings`}
+        description={`${topLevel.length} top-level categor${topLevel.length !== 1 ? "ies" : "y"} · ${categories.length - topLevel.length} subcategor${categories.length - topLevel.length !== 1 ? "ies" : "y"}`}
         eyebrow="Taxonomy Structure"
         title="Category Management"
       />
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {categories.map((cat) => {
+        {topLevel.map((cat) => {
           const count = products.filter(
             (p) => p.category === cat.id && p.active,
           ).length;
           const CatIcon = iconFor(cat.icon);
+          const subs = subcategoriesOf(cat.id);
 
           return (
             <div
@@ -184,6 +157,50 @@ export default function Categories() {
                   {cat.description ||
                     "No description specified for this category."}
                 </p>
+
+                {subs.length > 0 && (
+                  <div className="mb-4 flex flex-col gap-1.5 border-t border-border pt-3">
+                    {subs.map((sub) => {
+                      const SubIcon = iconFor(sub.icon);
+
+                      return (
+                        <div key={sub.id} className="flex items-center gap-2 rounded-xl px-1 py-1">
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-accent">
+                            <SubIcon className="size-3.5" />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{sub.name}</span>
+                          <Button
+                            isIconOnly
+                            aria-label={`Edit ${sub.name}`}
+                            className="size-7 min-h-0"
+                            variant="ghost"
+                            onPress={() => openEdit(sub)}
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            isIconOnly
+                            aria-label={`Delete ${sub.name}`}
+                            className="size-7 min-h-0"
+                            variant="ghost"
+                            onPress={() => setDeleteConfirm(sub.id)}
+                          >
+                            <Trash2 className="size-3.5 text-danger" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <Button
+                  className="mb-4 w-full justify-center"
+                  variant="outline"
+                  onPress={() => openAdd(cat.id)}
+                >
+                  <FolderPlus className="size-4" />
+                  <span>Add Subcategory</span>
+                </Button>
               </div>
 
               <div className="flex items-center gap-2 border-t border-border pt-3">
@@ -207,7 +224,7 @@ export default function Categories() {
             <Modal.Dialog>
               <Modal.Header>
                 <Modal.Heading>
-                  {editingId ? "Edit Category" : "Create New Category"}
+                  {editingId ? "Edit Category" : form.parentId ? "Create New Subcategory" : "Create New Category"}
                 </Modal.Heading>
                 <Modal.CloseTrigger />
               </Modal.Header>
@@ -251,26 +268,89 @@ export default function Categories() {
                   </TextField>
                 )}
 
+                <div className="flex flex-col gap-1.5">
+                  <Label>Parent Category</Label>
+                  <Select
+                    selectedKey={form.parentId || NONE_PARENT}
+                    onSelectionChange={(key) =>
+                      setForm((f) => ({
+                        ...f,
+                        parentId: String(key) === NONE_PARENT ? null : String(key),
+                      }))
+                    }
+                  >
+                    <Select.Trigger>
+                      <Select.Value />
+                    </Select.Trigger>
+                    <Select.Popover>
+                      <ListBox>
+                        <ListBox.Item id={NONE_PARENT}>None (top-level category)</ListBox.Item>
+                        {topLevel
+                          .filter((c) => c.id !== editingId)
+                          .map((c) => (
+                            <ListBox.Item key={c.id} id={c.id}>{c.name}</ListBox.Item>
+                          ))}
+                      </ListBox>
+                    </Select.Popover>
+                  </Select>
+                  <p className="m-0 text-caption text-muted">
+                    Categories only nest one level deep — a subcategory can&rsquo;t have its own subcategories.
+                  </p>
+                </div>
+
                 <div>
-                  <Label>Display Icon</Label>
-                  <div className="mt-1.5 grid grid-cols-7 gap-2">
-                    {ICON_OPTIONS.map(({ id, icon: OptIcon }) => (
-                      <button
-                        key={id}
-                        aria-label={id.replace("_", " ")}
-                        aria-pressed={form.icon === id}
-                        className={`flex aspect-square items-center justify-center rounded-2xl border transition-colors ${
-                          form.icon === id
-                            ? "border-accent bg-accent-soft text-accent"
-                            : "border-border bg-surface-secondary text-foreground"
-                        }`}
-                        type="button"
-                        onClick={() => setForm((f) => ({ ...f, icon: id }))}
-                      >
-                        <OptIcon className="size-5" />
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between gap-3">
+                    <Label>Display Icon</Label>
+                    <span className="text-caption text-muted">
+                      {allIconNames.length.toLocaleString()} icons available
+                    </span>
                   </div>
+                  <TextField
+                    aria-label="Search icons"
+                    className="mb-2 mt-1.5 flex flex-col gap-1.5"
+                    value={iconQuery}
+                    onChange={setIconQuery}
+                  >
+                    <InputGroup>
+                      <InputGroup.Prefix>
+                        <Search className="size-4 text-muted" />
+                      </InputGroup.Prefix>
+                      <InputGroup.Input placeholder="Search the full icon library…" />
+                    </InputGroup>
+                  </TextField>
+                  <div className="grid max-h-56 grid-cols-7 gap-2 overflow-y-auto rounded-2xl border border-border p-2 sm:grid-cols-9">
+                    {iconResults.length === 0 && (
+                      <p className="col-span-full m-0 py-4 text-center text-label text-muted">
+                        No icons match &ldquo;{iconQuery}&rdquo;.
+                      </p>
+                    )}
+                    {iconResults.map((name) => {
+                      const OptIcon = iconFor(name);
+
+                      return (
+                        <button
+                          key={name}
+                          aria-label={readableIconName(name)}
+                          aria-pressed={form.icon === name}
+                          title={readableIconName(name)}
+                          className={`flex aspect-square items-center justify-center rounded-2xl border transition-colors ${
+                            form.icon === name
+                              ? "border-accent bg-accent-soft text-accent"
+                              : "border-border bg-surface-secondary text-foreground hover:bg-surface-tertiary"
+                          }`}
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, icon: name }))}
+                        >
+                          <OptIcon className="size-5" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!iconQuery.trim() && (
+                    <p className="m-0 mt-1.5 text-caption text-muted">
+                      Showing quick picks — search above for the rest of the library.
+                    </p>
+                  )}
                 </div>
               </Modal.Body>
               <Modal.Footer className="justify-end gap-2">
@@ -287,7 +367,7 @@ export default function Categories() {
       </Modal>
 
       <AdminConfirmDialog
-        description="Products currently linked to this category will lose their category association."
+        description="Products currently linked to this category will lose their category association. If this is a top-level category, any of its subcategories will be promoted to top-level rather than deleted."
         isOpen={!!deleteConfirm}
         title="Delete Category?"
         onClose={() => setDeleteConfirm(null)}

@@ -5,6 +5,7 @@ import type {
   CustomerProfile,
   Booking,
   BookingRecord,
+  CustomerChatMessage,
 } from "@/types/domain";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -246,6 +247,57 @@ export async function sbFetchCustomerOrders(userId: string) {
     .order("created_at", { ascending: false });
 
   return { data: data || [], error };
+}
+
+// ─── Customer <-> shop chat (NovaOps Messages -> Customer Chat) ────────────
+// customer_messages lives in the NovaOps repo's migrations; RLS there lets a
+// signed-in customer read/insert only their own thread (direction must be
+// 'inbound' on insert — the shop is the only side allowed to post 'outbound').
+
+export async function sbFetchCustomerChat(
+  userId: string,
+): Promise<{ data: CustomerChatMessage[]; error: unknown }> {
+  const sb = getClient();
+
+  if (!sb || !userId) return { data: [], error: null };
+
+  const { data, error } = await sb
+    .from("customer_messages")
+    .select("*")
+    .eq("customer_user_id", userId)
+    .order("created_at", { ascending: true });
+
+  return { data: (data as CustomerChatMessage[] | null) || [], error };
+}
+
+export async function sbSendCustomerChatMessage(
+  userId: string,
+  customerName: string,
+  customerEmail: string,
+  body: string,
+): Promise<{ data: CustomerChatMessage | null; error: unknown }> {
+  const sb = getClient();
+
+  if (!sb) return { data: null, error: { message: "Supabase not configured." } };
+
+  // profile_id (the shop's NovaOps account) is intentionally omitted — a
+  // database trigger on the NovaOps side (customer_messages_fill_profile_id,
+  // supabase/migrations/20260906_customer_messages_auto_profile.sql in the
+  // novaops-updated repo) fills it in from staff_users, so the website never
+  // needs to know or configure the shop's internal Supabase Auth user id.
+  const { data, error } = await sb
+    .from("customer_messages")
+    .insert({
+      customer_user_id: userId,
+      customer_name: customerName,
+      customer_email: customerEmail,
+      direction: "inbound",
+      body: sanitizeInput(body) as string,
+    })
+    .select()
+    .single();
+
+  return { data: data as CustomerChatMessage | null, error };
 }
 
 export async function sendCustomerPasswordReset(email: string) {
@@ -683,6 +735,10 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
         (booking.visit_type as string) ||
         (booking.visitType as string) ||
         "in-store",
+      visit_location_type:
+        (booking.visit_location_type as string) ||
+        (booking.visitLocationType as string) ||
+        null,
       home_address:
         (booking.home_address as string) ||
         (booking.homeAddress as string) ||
@@ -733,7 +789,7 @@ const VALID_BOOKING_STATUSES = [
 ];
 
 export async function sbUpdateBookingStatus(
-  id: string,
+  id: string | number,
   status: string,
 ): Promise<boolean | null> {
   const sb = getClient();
@@ -760,7 +816,7 @@ export async function sbUpdateBookingStatus(
 }
 
 export async function sbUpdateBooking(
-  id: string,
+  id: string | number,
   updates: Partial<BookingRecord>,
 ): Promise<boolean | null> {
   const sb = getClient();
@@ -917,6 +973,9 @@ function categoryToDb(c: Partial<Category>): Record<string, unknown> {
   if (c.description !== undefined) out.description = c.description;
   if (c.icon !== undefined) out.icon = c.icon;
   if (c.sortOrder !== undefined) out.sort_order = c.sortOrder;
+  // !== undefined (not a truthy check) — parentId: null is a real value
+  // meaning "clear this subcategory back to top-level", not "unset".
+  if (c.parentId !== undefined) out.parent_id = c.parentId;
 
   return out;
 }
@@ -928,6 +987,7 @@ function dbToCategory(row: any): Category {
     description: row.description || "",
     icon: row.icon || "Star",
     sortOrder: row.sort_order || 0,
+    parentId: row.parent_id ?? null,
   };
 }
 

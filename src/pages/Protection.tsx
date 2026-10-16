@@ -237,7 +237,7 @@ export default function Protection() {
             <span>Official AKKO Protection Partner</span>
           </div>
 
-          <h1 className="m-0 mb-4 text-display font-extrabold leading-[1.12] tracking-tight text-foreground">
+          <h1 className="type-display m-0 mb-4 text-display text-foreground">
             Full Tech Protection.
             <br />
             <span className="text-accent">Zero Headaches.</span>
@@ -311,9 +311,9 @@ export default function Protection() {
           {PLANS.map((plan) => (
             <div
               key={plan.id}
-              className={`relative flex flex-col justify-between rounded-[32px] border bg-surface p-7 transition-all duration-250 hover:-translate-y-1 hover:shadow-xl ${
+              className={`surface-raised lift relative flex flex-col justify-between rounded-panel p-7 ${
                 plan.popular
-                  ? "border-2 border-accent shadow-[0_12px_36px_var(--accent-soft)]"
+                  ? "ring-2 ring-accent shadow-[var(--elev-3),0_0_48px_-10px_var(--accent-glow)]"
                   : "border-border shadow-sm"
               }`}
               id={`plan-card-${plan.id}`}
@@ -381,7 +381,7 @@ export default function Protection() {
 
       {/* ─── Deductible & Savings Comparison Table ─── */}
       <section
-        className="mb-20 overflow-hidden rounded-[32px] border border-border bg-surface p-6 sm:p-10 shadow-sm"
+        className="surface-raised mb-20 overflow-hidden rounded-panel p-6 sm:p-10"
         id="savings-comparison-table"
       >
         <div className="mb-8 text-center sm:text-left">
@@ -460,7 +460,7 @@ export default function Protection() {
           {COVERAGE_ITEMS.map((item) => (
             <div
               key={item.title}
-              className="flex flex-col justify-between rounded-[24px] border border-border bg-surface p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+              className="surface-raised lift flex flex-col justify-between rounded-card p-6"
             >
               <div>
                 <span className="mb-4 flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent">
@@ -480,7 +480,7 @@ export default function Protection() {
 
       {/* ─── How Claims Work (3-Step Timeline) ─── */}
       <section
-        className="mb-20 rounded-[32px] bg-surface-secondary/70 p-8 sm:p-12"
+        className="mb-20 rounded-panel bg-surface-secondary/70 p-8 sm:p-12"
         id="how-claims-work"
       >
         <div className="mb-10 text-center">
@@ -497,7 +497,7 @@ export default function Protection() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <div className="flex flex-col rounded-[24px] border border-border bg-surface p-6 shadow-sm">
+          <div className="surface-raised flex flex-col rounded-card p-6">
             <span className="mb-4 flex size-10 items-center justify-center rounded-full bg-accent text-sm font-extrabold text-accent-foreground">
               1
             </span>
@@ -510,7 +510,7 @@ export default function Protection() {
             </p>
           </div>
 
-          <div className="flex flex-col rounded-[24px] border border-border bg-surface p-6 shadow-sm">
+          <div className="surface-raised flex flex-col rounded-card p-6">
             <span className="mb-4 flex size-10 items-center justify-center rounded-full bg-accent text-sm font-extrabold text-accent-foreground">
               2
             </span>
@@ -523,7 +523,7 @@ export default function Protection() {
             </p>
           </div>
 
-          <div className="flex flex-col rounded-[24px] border border-border bg-surface p-6 shadow-sm">
+          <div className="surface-raised flex flex-col rounded-card p-6">
             <span className="mb-4 flex size-10 items-center justify-center rounded-full bg-accent text-sm font-extrabold text-accent-foreground">
               3
             </span>
@@ -556,7 +556,7 @@ export default function Protection() {
             return (
               <div
                 key={faq.q}
-                className="overflow-hidden rounded-[18px] border border-border bg-surface shadow-sm transition-all duration-200"
+                className="surface-raised overflow-hidden rounded-card transition-all duration-200"
               >
                 <Button
                   aria-expanded={isOpen}
@@ -591,7 +591,7 @@ export default function Protection() {
       </section>
 
       {/* ─── Bottom CTA Strip ─── */}
-      <section className="relative overflow-hidden rounded-[32px] border border-border bg-surface p-8 text-center sm:p-12 shadow-md">
+      <section className="surface-accent relative overflow-hidden rounded-panel p-8 text-center sm:p-12">
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-[200px] w-4/5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-soft/70 blur-[50px]" />
 
         <div className="relative z-[1]">

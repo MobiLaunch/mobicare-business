@@ -50,6 +50,13 @@ export default async function handler(req, res) {
     const total = money(subtotal + shippingCost + tax);
 
     if (total <= 0) return res.status(400).json({ error: "Order total must be positive." });
+    // Stripe declines any USD charge under $0.50 — check ourselves so the
+    // customer sees a clear reason instead of a generic "payment failed".
+    if (total < 0.5) {
+      return res.status(400).json({
+        error: `Order total must be at least $0.50 to check out (currently $${total.toFixed(2)}). Please add another item.`,
+      });
+    }
     if (body.total != null) assertClose(body.total, total, "Order total");
 
     // Mobicare currently settles all commerce transactions in USD. Do not let
@@ -91,7 +98,13 @@ export default async function handler(req, res) {
     const stripeData = await stripeResponse.json().catch(() => null);
 
     if (!stripeResponse.ok) {
-      console.error("Stripe API error:", stripeData?.error?.type || stripeResponse.status);
+      console.error(
+        "Stripe API error:",
+        stripeData?.error?.type || stripeResponse.status,
+        "-",
+        stripeData?.error?.message || "(no message)",
+        stripeData?.error?.param ? `[param: ${stripeData.error.param}]` : "",
+      );
       return res.status(502).json({ error: "Unable to create payment." });
     }
 
