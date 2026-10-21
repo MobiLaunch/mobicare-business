@@ -1,77 +1,98 @@
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
-import { CalendarDays, CircleUserRound, House, Info, Moon, Shield, ShoppingBag, Store, Sun, Wrench } from "lucide-react";
-import { Badge, Button, Link } from "@heroui/react";
+import { Link, useLocation } from "react-router-dom";
+import { CalendarDays, CircleUserRound, ShoppingBag, Smartphone, Volume2, VolumeX } from "lucide-react";
 
-import { useSiteStore, getEffectiveColorScheme } from "@/lib/siteStore";
+import { useSiteStore } from "@/lib/siteStore";
 import { useCartStore } from "@/lib/store";
 import { useAuth } from "@/lib/AuthContext";
+import { useSoundStore } from "@/lib/sound";
 import localLogo from "@/assets/mobicare-logo.svg";
 import BookingWizard from "@/components/BookingWizard";
 
 const NAV_LINKS = [
-  { to: "/", label: "Home", icon: House },
-  { to: "/shop", label: "Shop", icon: Store },
-  { to: "/repairs", label: "Repairs", icon: Wrench },
-  { to: "/protection", label: "Protection", icon: Shield },
-  { to: "/about", label: "About", icon: Info },
+  { to: "/", label: "Home" },
+  { to: "/shop", label: "Shop" },
+  { to: "/repairs", label: "Repairs" },
+  { to: "/protection", label: "Protection" },
+  { to: "/about", label: "About" },
 ];
 
+/**
+ * iOS 6 navigation bar. On phones it's the classic three-slot bar (sound ·
+ * title · Book); from `lg` up the title slot grows into a segmented set of
+ * links. Primary navigation on phones lives in the tab bar (BottomNav).
+ */
 export default function Header() {
   const location = useLocation();
   const brand = useSiteStore((s) => s.brand);
   const appearance = useSiteStore((s) => s.appearance);
-  const viewerColorScheme = useSiteStore((s) => s.viewerColorScheme);
-  const setViewerColorScheme = useSiteStore((s) => s.setViewerColorScheme);
   const cart = useCartStore((s) => s.items);
   const setCartDrawerOpen = useCartStore((s) => s.setCartDrawerOpen);
   const { user, loading: authLoading } = useAuth();
+  const muted = useSoundStore((s) => s.muted);
+  const toggleSound = useSoundStore((s) => s.toggle);
   const [bookingOpen, setBookingOpen] = useState(false);
 
-  const theme = appearance ? getEffectiveColorScheme({ appearance, viewerColorScheme }) : "dark";
   const logoSrc = appearance?.logoUrl || localLogo;
-  const isActive = (path: string) => path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+  const isActive = (path: string) => (path === "/" ? location.pathname === "/" : location.pathname.startsWith(path));
   const accountLabel = authLoading ? "Account" : user ? (user.user_metadata?.full_name as string | undefined)?.split(" ")[0] || "Account" : "Sign In";
   const accountPath = user ? "/account" : "/login";
-  const accountActive = isActive("/account");
   const cartItemCount = cart.reduce((total, item) => total + (item?.qty || 0), 0);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 min-h-14 border-b border-[var(--hairline)] bg-surface/80 px-3 shadow-[var(--elev-1)] backdrop-blur-xl backdrop-saturate-150 sm:px-4" id="site-header">
-      <div className="mx-auto grid min-h-14 w-full max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4">
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-          <Button isIconOnly aria-label={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`} className="size-9 shrink-0" variant="ghost" onPress={() => setViewerColorScheme?.(theme === "dark" ? "light" : "dark")}>
-            {theme === "dark" ? <Sun aria-hidden="true" className="size-[17px]" /> : <Moon aria-hidden="true" className="size-[17px]" />}
-          </Button>
+    <header className="ios-navbar fixed inset-x-0 top-0 z-40 px-2 sm:px-4" id="site-header">
+      <div className="mx-auto grid h-11 w-full max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            aria-label={muted ? "Turn sounds on" : "Turn sounds off"}
+            aria-pressed={!muted}
+            className="ios-bar-btn w-9 !px-0"
+            type="button"
+            onClick={toggleSound}
+          >
+            {muted ? <VolumeX aria-hidden="true" className="size-4" /> : <Volume2 aria-hidden="true" className="size-4" />}
+          </button>
 
-          <nav aria-label="Primary navigation" className="hidden items-center gap-0.5 rounded-full bg-surface-secondary p-0.5 lg:flex">
-            {NAV_LINKS.map(({ to, label, icon: Icon }) => {
-              const active = isActive(to);
-              return <Link key={to} aria-current={active ? "page" : undefined} className={`inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-label font-medium transition-colors ${active ? "bg-accent text-accent-foreground shadow-[var(--elev-1)]" : "text-muted hover:bg-surface hover:text-foreground"}`} href={to}>
-                <Icon aria-hidden="true" className="size-3.5" />
-                <span>{label}</span>
-              </Link>;
-            })}
-            <Button aria-label={`Open Shopping Cart${cartItemCount > 0 ? `, ${cartItemCount} items` : ""}`} className="inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-label font-medium text-muted transition-colors hover:bg-surface hover:text-foreground" variant="ghost" onPress={() => setCartDrawerOpen(true)}>
-              <Badge.Anchor><ShoppingBag aria-hidden="true" className="size-3.5" />{cartItemCount > 0 && <Badge color="danger" size="sm"><Badge.Label>{cartItemCount}</Badge.Label></Badge>}</Badge.Anchor>
-              <span>Cart</span>
-            </Button>
+          <nav aria-label="Primary navigation" className="ml-2 !hidden items-center gap-1 lg:!flex">
+            {NAV_LINKS.map(({ to, label }) => (
+              <Link key={to} aria-current={isActive(to) ? "page" : undefined} className="ios-bar-link" to={to}>
+                {label}
+              </Link>
+            ))}
           </nav>
         </div>
 
-        <Link aria-label={brand?.name || "Mobicare Device Recovery"} className="min-w-0 justify-self-center transition-opacity hover:opacity-90 lg:translate-x-4" href="/" id="header-brand-logo">
-          {appearance?.logoType === "image" && logoSrc ? <img alt={appearance.logoAlt || brand?.name || "Logo"} className="mx-auto h-6 max-w-[130px] object-contain sm:h-7 sm:max-w-[170px] dark:brightness-0 dark:invert" src={logoSrc} /> : <div className="flex items-center gap-1.5"><span aria-hidden="true" className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-sm"><Store className="size-3.5" /></span><strong className="truncate text-sm font-bold tracking-tight text-foreground sm:text-base">{brand?.name || "Mobicare"}</strong></div>}
+        <Link aria-label={brand?.name || "Mobicare Device Recovery"} className="min-w-0 justify-self-center" id="header-brand-logo" to="/">
+          {appearance?.logoType === "image" && logoSrc ? (
+            <img alt={appearance.logoAlt || brand?.name || "Logo"} className="mx-auto h-6 max-w-[150px] object-contain brightness-0 invert" src={logoSrc} />
+          ) : (
+            <span className="ios-navbar-title flex items-center gap-1.5 text-[17px]">
+              <Smartphone aria-hidden="true" className="size-4" />
+              {brand?.name || "Mobicare"}
+            </span>
+          )}
         </Link>
 
-        <div className="flex items-center justify-end gap-1.5 sm:gap-2">
-          <Button aria-label="Book repair appointment" className="h-9 min-w-9 gap-1.5 px-2 sm:px-3 lg:px-3.5" variant="primary" onPress={() => setBookingOpen(true)}>
-            <CalendarDays aria-hidden="true" className="size-3.5" />
-            <span className="hidden sm:inline">Book Appointment</span>
-          </Button>
-          <Link aria-label={user ? "My Account" : "Sign in"} className={`hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-label font-medium lg:inline-flex ${accountActive ? "bg-surface-secondary text-foreground" : "text-foreground hover:bg-surface-secondary"}`} href={accountPath}>
-            <CircleUserRound aria-hidden="true" className="size-3.5" />
-            <span>{accountLabel}</span>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            aria-label={`Open Shopping Cart${cartItemCount > 0 ? `, ${cartItemCount} items` : ""}`}
+            className="ios-bar-btn relative !hidden w-9 !px-0 lg:!inline-flex"
+            type="button"
+            onClick={() => setCartDrawerOpen(true)}
+          >
+            <ShoppingBag aria-hidden="true" className="size-4" />
+            {cartItemCount > 0 && <span className="ios-badge absolute -right-2 -top-2 !min-w-5 !h-5 !leading-4 !text-[11px]">{cartItemCount}</span>}
+          </button>
+
+          <Link aria-label={user ? "My Account" : "Sign in"} className="ios-bar-link !hidden lg:!inline-flex" to={accountPath}>
+            <CircleUserRound aria-hidden="true" className="size-4" />
+            {accountLabel}
           </Link>
+
+          <button aria-label="Book repair appointment" className="ios-bar-btn ios-bar-btn--done" type="button" onClick={() => setBookingOpen(true)}>
+            <CalendarDays aria-hidden="true" className="size-3.5" />
+            <span>Book</span>
+          </button>
         </div>
       </div>
       {bookingOpen && <BookingWizard onClose={() => setBookingOpen(false)} />}

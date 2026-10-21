@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { Card, Chip } from "@heroui/react";
 
 import PageMeta from "@/components/PageMeta";
-import BackgroundCanvas from "@/components/BackgroundCanvas";
 
 interface AuthCardShellProps {
   metaTitle: string;
@@ -34,7 +33,6 @@ export default function AuthCardShell({
   return (
     <div className="relative min-h-screen">
       <PageMeta description={metaDescription} title={metaTitle} />
-      <BackgroundCanvas />
 
       <main className="mx-auto flex min-h-screen max-w-md items-center px-4 py-12">
         <Card className="w-full p-6 sm:p-8">

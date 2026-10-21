@@ -23,11 +23,13 @@ import {
   TextField,
 } from "@heroui/react";
 
+import { useAdminTheme } from "@/hooks/useAdminTheme";
 import { isLocalAuthAvailable, useAdminStore } from "@/lib/store";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import PageMeta from "@/components/PageMeta";
 
 export default function AdminLogin() {
+  useAdminTheme();
   const navigate = useNavigate();
   const login = useAdminStore((s) => s.login);
   const restoreSession = useAdminStore((s) => s.restoreSession);

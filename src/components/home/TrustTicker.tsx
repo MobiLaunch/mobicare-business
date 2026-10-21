@@ -2,44 +2,43 @@ import { Clock, Shield, Star, Zap, type LucideIcon } from "lucide-react";
 
 import { useSiteStore } from "@/lib/siteStore";
 
-// Trust items store an icon *name* (admin-editable, currently Material-Symbols
-// style names like "bolt"/"shield"/"schedule"/"star" left over from the old
-// BeerCSS icon system). Rather than force a full admin-content migration in
-// this pass, map the known set to real lucide-react icons and fall back to a
-// generic star for anything unrecognized.
+// Trust items store an icon *name* (admin-editable, Material-Symbols style).
+// Map the known set to lucide icons; anything else falls back to a star.
 const ICON_MAP: Record<string, LucideIcon> = {
   bolt: Zap,
   shield: Shield,
   schedule: Clock,
   star: Star,
 };
+const TINTS = ["#ffd24a", "#7ee27a", "#6fc3ff", "#ff9d6b"];
 
+/** A glossy black "stock ticker" strip. Pauses on hover; static for reduced motion. */
 export default function TrustTicker() {
   const trustItems = useSiteStore((s) => s.trustItems);
   const items = [...trustItems, ...trustItems];
 
   return (
     <section
-      className="overflow-hidden py-2 [mask-image:linear-gradient(90deg,transparent,#000_5%,#000_95%,transparent)]"
+      aria-label="Why choose Mobicare"
+      className="ios-ticker -mx-[clamp(12px,3vw,24px)] my-2 overflow-hidden rounded-none sm:mx-0 sm:rounded-[10px]"
       id="trust-banner-section"
     >
-      <div className="overflow-hidden rounded-none border-y border-border bg-surface/90 py-1 shadow-[inset_0_1px_0_var(--accent-soft),0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-xl backdrop-saturate-150 dark:bg-surface-secondary/85">
-        <div className="flex w-max animate-[ticker-scroll_28s_linear_infinite] items-center gap-0 hover:[animation-play-state:paused]">
-          {items.map((t, i) => {
-            const IconComponent = ICON_MAP[t.icon] || Star;
+      <div className="flex w-max animate-[ticker-scroll_30s_linear_infinite] items-center hover:[animation-play-state:paused] motion-reduce:animate-none">
+        {items.map((t, i) => {
+          const Icon = ICON_MAP[t.icon] || Star;
 
-            return (
-              <div
-                key={i}
-                className="inline-flex items-center gap-2.5 whitespace-nowrap border-r border-border px-8 py-2.5 last:border-r-0"
-              >
-                <IconComponent className="size-5 shrink-0 text-accent" />
-                <strong className="text-body-sm">{t.label}</strong>
-                <span className="text-label text-muted">{t.desc}</span>
-              </div>
-            );
-          })}
-        </div>
+          return (
+            <div
+              key={i}
+              aria-hidden={i >= trustItems.length ? true : undefined}
+              className="inline-flex items-center gap-2.5 whitespace-nowrap border-r border-white/10 px-7 py-3"
+            >
+              <Icon aria-hidden="true" className="size-5 shrink-0" style={{ color: TINTS[i % TINTS.length], filter: `drop-shadow(0 0 6px ${TINTS[i % TINTS.length]}88)` }} />
+              <strong className="text-body-sm" style={{ textShadow: "0 -1px 0 #000" }}>{t.label}</strong>
+              <span className="text-label text-white/60">{t.desc}</span>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

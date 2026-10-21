@@ -1447,6 +1447,9 @@ export function applyAppearance(a: Appearance) {
       : "light";
   }
 
+  // The public iOS 6 skin is light-only (iOS 6 had no dark mode).
+  if (root.classList.contains("ios6")) scheme = "light";
+
   const isDark = scheme === "dark";
 
   // Set data-theme on <html> and sync dark/light classes for Hero UI & Tailwind

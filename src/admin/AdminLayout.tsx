@@ -4,6 +4,7 @@ import { ArrowRight, Menu, ShieldUser, TriangleAlert } from "lucide-react";
 import { Drawer } from "@heroui/react";
 
 import { useProductStore } from "@/lib/store";
+import { useAdminTheme } from "@/hooks/useAdminTheme";
 import AdminSidebarContent from "@/admin/components/AdminSidebarContent";
 import AdminBottomNav from "@/admin/components/AdminBottomNav";
 
@@ -18,6 +19,7 @@ const NAV_LABELS: Record<string, string> = {
 };
 
 export default function AdminLayout() {
+  useAdminTheme();
   const location = useLocation();
   const loadError = useProductStore((s) => s.loadError);
   const [mobileOpen, setMobileOpen] = useState(false);
