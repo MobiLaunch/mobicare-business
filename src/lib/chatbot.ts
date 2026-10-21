@@ -63,6 +63,13 @@ export function getReply(input: string, ctx: BotContext): BotReply[] {
     ];
   }
 
+  if (has(text, "refund", "money back", "return", "exchange", "defective", "doesn't work", "doesnt work", "broken item")) {
+    return [
+      { text: "All sales are final and we don't offer refunds or accept returns for buyer's remorse. If an item is defective, we'll exchange it as long as it's in like-new condition with its original packaging and all included accessories." },
+      { text: "Full details:", action: { kind: "link", label: "Returns & Exchanges", to: "/returns" } },
+    ];
+  }
+
   if (service) {
     return [
       {
@@ -92,6 +99,20 @@ export function getReply(input: string, ctx: BotContext): BotReply[] {
     return [
       { text: `We're at 920 Commerce Drive, Suite 3 — ${ctx.city || "Fairfield, IL 62837"}. Easy parking right out front.` },
       { text: "Open the map for turn-by-turn.", action: { kind: "link", label: "View Map", to: "https://www.google.com/maps/search/?api=1&query=Mobicare+Fairfield+IL" } },
+    ];
+  }
+
+  if (has(text, "ship", "deliver", "tracking", "arrive", "pickup", "pick up", "free shipping")) {
+    return [
+      { text: "Standard shipping is free on orders $35+ (3–5 business days). Priority Express is $12.99 (1–2 days), and local pickup in Fairfield is free. Orders placed before 2 PM Mon–Sat ship the same day." },
+      { text: "Shipping details:", action: { kind: "link", label: "Shipping Policy", to: "/shipping" } },
+    ];
+  }
+
+  if (has(text, "privacy", "my data", "personal info")) {
+    return [
+      { text: "We only collect what we need for repairs, orders and your account, and we don't sell your information." },
+      { text: "Read the full policy:", action: { kind: "link", label: "Privacy Policy", to: "/privacy" } },
     ];
   }
 

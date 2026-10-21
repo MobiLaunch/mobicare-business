@@ -23,8 +23,8 @@ const FAQS = [
     a: "Yes, a flat $35 bench fee covers a full diagnostic on any device. We'll give you a clear, no-obligation quote before starting any work.",
   },
   {
-    q: "What is your refund policy?",
-    a: "Refunds require a valid receipt and are limited to the cost of parts — labor charges are non-refundable.",
+    q: "Do you offer refunds?",
+    a: "We don't offer refunds. Every part we install is covered by a 90-day parts warranty — if the part fails, we replace it at no charge. Labor and the bench fee are non-refundable. See our Refund policy for details.",
   },
   {
     q: "Do I need an appointment?",

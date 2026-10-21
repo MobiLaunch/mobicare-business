@@ -188,7 +188,7 @@ export default function MessagesWidget() {
     <>
       {/* Launcher */}
       {!open && (
-        <div className="fixed bottom-[calc(var(--ios-tab-h)+14px)] right-4 z-[55] flex flex-col items-end gap-2 lg:bottom-6 lg:right-6">
+        <div className="msgs-launcher-wrap fixed bottom-[calc(var(--ios-tab-h)+14px)] right-4 z-[55] flex flex-col items-end gap-2 lg:bottom-6 lg:right-6">
           {nudge && (
             <button
               className="msg msg--them !max-w-[220px] cursor-pointer text-left"

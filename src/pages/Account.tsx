@@ -1,8 +1,7 @@
 import type { BookingRecord, CustomerChatMessage, Order } from "../types/domain";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { Calendar, CheckCircle2, Clock, Key, LogOut, Mail, MessageCircle, Package, Phone, RefreshCw, Send, ShieldCheck, User, Wrench, AlertTriangle, ArrowRight } from "lucide-react";
-import { Alert, Button, Card, Chip, FieldError, Form, InputGroup, Label, Spinner, Tabs, TextArea, TextField } from "@heroui/react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Clock, LogOut, MessageCircle, Package, RefreshCw, Send, Wrench, type LucideIcon } from "lucide-react";
 import { useAuth } from "../lib/AuthContext";
 import {
   updateCustomerProfile,
@@ -13,6 +12,10 @@ import {
   sbSendCustomerChatMessage,
 } from "../lib/supabase";
 import PageMeta from "../components/PageMeta";
+import AppIcon, { type IconColor } from "../components/ios/AppIcon";
+import { IosField, IosGroup, IosNote, IosSummaryRow } from "../components/ios/Forms";
+import Reveal from "../components/ios/Reveal";
+import { play } from "../lib/sound";
 
 type AccountTab = "profile" | "bookings" | "orders" | "messages" | "settings";
 
@@ -101,199 +104,225 @@ export default function Account() {
   };
 
   const handleLogout = async () => { await logout(); navigate("/", { replace: true }); };
-  if (loading || !user) return <div className="flex min-h-[60vh] items-center justify-center"><Spinner size="lg" /></div>;
+  const logRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeTab === "messages") logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
+  }, [activeTab, chatMessages.length, dataLoading]);
+
+  if (loading || !user) return <div aria-label="Loading" className="ios-spinner" role="status" />;
 
   const displayName = profile?.full_name || fullName || user.email?.split("@")[0] || "Customer";
-  const tabItems = [
-    { id: "profile" as const, label: "Profile", description: "Contact information", icon: User },
-    { id: "bookings" as const, label: "Bookings", description: "Repair appointments", count: bookings.length, icon: Wrench },
-    { id: "orders" as const, label: "Orders", description: "Shopping history", count: orders.length, icon: Package },
-    { id: "messages" as const, label: "Messages", description: "Chat with the shop", count: chatMessages.length, icon: MessageCircle },
-    { id: "settings" as const, label: "Security", description: "Password & security", icon: ShieldCheck },
+  const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") || "C";
+  const tabItems: Array<{ id: AccountTab; label: string; count?: number }> = [
+    { id: "profile", label: "Profile" },
+    { id: "bookings", label: "Bookings", count: bookings.length },
+    { id: "orders", label: "Orders", count: orders.length },
+    { id: "messages", label: "Messages" },
+    { id: "settings", label: "Security" },
   ];
 
   return (
-    <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-8 lg:px-8">
+    <div className="mx-auto max-w-4xl px-3 pb-12 pt-4 sm:px-6 sm:pt-8">
       <PageMeta description="Manage your Mobicare account, view repair bookings, and track order history." title="My Account — Mobicare Device Recovery" />
 
-      <section className="surface-raised mb-5 overflow-hidden rounded-panel sm:mb-7">
-        <div className="bg-accent-soft/60 px-4 py-5 sm:px-7 sm:py-6">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3.5">
-              <div aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground shadow-sm sm:size-14"><User className="size-6 sm:size-7" /></div>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground sm:text-2xl">Hello, {displayName}</h1>
-                  <Chip size="sm" variant="soft"><Chip.Label>Customer</Chip.Label></Chip>
-                </div>
-                <p className="mt-0.5 truncate text-sm text-muted">{user.email}</p>
+      <Reveal>
+        <section className="ios-leather mb-5 rounded-panel" id="account-profile-card">
+          <div className="relative flex flex-col gap-5 p-5 sm:p-7">
+            <div className="flex flex-wrap items-center gap-4">
+              <span aria-hidden="true" className="ios-avatar">{initials}</span>
+              <div className="min-w-[9rem] flex-1">
+                <h1 className="m-0 truncate text-2xl font-extrabold" style={{ textShadow: "0 -1px 0 rgba(0,0,0,.6)" }}>{displayName}</h1>
+                <p className="m-0 truncate text-sm opacity-90">{user.email}</p>
+                <span className="ios-pill mt-2 !text-[var(--ios-slate)]">Customer</span>
               </div>
+              <button className="ios-btn ios-btn--red ios-btn--sm max-sm:w-full" type="button" onClick={handleLogout}><LogOut aria-hidden="true" className="size-4" />Sign out</button>
             </div>
-            <Button className="min-h-10 w-full sm:w-auto" variant="outline" onPress={handleLogout}><LogOut aria-hidden="true" className="size-4" /><span>Sign Out</span></Button>
+            <div className="grid grid-cols-3 gap-2.5">
+              <StatTile icon={Wrench} label="Bookings" value={bookings.length} />
+              <StatTile icon={Package} label="Orders" value={orders.length} />
+              <StatTile icon={MessageCircle} label="Messages" value={chatMessages.length} />
+            </div>
           </div>
-        </div>
-        <div className="grid grid-cols-2 divide-x divide-border border-t border-border sm:grid-cols-3">
-          <SummaryStat icon={<Wrench className="size-4" />} label="Bookings" value={bookings.length} />
-          <SummaryStat icon={<Package className="size-4" />} label="Orders" value={orders.length} />
-          <div className="col-span-2 hidden sm:col-span-1 sm:block"><SummaryStat icon={<ShieldCheck className="size-4" />} label="Account" value="Active" /></div>
-        </div>
-      </section>
+        </section>
+      </Reveal>
 
-      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3" aria-label="Account actions">
-        {tabItems.map(({ id, label, description, count, icon: Icon }) => {
-          const selected = activeTab === id;
-          return (
-            <Button key={id} aria-pressed={selected} className={`group flex h-auto min-w-0 flex-col rounded-2xl border p-3.5 text-left whitespace-normal transition-all sm:p-4 ${selected ? "border-accent bg-accent-soft shadow-sm" : "border-border bg-surface hover:border-accent/50 hover:bg-surface-secondary"}`} variant="ghost" onPress={() => setActiveTab(id)}>
-              <div className="flex items-start justify-between gap-2">
-                <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-accent text-accent-foreground" : "bg-surface-secondary text-accent"}`}><Icon aria-hidden="true" className="size-4" /></span>
-                {typeof count === "number" && <span className="rounded-full bg-surface-secondary px-2 py-0.5 text-micro font-bold text-muted">{count}</span>}
-              </div>
-              <strong className="mt-3 block truncate text-sm font-bold text-foreground">{label}</strong>
-              <span className="mt-0.5 block truncate text-caption text-muted">{description}</span>
-            </Button>
-          );
-        })}
+      <div aria-label="Account sections" className="ios-segmented ios-segmented--scroll mb-5" role="tablist">
+        {tabItems.map(({ id, label, count }) => (
+          <button key={id} aria-controls={`account-panel-${id}`} aria-selected={activeTab === id} className={activeTab === id ? "is-selected" : ""} id={`account-tab-${id}`} role="tab" type="button" onClick={() => setActiveTab(id)}>
+            {label}{typeof count === "number" && count > 0 ? ` (${count})` : ""}
+          </button>
+        ))}
       </div>
 
-      <Tabs className="w-full" selectedKey={activeTab} onSelectionChange={(key) => setActiveTab(String(key) as AccountTab)} variant="secondary">
-        <Tabs.ListContainer className="sr-only">
-          <Tabs.List aria-label="Account sections">
-            {tabItems.map(({ id, label }) => <Tabs.Tab key={id} id={id}>{label}<Tabs.Indicator /></Tabs.Tab>)}
-          </Tabs.List>
-        </Tabs.ListContainer>
+      <div aria-labelledby={`account-tab-${activeTab}`} id={`account-panel-${activeTab}`} key={activeTab} className="ios-page" role="tabpanel">
+        {activeTab === "profile" && (
+          <form onSubmit={handleUpdateProfile}>
+            {profileSuccess && <IosNote><span>{profileSuccess}</span></IosNote>}
+            {profileError && <div role="alert"><IosNote tone="warn"><span>{profileError}</span></IosNote></div>}
+            <IosGroup footer="Keep your contact details current for repair notifications and orders. To change your email address, contact the shop." title="Contact information">
+              <IosField disabled label="Email" value={user.email || ""} onChange={() => undefined} />
+              <IosField autoComplete="name" disabled={profileSaving} label="Name" placeholder="Jane Doe" value={fullName} onChange={setFullName} />
+              <IosField autoComplete="tel" disabled={profileSaving} inputMode="tel" label="Phone" placeholder="(618) 555-0199" type="tel" value={phone} onChange={setPhone} />
+            </IosGroup>
+            <button className="ios-btn ios-btn--green ios-btn--lg w-full sm:w-auto" disabled={profileSaving} type="submit">{profileSaving ? "Saving…" : "Save changes"}</button>
 
-        <Tabs.Panel id="profile">
-          <Card className="rounded-card p-4 sm:p-7">
-            <Card.Header className="pb-5"><Card.Title className="text-xl font-bold">Contact Information</Card.Title><Card.Description>Keep your contact details current for repair notifications and orders.</Card.Description></Card.Header>
-            <Card.Content>
-              {profileSuccess && <Alert className="mb-4" status="success"><Alert.Indicator><CheckCircle2 className="size-4" /></Alert.Indicator><Alert.Content><Alert.Description>{profileSuccess}</Alert.Description></Alert.Content></Alert>}
-              {profileError && <Alert className="mb-4" status="danger"><Alert.Indicator><AlertTriangle className="size-4" /></Alert.Indicator><Alert.Content><Alert.Description>{profileError}</Alert.Description></Alert.Content></Alert>}
-              <Form className="grid grid-cols-1 gap-5 sm:grid-cols-2" onSubmit={handleUpdateProfile}>
-                <TextField isDisabled className="flex flex-col gap-1.5 sm:col-span-2"><Label>Email Address</Label><InputGroup><InputGroup.Prefix><Mail aria-hidden="true" className="size-4 text-muted" /></InputGroup.Prefix><InputGroup.Input value={user.email || ""} /></InputGroup><span className="text-xs text-muted">Email address cannot be changed directly.</span></TextField>
-                <TextField className="flex flex-col gap-1.5" isDisabled={profileSaving} value={fullName} onChange={setFullName}><Label>Full Name</Label><InputGroup><InputGroup.Prefix><User aria-hidden="true" className="size-4" /></InputGroup.Prefix><InputGroup.Input placeholder="John Doe" /></InputGroup><FieldError /></TextField>
-                <TextField className="flex flex-col gap-1.5" isDisabled={profileSaving} type="tel" value={phone} onChange={setPhone}><Label>Phone Number</Label><InputGroup><InputGroup.Prefix><Phone aria-hidden="true" className="size-4" /></InputGroup.Prefix><InputGroup.Input placeholder="(618) 555-0199" /></InputGroup><FieldError /></TextField>
-                <Button className="min-h-11 w-full sm:w-auto" isDisabled={profileSaving} type="submit" variant="primary">{profileSaving ? <><Spinner size="sm" /><span>Saving...</span></> : <span>Save Changes</span>}</Button>
-              </Form>
-            </Card.Content>
-          </Card>
-        </Tabs.Panel>
+            <IosGroup className="mt-6" title="Help & policies">
+              <Link className="ios-row ios-chevron" to="/shipping">Shipping</Link>
+              <Link className="ios-row ios-chevron" to="/returns">Returns &amp; Exchanges</Link>
+              <Link className="ios-row ios-chevron" to="/refunds">Refunds</Link>
+              <Link className="ios-row ios-chevron" to="/privacy">Privacy</Link>
+            </IosGroup>
+          </form>
+        )}
 
-        <Tabs.Panel id="bookings">
-          <AccountSectionHeader title="Your Repair Bookings" action="Refresh" icon={<RefreshCw className="size-3.5" />} onAction={loadUserData} />
-          {dataLoading ? <LoadingCard /> : bookings.length === 0 ? <EmptyCard icon={<Wrench className="size-10" />} title="No bookings yet" description="You haven’t submitted any repair appointments yet." action="Book a Repair" onAction={() => navigate("/repairs")} /> : <div className="grid grid-cols-1 gap-4">{bookings.map((booking) => <BookingTicket key={booking.id} booking={booking} />)}</div>}
-        </Tabs.Panel>
+        {activeTab === "bookings" && (
+          <>
+            <SectionBar action={<RefreshButton busy={dataLoading} onClick={loadUserData} />} title="Repair bookings" />
+            {dataLoading && bookings.length === 0 ? <LoadingBlock /> : bookings.length === 0 ? (
+              <EmptyBlock action="Book a repair" color="red" description="You haven’t submitted any repair appointments yet." icon={Wrench} title="No bookings yet" onAction={() => navigate("/repairs")} />
+            ) : (
+              <div className="grid gap-4">{bookings.map((b) => <BookingTicket key={b.id} booking={b} />)}</div>
+            )}
+          </>
+        )}
 
-        <Tabs.Panel id="orders">
-          <AccountSectionHeader title="Order History" action="Refresh" icon={<RefreshCw className="size-3.5" />} onAction={loadUserData} />
-          {dataLoading ? <LoadingCard /> : orders.length === 0 ? <EmptyCard icon={<Package className="size-10" />} title="No orders yet" description="Your order history is currently empty." action="Browse Shop" onAction={() => navigate("/shop")} /> : <div className="grid grid-cols-1 gap-3">{orders.map((order) => <Card key={order.id} className="rounded-card p-4 transition-shadow hover:shadow-md sm:p-5"><div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3"><div><span className="text-xs font-semibold text-muted">Order ID</span><p className="font-mono text-sm font-bold text-foreground">#{order.id.slice(0, 8)}</p></div><div className="text-right"><Chip color={order.status === "delivered" ? "success" : order.status === "cancelled" || order.status === "refunded" ? "danger" : "warning"} size="sm" variant="soft"><Chip.Label className="capitalize">{order.status}</Chip.Label></Chip><p className="mt-1 text-xs text-muted">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : ""}</p></div></div><div className="flex flex-col gap-2">{order.items?.map((item, index) => <div key={index} className="flex items-start justify-between gap-4 text-sm"><span className="min-w-0 text-foreground">{item.name} <span className="text-muted">× {item.qty}</span></span><span className="shrink-0 font-semibold text-foreground">${(item.price * item.qty).toFixed(2)}</span></div>)}</div><div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-sm"><span className="font-bold text-foreground">Total</span><span className="text-base font-bold text-accent">${order.total?.toFixed(2) || "0.00"}</span></div></Card>)}</div>}
-        </Tabs.Panel>
-
-        <Tabs.Panel id="messages">
-          <AccountSectionHeader title="Messages" action="Refresh" icon={<RefreshCw className="size-3.5" />} onAction={loadUserData} />
-          <Card className="rounded-card p-4 sm:p-6">
-            {dataLoading ? (
-              <LoadingCard />
+        {activeTab === "orders" && (
+          <>
+            <SectionBar action={<RefreshButton busy={dataLoading} onClick={loadUserData} />} title="Order history" />
+            {dataLoading && orders.length === 0 ? <LoadingBlock /> : orders.length === 0 ? (
+              <EmptyBlock action="Browse shop" color="orange" description="Your order history is currently empty." icon={Package} title="No orders yet" onAction={() => navigate("/shop")} />
             ) : (
               <>
-                <div className="mb-4 flex max-h-[420px] flex-col gap-3 overflow-y-auto">
-                  {chatMessages.length === 0 ? (
-                    <p className="m-0 py-8 text-center text-sm text-muted">
-                      No messages yet — send one below and the shop will reply here.
-                    </p>
-                  ) : (
-                    chatMessages.map((m) => (
-                      <div
-                        key={m.id}
-                        className={`max-w-[80%] rounded-2xl p-3 text-sm ${
-                          m.direction === "inbound" ? "ml-auto bg-accent text-accent-foreground" : "bg-surface-secondary text-foreground"
-                        }`}
-                      >
-                        <p className="m-0 whitespace-pre-wrap">{m.body}</p>
-                        <span className={`mt-1 block text-[10px] ${m.direction === "inbound" ? "text-accent-foreground/70" : "text-muted"}`}>
-                          {new Date(m.created_at).toLocaleString()}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-                {chatError && <Alert className="mb-3" status="danger"><Alert.Indicator><AlertTriangle className="size-4" /></Alert.Indicator><Alert.Content><Alert.Description>{chatError}</Alert.Description></Alert.Content></Alert>}
-                <Form className="flex items-end gap-2" onSubmit={handleSendChat}>
-                  <TextArea className="flex-1" disabled={chatSending} rows={2} value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} />
-                  <Button className="min-h-11 shrink-0" isDisabled={chatSending || !chatDraft.trim()} type="submit" variant="primary">
-                    {chatSending ? <Spinner size="sm" /> : <Send className="size-4" />}
-                    <span className="hidden sm:inline">Send</span>
-                  </Button>
-                </Form>
+                {orders.map((order) => <OrderCard key={order.id} order={order} />)}
+                <p className="ios-group-footer">All sales are final. Defective items may be exchanged — see <Link className="underline" to="/returns">Returns &amp; Exchanges</Link>.</p>
               </>
             )}
-          </Card>
-        </Tabs.Panel>
+          </>
+        )}
 
-        <Tabs.Panel id="settings">
-          <Card className="rounded-card p-4 sm:p-7"><Card.Header className="pb-5"><Card.Title className="text-xl font-bold">Account Security</Card.Title><Card.Description>Change your password to keep your Mobicare account secure.</Card.Description></Card.Header><Card.Content>
-            {passwordSuccess && <Alert className="mb-4" status="success"><Alert.Indicator><CheckCircle2 className="size-4" /></Alert.Indicator><Alert.Content><Alert.Description>{passwordSuccess}</Alert.Description></Alert.Content></Alert>}
-            {passwordError && <Alert className="mb-4" status="danger"><Alert.Indicator><AlertTriangle className="size-4" /></Alert.Indicator><Alert.Content><Alert.Description>{passwordError}</Alert.Description></Alert.Content></Alert>}
-            <Form className="grid grid-cols-1 gap-5 sm:max-w-2xl sm:grid-cols-2" onSubmit={handleChangePassword}>
-              <TextField isRequired className="flex flex-col gap-1.5" isDisabled={passwordSaving} type="password" value={newPassword} onChange={setNewPassword}><Label>New Password</Label><InputGroup><InputGroup.Prefix><Key aria-hidden="true" className="size-4" /></InputGroup.Prefix><InputGroup.Input placeholder="••••••••" /></InputGroup><FieldError /></TextField>
-              <TextField isRequired className="flex flex-col gap-1.5" isDisabled={passwordSaving} type="password" value={confirmPassword} onChange={setConfirmPassword}><Label>Confirm New Password</Label><InputGroup><InputGroup.Prefix><Key aria-hidden="true" className="size-4" /></InputGroup.Prefix><InputGroup.Input placeholder="••••••••" /></InputGroup><FieldError /></TextField>
-              <Button className="min-h-11 w-full sm:w-auto" isDisabled={passwordSaving} type="submit" variant="primary">{passwordSaving ? <><Spinner size="sm" /><span>Updating Password...</span></> : <span>Update Password</span>}</Button>
-            </Form>
-          </Card.Content></Card>
-        </Tabs.Panel>
-      </Tabs>
+        {activeTab === "messages" && (
+          <>
+            <SectionBar action={<RefreshButton busy={dataLoading} onClick={loadUserData} />} title="Messages" />
+            <div className="overflow-hidden rounded-panel border border-[#6f7686] shadow-[var(--elev-2)]">
+              <div ref={logRef} aria-live="polite" className="msgs-bg flex max-h-[460px] min-h-[260px] flex-col gap-2 overflow-y-auto px-2 py-3" role="log">
+                {chatMessages.length === 0 ? (
+                  <p className="m-auto max-w-[30ch] text-center text-sm font-bold text-[var(--ios-slate)]" style={{ textShadow: "0 1px 0 #fff" }}>No messages yet — send one below and the shop will reply here.</p>
+                ) : chatMessages.map((m) => (
+                  <div key={m.id} className={`flex flex-col ${m.direction === "inbound" ? "items-end" : "items-start"}`}>
+                    <div className={`msg ${m.direction === "inbound" ? "msg--me" : "msg--them"}`}>{m.body}</div>
+                    <span className="mx-3 mt-0.5 text-[10px] font-bold text-[#6b7487]" style={{ textShadow: "0 1px 0 #fff" }}>{new Date(m.created_at).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+              {chatError && <div className="bg-[#fbe9b8] px-3 py-2 text-sm font-bold text-[#6a4608]" role="alert">{chatError}</div>}
+              <form className="msgs-input flex items-center gap-2 px-2 py-2" onSubmit={(e) => { play("send"); handleSendChat(e); }}>
+                <input aria-label="Message the shop" className="msgs-field" disabled={chatSending} placeholder="Message" value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} />
+                <button aria-label="Send" className="ios-btn ios-btn--sm !min-h-8 !rounded-full" data-silent disabled={chatSending || !chatDraft.trim()} type="submit"><Send aria-hidden="true" className="size-3.5" />Send</button>
+              </form>
+            </div>
+          </>
+        )}
+
+        {activeTab === "settings" && (
+          <form onSubmit={handleChangePassword}>
+            {passwordSuccess && <IosNote><span>{passwordSuccess}</span></IosNote>}
+            {passwordError && <div role="alert"><IosNote tone="warn"><span>{passwordError}</span></IosNote></div>}
+            <IosGroup footer="Use at least 6 characters. Choose something unique to Mobicare." title="Change password">
+              <IosField autoComplete="new-password" disabled={passwordSaving} label="New" placeholder="Required" required type="password" value={newPassword} onChange={setNewPassword} />
+              <IosField autoComplete="new-password" disabled={passwordSaving} label="Confirm" placeholder="Required" required type="password" value={confirmPassword} onChange={setConfirmPassword} />
+            </IosGroup>
+            <button className="ios-btn ios-btn--lg w-full sm:w-auto" disabled={passwordSaving} type="submit">{passwordSaving ? "Updating…" : "Update password"}</button>
+          </form>
+        )}
+      </div>
     </div>
+  );
+}
+
+function StatTile({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: number }) {
+  return (
+    <div className="ios-stat">
+      <Icon aria-hidden="true" className="size-4" />
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function SectionBar({ title, action }: { title: string; action: ReactNode }) {
+  return <div className="mb-3 flex items-center justify-between gap-3"><h2 className="ios-section-title !text-xl">{title}</h2>{action}</div>;
+}
+
+function RefreshButton({ onClick, busy }: { onClick: () => void; busy: boolean }) {
+  return <button className="ios-btn ios-btn--gray ios-btn--sm" disabled={busy} type="button" onClick={onClick}><RefreshCw aria-hidden="true" className={`size-3.5 ${busy ? "animate-spin" : ""}`} />Refresh</button>;
+}
+
+function LoadingBlock() { return <div aria-label="Loading" className="ios-spinner !mt-12" role="status" />; }
+
+function EmptyBlock({ icon, color, title, description, action, onAction }: { icon: LucideIcon; color: IconColor; title: string; description: string; action: string; onAction: () => void }) {
+  return (
+    <div className="ios-card-gloss surface-raised flex flex-col items-center gap-3 rounded-panel p-8 text-center">
+      <AppIcon color={color} icon={icon} size={72} />
+      <h3 className="letterpress m-0 text-lg font-extrabold text-[var(--ios-ink)]">{title}</h3>
+      <p className="m-0 max-w-xs text-sm text-muted">{description}</p>
+      <button className="ios-btn ios-btn--green" type="button" onClick={onAction}>{action}</button>
+    </div>
+  );
+}
+
+const STATUS_TONE: Record<string, string> = { completed: "green", delivered: "green", cancelled: "red", refunded: "red", payment_failed: "red", shipped: "blue", processing: "blue" };
+
+function StatusBadge({ status }: { status: string }) {
+  const tone = STATUS_TONE[status] || "orange";
+
+  return <span className={`ios-status ios-status--${tone}`}>{status.replace(/_/g, " ")}</span>;
+}
+
+function OrderCard({ order }: { order: Order }) {
+  return (
+    <IosGroup className="!mb-4" title={`Order #${order.id.slice(0, 8).toUpperCase()}${order.createdAt ? ` · ${new Date(order.createdAt).toLocaleDateString()}` : ""}`}>
+      <div className="ios-row justify-between"><span className="text-sm font-bold text-[var(--ios-slate)]">Status</span><StatusBadge status={order.status} /></div>
+      {order.items?.map((item, i) => (
+        <div key={i} className="ios-row justify-between gap-4 !py-2.5 text-[14px]">
+          <span className="min-w-0">{item.name} <span className="text-muted">× {item.qty}</span></span>
+          <strong className="shrink-0">${(item.price * item.qty).toFixed(2)}</strong>
+        </div>
+      ))}
+      <IosSummaryRow label="Total" value={<span className="text-base text-[var(--ios-blue-dark)]">${order.total?.toFixed(2) || "0.00"}</span>} />
+    </IosGroup>
   );
 }
 
 function BookingTicket({ booking }: { booking: BookingRecord }) {
   const ticketNumber = `MC-${String(booking.id).replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase().padStart(8, "0")}`;
   const status = booking.status || "pending";
-  const statusColor = status === "completed" ? "success" : status === "cancelled" ? "danger" : "warning";
+
   return (
-    <Card className="surface-raised lift relative overflow-hidden rounded-card">
-      <div className="pointer-events-none absolute -left-3 top-[42%] size-6 rounded-full border border-border bg-background" />
-      <div className="pointer-events-none absolute -right-3 top-[42%] size-6 rounded-full border border-border bg-background" />
-      <div className="p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="m-0 font-mono text-micro font-bold uppercase tracking-[0.2em] text-muted">Mobicare • Repair Ticket</p>
-            <p className="m-0 mt-1 font-mono text-xl font-black tracking-tight text-foreground">#{ticketNumber}</p>
-          </div>
-          <Chip color={statusColor} size="sm" variant="soft"><Chip.Label className="capitalize">{status}</Chip.Label></Chip>
+    <article className="ios-ticket">
+      <header className="ios-ticket-head">
+        <div>
+          <p className="m-0 font-mono text-[10px] font-bold uppercase tracking-[0.2em] opacity-80">Mobicare • Repair Ticket</p>
+          <p className="m-0 mt-0.5 font-mono text-lg font-black tracking-tight">#{ticketNumber}</p>
         </div>
-
-        <div className="my-4 border-t border-dashed border-border" />
-
-        <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
-          <div className="min-w-0">
-            <p className="m-0 text-micro font-bold uppercase tracking-wider text-muted">Service</p>
-            <h3 className="m-0 mt-1 text-lg font-extrabold text-foreground">{booking.service}</h3>
-            <p className="m-0 mt-1 text-sm font-medium text-foreground">{booking.device_type}{booking.device_model ? ` — ${booking.device_model}` : ""}</p>
-            {booking.issue && <p className="m-0 mt-2 line-clamp-2 text-xs leading-relaxed text-muted">{booking.issue}</p>}
-          </div>
-          <div className="grid grid-cols-2 gap-4 border-t border-border pt-3 sm:min-w-[180px] sm:grid-cols-1 sm:border-t-0 sm:border-l sm:pl-5 sm:pt-0">
-            <div><p className="m-0 text-micro font-bold uppercase tracking-wider text-muted">Date</p><p className="m-0 mt-1 text-sm font-bold text-foreground">{booking.appt_date}</p></div>
-            <div><p className="m-0 text-micro font-bold uppercase tracking-wider text-muted">Time</p><p className="m-0 mt-1 flex items-center gap-1.5 text-sm font-bold text-foreground"><Clock aria-hidden="true" className="size-3.5 text-accent" />{booking.appt_time}</p></div>
-          </div>
+        <StatusBadge status={status} />
+      </header>
+      <div className="ios-ticket-body">
+        <div className="min-w-0">
+          <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-muted">Service</p>
+          <h3 className="m-0 mt-0.5 text-lg font-extrabold text-[var(--ios-ink)]">{booking.service}</h3>
+          <p className="m-0 mt-0.5 text-sm font-semibold">{booking.device_type}{booking.device_model ? ` — ${booking.device_model}` : ""}</p>
+          {booking.issue && <p className="m-0 mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted">{booking.issue}</p>}
         </div>
-
-        <div className="my-4 border-t border-dashed border-border" />
-        <div className="flex items-end justify-between gap-4">
-          <div className="flex items-center gap-2 text-xs text-muted"><Calendar aria-hidden="true" className="size-3.5" /><span>Appointment ticket</span></div>
-          <div aria-hidden="true" className="flex h-7 items-end gap-px opacity-50">{Array.from({ length: 28 }, (_, i) => <span key={i} className={`w-px bg-foreground ${i % 4 === 0 ? "h-7" : i % 3 === 0 ? "h-5" : "h-3"}`} />)}</div>
+        <div className="ios-ticket-when">
+          <div><p className="m-0 text-[11px] font-bold uppercase tracking-wider text-muted">Date</p><p className="m-0 mt-0.5 text-sm font-extrabold">{booking.appt_date}</p></div>
+          <div><p className="m-0 text-[11px] font-bold uppercase tracking-wider text-muted">Time</p><p className="m-0 mt-0.5 flex items-center gap-1 text-sm font-extrabold"><Clock aria-hidden="true" className="size-3.5 text-[var(--ios-blue)]" />{booking.appt_time}</p></div>
         </div>
       </div>
-    </Card>
+      <footer className="ios-ticket-foot">
+        <span className="text-xs font-bold text-muted">{booking.visit_type === "home" ? "Home visit" : "In-store"} appointment</span>
+        <div aria-hidden="true" className="flex h-6 items-end gap-px opacity-60">{Array.from({ length: 30 }, (_, i) => <span key={i} className={`w-px bg-[#1f2430] ${i % 4 === 0 ? "h-6" : i % 3 === 0 ? "h-4" : "h-3"}`} />)}</div>
+      </footer>
+    </article>
   );
 }
-
-function SummaryStat({ icon, label, value }: { icon: ReactNode; label: string; value: string | number }) {
-  return <div className="flex items-center gap-2.5 px-4 py-3.5 sm:px-6"><span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">{icon}</span><div className="min-w-0"><p className="m-0 text-caption font-semibold uppercase tracking-wide text-muted">{label}</p><p className="m-0 text-sm font-bold text-foreground">{value}</p></div></div>;
-}
-
-function AccountSectionHeader({ title, action, icon, onAction }: { title: string; action: string; icon: ReactNode; onAction: () => void }) {
-  return <div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="text-xl font-bold tracking-tight text-foreground">{title}</h2><p className="mt-0.5 text-xs text-muted">Your latest activity with Mobicare.</p></div><Button className="min-h-10 shrink-0" size="sm" variant="outline" onPress={onAction}>{icon}<span className="hidden min-[420px]:inline">{action}</span></Button></div>;
-}
-
-function LoadingCard() { return <div className="surface-raised flex min-h-[220px] items-center justify-center rounded-card p-8"><Spinner /></div>; }
-function EmptyCard({ icon, title, description, action, onAction }: { icon: ReactNode; title: string; description: string; action: string; onAction: () => void }) { return <Card className="rounded-card p-7 text-center sm:p-10"><div aria-hidden="true" className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-accent-soft text-accent">{icon}</div><h3 className="text-lg font-bold text-foreground">{title}</h3><p className="mx-auto mt-1 max-w-sm text-sm text-muted">{description}</p><Button className="mt-5 min-h-11" variant="primary" onPress={onAction}>{action}<ArrowRight aria-hidden="true" className="size-4" /></Button></Card>; }

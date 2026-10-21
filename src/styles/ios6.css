@@ -1463,3 +1463,326 @@ html.ios6 main .surface-raised:not(.ios-card-gloss) {
 .real-icon--plain svg * { filter: none !important; }
 
 .msgs-launcher { will-change: transform; }
+
+/* ─── Sheets & forms (booking, checkout) ────────────────────────────────── */
+
+.ios-dialog {
+  overflow: hidden;
+  padding: 0 !important;
+  background-color: #cdd1d7 !important;
+  background-image: var(--ios-linen) !important;
+}
+
+.ios-sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 12px 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ios-sheet-footer {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, #5a5d63, #2b2d31);
+  border-top: 1px solid #000;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.ios-group-footer {
+  margin: 6px 0.9rem 0;
+  color: #4c566c;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.ios-field { gap: 0.6rem; }
+
+.ios-field-label {
+  flex: 0 0 6.5rem;
+  color: var(--ios-ink);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.ios-field-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #385487;
+  font-size: 1rem;
+  outline: none;
+}
+
+.ios-field-input::placeholder { color: #a3a8b3; }
+.ios-field:focus-within { background: #f3f7ff; }
+
+.ios-choice { color: var(--ios-ink); cursor: pointer; }
+.ios-choice-detail { color: var(--muted); }
+.ios-choice-trailing { color: #385487; }
+.ios-check { color: var(--ios-blue); transition: opacity 0.15s; }
+.ios-choice.is-selected { background: linear-gradient(180deg, #f4f8ff, #e6efff); }
+
+.ios-choice:active {
+  background: linear-gradient(180deg, #3d8ef0, #1d6fdc);
+  color: #fff;
+}
+
+.ios-choice:active .ios-choice-detail,
+.ios-choice:active .ios-choice-trailing,
+.ios-choice:active .ios-check { color: #fff; }
+
+.ios-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #55709c;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff, #e3e6ec);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.ios-segmented > button {
+  flex: 1 1 auto;
+  min-width: 72px;
+  padding: 9px 10px;
+  border-right: 1px solid #9aa1af;
+  border-bottom: 1px solid #9aa1af;
+  margin: 0 -1px -1px 0;
+  color: #2f3b52;
+  font-size: 0.875rem;
+  font-weight: 800;
+  text-shadow: 0 1px 0 #fff;
+}
+
+.ios-segmented > button.is-selected {
+  background: linear-gradient(180deg, #6fa1ee 0%, #3f77d6 50%, #2c63c6 51%, #3a72d4 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 20, 80, 0.45);
+  color: #fff;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.45);
+}
+
+.ios-progress {
+  height: 12px;
+  overflow: hidden;
+  border: 1px solid #8d94a2;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #b9bec8, #e8ebf0);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.ios-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, #5a95ee, #2b63c8);
+  box-shadow: inset 0 0 0 1px rgba(20, 60, 140, 0.5);
+  transition: width 0.4s var(--ios-ease);
+}
+
+.ios-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-bottom: 14px;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.ios-note--info { border-color: #7fa1d6; background: linear-gradient(180deg, #f2f7ff, #dce8fb); color: #1e3c72; }
+.ios-note--warn { border-color: #d9a441; background: linear-gradient(180deg, #fff8e4, #fbe9b8); color: #6a4608; }
+
+/* Day tiles: little page-a-day calendar leaves */
+.ios-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  min-width: 58px;
+  border: 1px solid #8d94a2;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 0 #fff;
+  scroll-snap-align: start;
+  transition: transform 0.15s var(--ios-ease);
+}
+
+.ios-day > span:first-child {
+  width: 100%;
+  padding: 2px 0;
+  background: linear-gradient(180deg, #e8564d, #bd2a21);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-align: center;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.4);
+  text-transform: uppercase;
+}
+
+.ios-day > strong { padding: 4px 0 1px; color: var(--ios-ink); font-size: 1.4rem; line-height: 1; }
+.ios-day > span:last-child { padding-bottom: 5px; color: var(--muted); font-size: 0.68rem; font-weight: 700; }
+.ios-day.is-selected { border-color: #1b4590; box-shadow: 0 0 0 3px rgba(47, 116, 217, 0.55), 0 1px 2px rgba(0, 0, 0, 0.3); transform: translateY(-2px); }
+.ios-day:active { transform: scale(0.94); }
+
+.ios-days {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 6px 4px 10px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.ios-days::-webkit-scrollbar { display: none; }
+
+.ios-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+/* Big visit-type cards */
+.ios-bigchoice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px;
+  text-align: center;
+  border: 1px solid #a3a9b5;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fff, #eef0f4);
+  box-shadow: 0 1px 0 #fff inset, 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s var(--ios-ease), filter 0.1s;
+}
+
+.ios-bigchoice:active { transform: scale(0.97); filter: brightness(0.9); }
+
+/* Long-form policy text */
+.policy-prose { color: #2c3342; font-size: 0.98rem; line-height: 1.65; }
+.policy-prose p { margin: 0 0 0.8em; }
+.policy-prose p:last-child, .policy-prose ul:last-child, .policy-prose ol:last-child { margin-bottom: 0; }
+.policy-prose ul, .policy-prose ol { margin: 0 0 0.9em; padding-left: 1.3em; }
+.policy-prose li { margin-bottom: 0.4em; }
+.policy-prose li::marker { color: var(--ios-blue); font-weight: 800; }
+.policy-prose a { color: var(--ios-blue-dark); font-weight: 700; text-decoration: underline; }
+.policy-prose strong { color: var(--ios-ink); }
+.policy-prose table { width: 100%; border-collapse: collapse; margin: 0.4em 0 1em; font-size: 0.92rem; }
+.policy-prose th, .policy-prose td { padding: 0.55em 0.6em; border-bottom: 1px solid #d6d9df; text-align: left; vertical-align: top; }
+.policy-prose th { color: var(--ios-slate); font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.policy-prose .callout { margin: 0.4em 0 1em; padding: 0.75em 0.95em; border: 1px solid #d9a441; border-radius: 10px; background: linear-gradient(180deg, #fff8e4, #fbe9b8); color: #5a3d06; }
+
+/* ─── Account ───────────────────────────────────────────────────────────── */
+
+.ios-avatar {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 3px solid #f6e7cf;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #8cc0ff, #1f5fd0);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  color: #fff;
+  font-size: 1.9rem;
+  font-weight: 800;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.45);
+}
+
+.ios-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 10px 6px;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.25));
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 220, 160, 0.3);
+}
+
+.ios-stat strong { font-size: 1.5rem; line-height: 1.1; }
+.ios-stat span { font-size: 0.72rem; font-weight: 700; opacity: 0.85; }
+
+/* scrolling segmented control (tab bar for the account page) */
+.ios-segmented--scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.ios-segmented--scroll::-webkit-scrollbar { display: none; }
+.ios-segmented--scroll > button { flex: 1 0 auto; white-space: nowrap; margin: 0; border-bottom: 0; }
+.ios-segmented--scroll > button:last-child { border-right: 0; }
+
+.ios-status {
+  display: inline-block;
+  padding: 2px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.4);
+  text-transform: capitalize;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.ios-status--green { background: linear-gradient(180deg, #6fd069, #2f9a31); }
+.ios-status--red { background: linear-gradient(180deg, #f0645f, #b82222); }
+.ios-status--blue { background: linear-gradient(180deg, #6fa1ee, #2c63c6); }
+.ios-status--orange { background: linear-gradient(180deg, #f8b44f, #d9800a); }
+
+/* Passbook-style ticket */
+.ios-ticket {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #5b6270;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--elev-2);
+}
+
+.ios-ticket-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #4a4d52, #17181b);
+  border-bottom: 1px solid #000;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.ios-ticket-body {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  background-image: linear-gradient(180deg, #fff, #f4f6f9);
+}
+
+@media (min-width: 560px) {
+  .ios-ticket-body { grid-template-columns: 1fr auto; }
+  .ios-ticket-when { border-left: 1px dashed #b3b8c2; padding-left: 18px; }
+}
+
+.ios-ticket-when { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (min-width: 560px) { .ios-ticket-when { grid-template-columns: 1fr; } }
+
+.ios-ticket-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px 12px;
+  border-top: 1px dashed #b3b8c2;
+  background: #f7f8fa;
+}
+
+/* Tuck the chat launcher away while a dialog (booking, cart) is open. */
+body:has([data-slot="modal-backdrop"]) .msgs-launcher-wrap { display: none; }

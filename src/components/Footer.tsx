@@ -13,6 +13,13 @@ const SHOP_LINKS = [
   { label: "Cables", to: "/shop?cat=cables" },
 ];
 
+const POLICY_LINKS = [
+  { label: "Shipping", to: "/shipping" },
+  { label: "Returns & Exchanges", to: "/returns" },
+  { label: "Refunds", to: "/refunds" },
+  { label: "Privacy", to: "/privacy" },
+];
+
 const REPAIR_LINKS = [
   { label: "All Services", to: "/repairs" },
   { label: "Screen Repair", to: "/repairs#screen-repair" },
@@ -47,7 +54,7 @@ export default function Footer() {
           </a>
         )}
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr_1.3fr]">
           <div>
             <div className="mb-3 flex items-center gap-3">
               {appearance?.logoType === "image" ? (
@@ -78,6 +85,15 @@ export default function Footer() {
             <h6 className="ios-group-title">Repairs</h6>
             <div className="ios-group">
               {REPAIR_LINKS.map((l) => (
+                <Link key={l.to} className="ios-row ios-chevron" to={l.to}>{l.label}</Link>
+              ))}
+            </div>
+          </nav>
+
+          <nav aria-label="Policies">
+            <h6 className="ios-group-title">Policies</h6>
+            <div className="ios-group">
+              {POLICY_LINKS.map((l) => (
                 <Link key={l.to} className="ios-row ios-chevron" to={l.to}>{l.label}</Link>
               ))}
             </div>

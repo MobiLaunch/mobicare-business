@@ -16,6 +16,10 @@ const OrderSuccess = lazy(() => import("@/pages/OrderSuccess"));
 const Repairs = lazy(() => import("@/pages/Repairs"));
 const Protection = lazy(() => import("@/pages/Protection"));
 const About = lazy(() => import("@/pages/About"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
+const Returns = lazy(() => import("@/pages/Returns"));
+const Shipping = lazy(() => import("@/pages/Shipping"));
+const Refunds = lazy(() => import("@/pages/Refunds"));
 const AdminLogin = lazy(() => import("@/admin/AdminLogin"));
 const AdminLayout = lazy(() => import("@/admin/AdminLayout"));
 const AdminProducts = lazy(() => import("@/admin/Products"));
@@ -146,6 +150,11 @@ export default function App() {
         <Route element={<Repairs />} path="/repairs" />
         <Route element={<Protection />} path="/protection" />
         <Route element={<About />} path="/about" />
+        <Route element={<Privacy />} path="/privacy" />
+        <Route element={<Returns />} path="/returns" />
+        <Route element={<Returns />} path="/exchanges" />
+        <Route element={<Shipping />} path="/shipping" />
+        <Route element={<Refunds />} path="/refunds" />
         <Route element={<Login />} path="/login" />
         <Route element={<Signup />} path="/signup" />
         <Route element={<ForgotPassword />} path="/forgot-password" />

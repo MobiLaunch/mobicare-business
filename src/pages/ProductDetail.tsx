@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Clock, PackageX, RotateCcw, Shield, ShoppingCart, Tag, TriangleAlert, Truck } from "lucide-react";
 import { Button } from "@heroui/react";
 import { useShallow } from "zustand/react/shallow";
@@ -38,7 +38,7 @@ export default function ProductDetail() {
   const trustRows = [
     { icon: Truck, title: "Estimated Delivery", sub: arrival.formatted },
     { icon: Shield, title: "Direct Stripe Checkout", sub: "256-bit SSL encrypted & secure" },
-    { icon: RotateCcw, title: "30-Day Guarantee", sub: "Unopened items returnable within 30 days." },
+    { icon: RotateCcw, title: "Exchange if Defective", sub: "All sales final. Defective items exchanged in like-new condition with original packaging." },
   ];
 
   return (
@@ -62,6 +62,7 @@ export default function ProductDetail() {
           {product.stock > 0 && product.stock < 5 && <p className="mb-4 flex items-center gap-1.5 text-label font-bold text-amber-600 dark:text-amber-400"><TriangleAlert aria-hidden="true" className="size-[18px]" />Only {product.stock} left in stock — order soon</p>}
           <article className="surface-raised mb-5 mt-4 overflow-hidden rounded-card sm:mt-6">{trustRows.map((row, i) => <div key={row.title} className={`flex items-center gap-3.5 p-[14px_16px] sm:p-[14px_20px] ${i < trustRows.length - 1 ? "border-b border-border" : ""}`}><span aria-hidden="true" className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent"><row.icon className="size-5" /></span><div className="min-w-0"><strong className="block break-words text-sm font-bold text-foreground">{row.title}</strong><span className="break-words text-label text-muted">{row.sub}</span></div></div>)}</article>
           <p className="m-0 text-xs font-semibold text-muted">SKU: {product.sku}</p>
+          <p className="m-0 mt-2 text-xs font-semibold text-muted"><Link className="underline" to="/returns">Returns &amp; Exchanges</Link> · <Link className="underline" to="/shipping">Shipping</Link> · <Link className="underline" to="/refunds">Refunds</Link></p>
         </div>
       </div>
       {related.length > 0 && <div className="mt-12 sm:mt-16"><div className="mb-5 flex items-end justify-between sm:mb-6"><div><p className="m-0 text-caption font-bold uppercase tracking-widest text-accent">Explore More</p><h3 className="m-0 mt-1 text-heading-lg font-extrabold text-foreground">More in {categoryName || product.category.replace("-", " ")}</h3></div></div><div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{related.map((p) => <ProductCard key={p.id} product={p} onClick={() => navigate(`/product/${p.id}`)} />)}</div></div>}
