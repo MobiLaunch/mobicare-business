@@ -5,10 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Elements, CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { ArrowLeft, ArrowRight, CheckCircle2, Lock, Minus, Plus, ShoppingBag, Trash2, Truck } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Lock, ShoppingBag, Trash2, Truck } from "lucide-react";
 import { Button, FieldError, InputGroup, Label, Modal, TextField } from "@heroui/react";
 
 import { useAuth } from "@/lib/AuthContext";
+import { PickerPanel, QuantityStepper } from "@/components/ios/QuantityPicker";
 import { useCartStore, useProductStore, useToastStore } from "@/lib/store";
 import { getDynamicShippingOptions } from "@/lib/shipping";
 import { getStripePublishableKey } from "@/lib/config";
@@ -119,6 +120,7 @@ function PaymentStep({ session, shippingInfo, items, shippingMethod, onSuccess, 
 }
 
 export default function CheckoutDrawer() {
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const items = useCartStore((s) => s.items);
@@ -222,13 +224,10 @@ export default function CheckoutDrawer() {
                               <button type="button" aria-label={`Remove ${item.name}`} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-danger/10 hover:text-danger focus-visible:outline-2 focus-visible:outline-accent" onClick={() => removeItem(item.id)}><Trash2 aria-hidden="true" className="size-4" /></button>
                             </div>
                             <div className="mt-3 flex items-end justify-between gap-3">
-                              <div className="flex items-center rounded-full border border-border bg-surface-secondary/50 p-0.5">
-                                <button type="button" className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-surface disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-accent" aria-label="Decrease quantity" onClick={() => updateQty(item.id, item.qty - 1, stock)}><Minus aria-hidden="true" className="size-3" /></button>
-                                <span aria-live="polite" className="w-7 text-center text-xs font-bold">{item.qty}</span>
-                                <button type="button" className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-surface disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-accent" aria-label="Increase quantity" disabled={item.qty >= stock} onClick={() => updateQty(item.id, item.qty + 1, stock)}><Plus aria-hidden="true" className="size-3" /></button>
-                              </div>
+                              <QuantityStepper max={stock} size="sm" value={item.qty} onChange={(q) => updateQty(item.id, q, stock)} onOpen={() => setPickerFor(pickerFor === item.id ? null : item.id)} />
                               <strong className="text-base font-extrabold text-accent">${lineTotal.toFixed(2)}</strong>
                             </div>
+                            {pickerFor === item.id && <div className="mt-3"><PickerPanel max={stock} value={item.qty} onChange={(q) => updateQty(item.id, q, stock)} onDone={() => setPickerFor(null)} /></div>}
                           </div>
                         </div>
                       );

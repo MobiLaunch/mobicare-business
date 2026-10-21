@@ -1,8 +1,9 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Wrench } from "lucide-react";
 import { Accordion } from "@heroui/react";
 
 import BookingWizard from "@/components/BookingWizard";
 import PageMeta from "@/components/PageMeta";
+import HeroBadge from "@/components/ios/HeroBadge";
 
 const FAQS = [
   {
@@ -48,9 +49,7 @@ export default function Repairs() {
 
       {/* Hero */}
       <section className="pb-8 pt-[clamp(24px,5vw,48px)] text-center">
-        <p className="m-0 mb-1.5 text-caption font-bold uppercase tracking-widest text-accent">
-          Device Repair Services
-        </p>
+        <HeroBadge color="red" icon={Wrench} label="Device Repair Services" />
         <h1 className="type-display m-0 mb-3 text-display text-foreground">
           We Fix What&rsquo;s Broken.
         </h1>
@@ -63,7 +62,7 @@ export default function Repairs() {
           {BADGES.map((badge) => (
             <span
               key={badge}
-              className="rounded-full border border-border bg-surface-secondary px-3.5 py-1.5 text-xs font-semibold text-foreground"
+              className="ios-pill !normal-case !tracking-normal !text-[13px] !text-[var(--ios-ink)]"
             >
               ✓ {badge}
             </span>

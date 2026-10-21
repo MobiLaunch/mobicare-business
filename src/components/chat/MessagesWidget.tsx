@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Phone, Send, X } from "lucide-react";
-import { MessageSquare } from "lucide-react";
 
-import AppIcon from "@/components/ios/AppIcon";
+import RealIcon from "@/components/ios/RealIcons";
 import BookingWizard from "@/components/LazyBookingWizard";
 import { useNavigate } from "react-router-dom";
 import { BUSINESS } from "@/lib/config";
@@ -206,7 +205,7 @@ export default function MessagesWidget() {
             type="button"
             onClick={openSheet}
           >
-            <AppIcon badge={unread || undefined} color="green" icon={MessageSquare} size={58} />
+            <RealIcon badge={unread || undefined} name="messages" plain size={60} />
           </button>
         </div>
       )}

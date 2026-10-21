@@ -865,6 +865,7 @@ html.ios6.app-entering #root {
 }
 
 .msg--me {
+  border-bottom-right-radius: 6px;
   align-self: flex-end;
   margin-right: 8px;
   border: 1px solid #1352b8;
@@ -876,6 +877,7 @@ html.ios6.app-entering #root {
 }
 
 .msg--them {
+  border-bottom-left-radius: 6px;
   align-self: flex-start;
   margin-left: 8px;
   border: 1px solid #aeb3bf;
@@ -885,28 +887,30 @@ html.ios6.app-entering #root {
   transform-origin: 0 100%;
 }
 
-/* Tails: a clipped triangle in the bubble's bottom colour. */
+/* Tails: a small SVG shape hanging off the bottom outer corner, pointing
+   outward (right for sent, mirrored for received). Drawn as an image so it
+   never depends on what's behind the bubble. */
 .msg--me::after,
 .msg--them::after {
   content: "";
   position: absolute;
   bottom: -1px;
-  width: 12px;
-  height: 14px;
+  width: 16px;
+  height: 18px;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  pointer-events: none;
 }
 
 .msg--me::after {
-  right: -7px;
-  background: #2674ee;
-  border-right: 1px solid #1352b8;
-  clip-path: polygon(0 0, 55% 40%, 100% 100%, 0 100%);
-  border-bottom-right-radius: 14px 10px;
+  right: -8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='18' viewBox='0 0 16 18'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%234a93f6'/%3E%3Cstop offset='1' stop-color='%232674ee'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M0 0 H8 C8 7 10 13 15.5 16.6 C9 18 2.5 16.5 0 13 Z' fill='url(%23g)'/%3E%3Cpath d='M8 1 C8 7 10 13 15.5 16.6 C9 18 3.5 16.8 0.5 13.5' fill='none' stroke='%231352b8' stroke-width='1'/%3E%3C/svg%3E");
 }
 
 .msg--them::after {
-  left: -7px;
-  background: #dfe2e8;
-  clip-path: polygon(100% 0, 45% 40%, 0 100%, 100% 100%);
+  left: -8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='18' viewBox='0 0 16 18'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23eceef2'/%3E%3Cstop offset='1' stop-color='%23dfe2e8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M0 0 H8 C8 7 10 13 15.5 16.6 C9 18 2.5 16.5 0 13 Z' fill='url(%23g)'/%3E%3Cpath d='M8 1 C8 7 10 13 15.5 16.6 C9 18 3.5 16.8 0.5 13.5' fill='none' stroke='%23aeb3bf' stroke-width='1'/%3E%3C/svg%3E");
+  transform: scaleX(-1);
 }
 
 @keyframes msg-in {
@@ -1045,3 +1049,417 @@ html.ios6 #site-footer {
 @keyframes ios-spin {
   to { transform: rotate(360deg); }
 }
+
+/* ─── Splash stage: iPhone 5-era handset ────────────────────────────────── */
+
+.sb-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  overflow: hidden;
+  background: #0b1530;
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.sb-stage.is-leaving {
+  opacity: 0;
+  transform: scale(1.35);
+  pointer-events: none;
+}
+
+.sb-desk {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 30%, #2a4482, #0b1530 70%);
+}
+
+.sb-phone {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.sb-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  container: sbscreen / size;
+  background: #16306a;
+}
+
+.sb-extra { display: none; }
+
+@container sbscreen (min-height: 600px) {
+  .sb-extra { display: flex; }
+}
+
+/* On anything bigger than a phone, show the whole handset. */
+@media (min-width: 521px) and (min-height: 620px) {
+  .sb-phone {
+    --sh: min(640px, calc(100dvh - 200px));
+    --sw: calc(var(--sh) * 0.5634);
+    width: calc(var(--sw) + 36px);
+    height: auto;
+    padding: 70px 18px 92px;
+    border-radius: 56px;
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 30%),
+      linear-gradient(160deg, #3a3d44 0%, #0d0e10 45%, #25272c 100%);
+    box-shadow:
+      0 0 0 2px #5a5e68,
+      0 0 0 5px #0a0b0d,
+      inset 0 0 0 2px rgba(255, 255, 255, 0.12),
+      0 40px 100px rgba(0, 0, 0, 0.8);
+  }
+
+  .sb-screen {
+    width: var(--sw);
+    height: var(--sh);
+    border-radius: 4px;
+    box-shadow: 0 0 0 2px #000;
+  }
+
+  /* earpiece + camera */
+  .sb-phone::before {
+    content: "";
+    position: absolute;
+    top: 30px;
+    left: 50%;
+    width: 64px;
+    height: 8px;
+    border-radius: 6px;
+    background: linear-gradient(180deg, #000, #2b2d31);
+    box-shadow: inset 0 1px 2px #000, 0 1px 0 rgba(255, 255, 255, 0.15);
+    transform: translateX(-50%);
+  }
+
+  /* home button */
+  .sb-phone::after {
+    content: "";
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid #4a4d54;
+    background: radial-gradient(circle at 50% 30%, #1a1b1e, #050506);
+    box-shadow: inset 0 0 0 7px #0a0b0c, inset 0 0 0 8px #34373c;
+    transform: translateX(-50%);
+  }
+}
+
+.sb-statusbar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: calc(20px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) 6px 0;
+  background: linear-gradient(180deg, #55585e 0%, #26282c 45%, #0c0d0f 100%);
+  border-bottom: 1px solid #000;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.8);
+}
+
+.sb-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-content: space-evenly;
+  flex: 1;
+  min-height: 0;
+  padding: 10px 4cqw 0;
+  row-gap: 1.2cqw;
+}
+
+.sb-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  color: #fff;
+  font-size: max(10px, 3.3cqw);
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+.sb-dock {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-around;
+  height: 21cqw;
+  padding: 0 4cqw;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.1) 45%, rgba(0, 0, 0, 0.35) 46%, rgba(0, 0, 0, 0.5) 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* ─── Stepper + rolling picker ──────────────────────────────────────────── */
+
+.ios-stepper {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid #7d8594;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fff 0%, #e2e5ea 50%, #d3d7de 51%, #e6e9ee 100%);
+  box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.ios-stepper > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 44px;
+  height: 44px;
+  color: #2a3140;
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-shadow: 0 1px 0 #fff;
+  transition: filter 0.1s;
+}
+
+.ios-stepper--sm > button { min-width: 34px; height: 34px; font-size: 0.9rem; }
+
+.ios-stepper > button + button { border-left: 1px solid #9aa1af; }
+
+.ios-stepper > button:active:not(:disabled) {
+  filter: brightness(0.8);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.35);
+}
+
+.ios-stepper > button:disabled { opacity: 0.35; }
+
+.ios-stepper-value { min-width: 54px !important; }
+
+.picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(8, 12, 24, 0.5);
+  animation: ios-fade 0.2s ease both;
+}
+
+.picker-sheet {
+  width: min(100%, 480px);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #1d1f24;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5);
+  animation: ios-sheet 0.32s var(--ios-ease) both;
+}
+
+@media (min-width: 640px) {
+  .picker-backdrop { align-items: center; }
+  .picker-sheet { border-radius: 14px; width: 340px; }
+}
+
+@keyframes ios-sheet { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes ios-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.picker-panel {
+  overflow: hidden;
+  border-radius: 10px;
+  background: #1d1f24;
+}
+
+.picker-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 8px 0 14px;
+  background: linear-gradient(180deg, #5a5d63, #2b2d31);
+  border-bottom: 1px solid #000;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.picker-title {
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-shadow: 0 -1px 0 #000;
+}
+
+.picker {
+  position: relative;
+  margin: 8px;
+  overflow: hidden;
+  border: 1px solid #000;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff, #eef0f4 50%, #fff);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.picker-scroll {
+  height: 100%;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+  outline: none;
+  perspective: 600px;
+}
+
+.picker-scroll::-webkit-scrollbar { display: none; }
+
+.picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  color: #14171f;
+  font-size: 1.4rem;
+  font-weight: 700;
+  will-change: transform, opacity;
+  cursor: pointer;
+  user-select: none;
+}
+
+.picker-bar {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  margin-top: -22px;
+  border-top: 1px solid #3f64ab;
+  border-bottom: 1px solid #3f64ab;
+  background: linear-gradient(180deg, rgba(150, 180, 235, 0.55), rgba(70, 110, 200, 0.28) 50%, rgba(60, 100, 190, 0.34));
+  box-shadow: 0 0 8px rgba(40, 90, 200, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+.picker-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.12) 28%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.12) 72%, rgba(0, 0, 0, 0.6) 100%);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picker-sheet, .picker-backdrop { animation: none; }
+}
+
+/* ─── Inner pages: the same material language as the homepage ───────────── */
+
+/* Search bar: iOS 6's blue-grey strip with an inset white field. */
+.ios-searchbar {
+  border: 1px solid #55709c;
+  background: linear-gradient(180deg, #a9bbd6 0%, #8aa1c4 50%, #7b94ba 51%, #8ea5c8 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.ios-search {
+  border: 1px solid #5b7099 !important;
+  background: #fff !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Page-section headings get a rainbow rule, like the homepage. */
+html.ios6 main h2[class*="text-heading-xl"]::after,
+html.ios6 main h2[class*="text-heading-lg"]::after,
+html.ios6 main h1.type-display::after {
+  content: "";
+  display: block;
+  width: 96px;
+  height: 5px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ios-red), var(--ios-orange), var(--ios-yellow), var(--ios-green), var(--ios-teal), var(--ios-blue), var(--ios-purple));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), inset 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+html.ios6 main .text-center > h2[class*="text-heading"]::after,
+html.ios6 main .text-center > h1.type-display::after,
+html.ios6 main section.text-center h1.type-display::after,
+html.ios6 main div.text-center h1.type-display::after {
+  margin-inline: auto;
+}
+
+html.ios6 main h1,
+html.ios6 main h2,
+html.ios6 main h3 {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+html.ios6 main [class*="bg-accent"] h1,
+html.ios6 main [class*="bg-accent"] h2,
+html.ios6 main .ios-leather h2,
+html.ios6 main .ios-leather h3 {
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Eyebrows */
+html.ios6 main [class*="tracking-widest"][class*="text-accent"] {
+  color: var(--ios-slate);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Icon chips (a round tint with a lone glyph) become glossy app tiles. */
+html.ios6 main [class*="rounded-full"][class*="bg-accent-soft"]:has(> svg:only-child),
+html.ios6 [class*="rounded-full"][class*="bg-accent-soft"]:has(> svg:only-child):not(.chip) {
+  --c1: #8cc0ff;
+  --c2: #1f5fd0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 22.5%;
+  background: linear-gradient(180deg, var(--c1), var(--c2));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+html.ios6 [class*="rounded-full"][class*="bg-accent-soft"]:has(> svg:only-child)::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 50% 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.1));
+  pointer-events: none;
+}
+
+html.ios6 [class*="rounded-full"][class*="bg-accent-soft"]:has(> svg:only-child) > svg {
+  position: relative;
+  z-index: 1;
+  color: #fff !important;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+}
+
+/* …and cycle the palette across sibling cards. */
+html.ios6 :is(.grid, ol, ul, .flex-col) > :nth-child(6n + 2) [class*="bg-accent-soft"]:has(> svg:only-child) { --c1: #8de27f; --c2: #2c9a2c; }
+html.ios6 :is(.grid, ol, ul, .flex-col) > :nth-child(6n + 3) [class*="bg-accent-soft"]:has(> svg:only-child) { --c1: #ffc66b; --c2: #e07b00; }
+html.ios6 :is(.grid, ol, ul, .flex-col) > :nth-child(6n + 4) [class*="bg-accent-soft"]:has(> svg:only-child) { --c1: #c5a0f5; --c2: #6a35b8; }
+html.ios6 :is(.grid, ol, ul, .flex-col) > :nth-child(6n + 5) [class*="bg-accent-soft"]:has(> svg:only-child) { --c1: #ff8f86; --c2: #cf2222; }
+html.ios6 :is(.grid, ol, ul, .flex-col) > :nth-child(6n + 6) [class*="bg-accent-soft"]:has(> svg:only-child) { --c1: #86e6f3; --c2: #178ea6; }
+
+/* Plain white cards read as glossy table groups. */
+html.ios6 main article[class*="rounded-card"],
+html.ios6 main article[class*="rounded-panel"] {
+  position: relative;
+}
+
+html.ios6 main .surface-raised:not(.ios-card-gloss) {
+  background-image: linear-gradient(180deg, #fff 0%, #f7f8fa 100%);
+}
+
+/* Filters inside an always-visible SVG get repainted on every scroll frame. */
+.real-icon--plain svg * { filter: none !important; }
+
+.msgs-launcher { will-change: transform; }

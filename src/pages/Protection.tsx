@@ -15,6 +15,7 @@ import {
 import { Button } from "@heroui/react";
 
 import PageMeta from "@/components/PageMeta";
+import HeroBadge from "@/components/ios/HeroBadge";
 import { AKKO_CONFIG } from "@/lib/config";
 import BookingWizard from "@/components/BookingWizard";
 
@@ -232,15 +233,12 @@ export default function Protection() {
         <div className="pointer-events-none absolute left-1/2 top-[40%] h-[240px] w-[clamp(300px,65vw,600px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-soft/60 blur-[60px]" />
 
         <div className="relative z-[1]">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-surface-secondary px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-accent shadow-sm">
-            <ShieldCheck className="size-4 text-accent" />
-            <span>Official AKKO Protection Partner</span>
-          </div>
+          <HeroBadge color="purple" icon={ShieldCheck} label="Official AKKO Protection Partner" />
 
           <h1 className="type-display m-0 mb-4 text-display text-foreground">
             Full Tech Protection.
             <br />
-            <span className="text-accent">Zero Headaches.</span>
+            <span className="ios-gradient-text">Zero Headaches.</span>
           </h1>
 
           <p className="mx-auto mb-8 max-w-[680px] text-body-lg leading-relaxed text-muted">
@@ -591,14 +589,14 @@ export default function Protection() {
       </section>
 
       {/* ─── Bottom CTA Strip ─── */}
-      <section className="surface-accent relative overflow-hidden rounded-panel p-8 text-center sm:p-12">
+      <section className="ios-leather relative overflow-hidden rounded-panel p-8 text-center sm:p-12">
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-[200px] w-4/5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-soft/70 blur-[50px]" />
 
         <div className="relative z-[1]">
-          <h2 className="m-0 mb-3 text-heading-xl font-black text-foreground">
+          <h2 className="m-0 mb-3 text-heading-xl font-black !text-[#f6e7cf] !shadow-none" style={{ textShadow: "0 -1px 0 rgba(0,0,0,.6)" }}>
             Ready to Protect Your Devices?
           </h2>
-          <p className="mx-auto mb-7 max-w-[580px] text-sm leading-relaxed text-muted">
+          <p className="mx-auto mb-7 max-w-[580px] text-sm leading-relaxed !text-[#f6e7cf]/90">
             Join thousands of customers who save hundreds each year on cracked
             screens and accidental tech disasters.
           </p>

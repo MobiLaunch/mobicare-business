@@ -8,6 +8,7 @@ import { useProductStore } from "@/lib/store";
 import ProductCard from "@/components/ProductCard";
 import PageMeta from "@/components/PageMeta";
 import CategoryIcon from "@/components/CategoryIcon";
+import AppIcon from "@/components/ios/AppIcon";
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured" },
@@ -119,27 +120,29 @@ export default function Shop() {
   const selectedSort = SORT_OPTIONS.find((option) => option.value === sort) || SORT_OPTIONS[0];
   const applySearch = (value: string) => { setSearch(value); setSearchMenuOpen(false); };
   const applyCategorySuggestion = (catId: string) => { handleCatChange(catId); setSearch(""); setSearchMenuOpen(false); };
-  const categoryButtonClass = (active: boolean) => `relative flex shrink-0 items-center gap-2 rounded-pill border px-3.5 py-2 text-label font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${active ? "border-accent bg-accent text-accent-foreground shadow-[var(--elev-1)]" : "border-border bg-surface text-muted hover:border-accent/40 hover:bg-surface-secondary hover:text-foreground"}`;
-  const subcatChipClass = (active: boolean) => `rounded-pill border px-3.5 py-1.5 text-label font-medium transition-colors ${active ? "border-accent bg-accent-soft text-accent-soft-foreground" : "border-border bg-surface text-muted hover:text-foreground"}`;
+  const categoryButtonClass = (active: boolean) => `ios-btn ios-btn--sm shrink-0 ${active ? "" : "ios-btn--gray"}`;
+  const subcatChipClass = (active: boolean) => `ios-btn ios-btn--sm !min-h-8 ${active ? "ios-btn--orange" : "ios-btn--gray"}`;
 
   return (
     <main className="mx-auto max-w-[1400px] overflow-x-hidden px-[clamp(12px,3vw,24px)] pb-16 pt-4 sm:pt-6">
       <PageMeta description="Shop premium phone accessories at Mobicare." title="Shop — Mobicare" />
       <div className="relative py-[clamp(14px,3vw,26px)]">
-        <div className="pointer-events-none absolute left-[10%] top-[30%] h-[140px] w-[clamp(200px,40vw,400px)] rounded-full bg-accent-soft/40 blur-[50px]" />
         <div className="relative z-[1] flex items-end justify-between gap-3 sm:gap-4">
-          <div className="min-w-0">
-            <span className="type-eyebrow mb-2 inline-flex items-center gap-1.5 rounded-pill bg-accent-soft px-2.5 py-1 text-accent-soft-foreground sm:px-3"><ShoppingBag aria-hidden="true" className="size-3" /> Accessories &amp; Gear</span>
-            <h1 className="type-display m-0 text-display text-foreground">Shop Catalog</h1>
+          <div className="flex min-w-0 items-center gap-4">
+            <AppIcon color="orange" icon={ShoppingBag} size={64} />
+            <div className="min-w-0">
+              <span className="ios-pill mb-2">Accessories &amp; Gear</span>
+              <h1 className="type-display m-0 text-display text-foreground">Shop Catalog</h1>
+            </div>
           </div>
-          <span aria-live="polite" className="shrink-0 rounded-pill border border-border bg-surface px-3 py-1.5 text-label font-bold tabular-nums shadow-[var(--elev-1)] sm:px-4">{filtered.length} Product{filtered.length !== 1 ? "s" : ""}</span>
+          <span aria-live="polite" className="ios-badge shrink-0 !h-auto !rounded-full !px-3 !py-1 !text-label tabular-nums">{filtered.length} Product{filtered.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
 
-      <div className="mb-4 flex items-center gap-2 sm:mb-5 sm:gap-2.5">
+      <div className="ios-searchbar mb-4 flex items-center gap-2 rounded-panel p-2.5 sm:mb-5 sm:gap-2.5">
         <div ref={searchWrapRef} className="relative min-w-0 flex-1">
           <TextField aria-label="Search products" className="flex flex-col" value={search} onChange={setSearch}>
-            <InputGroup className="rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+            <InputGroup className="ios-search rounded-full">
               <InputGroup.Prefix><Search aria-hidden="true" className="size-4" /></InputGroup.Prefix>
               <InputGroup.Input placeholder="Search accessories, cases, chargers…" type="search" onFocus={() => setSearchMenuOpen(true)} onKeyDown={(e) => e.key === "Enter" && applySearch(e.currentTarget.value)} />
               {search && <InputGroup.Suffix><button aria-label="Clear search" className="flex size-9 items-center justify-center rounded-full" type="button" onClick={() => applySearch("")}><X aria-hidden="true" className="size-4" /></button></InputGroup.Suffix>}
@@ -160,7 +163,7 @@ export default function Shop() {
         </div>
 
         <Select className="shrink-0" selectedKey={sort} onSelectionChange={(key) => setSort(String(key))}>
-          <Select.Trigger aria-label={`Sort products: ${selectedSort.label}`} className="flex size-10 items-center justify-center rounded-full border border-border bg-surface-secondary text-foreground transition-colors hover:bg-surface-tertiary sm:size-11">
+          <Select.Trigger aria-label={`Sort products: ${selectedSort.label}`} className="ios-bar-btn !size-10 !p-0 sm:!size-11">
             <SlidersHorizontal aria-hidden="true" className="size-[17px] sm:size-[18px]" />
           </Select.Trigger>
           <Select.Popover className="w-56">

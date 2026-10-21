@@ -19,6 +19,8 @@ import { Button } from "@heroui/react";
 
 import { useSiteStore } from "@/lib/siteStore";
 import PageMeta from "@/components/PageMeta";
+import HeroBadge from "@/components/ios/HeroBadge";
+import AppIcon, { type IconColor } from "@/components/ios/AppIcon";
 
 const VALUE_PROPS: { icon: LucideIcon; title: string; desc: string }[] = [
   {
@@ -84,12 +86,9 @@ export default function About() {
         <div className="pointer-events-none absolute left-1/2 top-[40%] h-[200px] w-[clamp(280px,60vw,540px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-soft/60 blur-[50px]" />
 
         <div className="relative z-[1]">
-          <span className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-accent">
-            <BadgeCheck className="size-4" />
-            {about?.eyebrow || "About Mobicare"}
-          </span>
+          <HeroBadge color="green" icon={BadgeCheck} label={about?.eyebrow || "About Mobicare"} />
 
-          <h1 className="m-0 mb-5 break-words text-display font-black leading-[1.1] tracking-tight text-foreground">
+          <h1 className="type-display m-0 mb-5 break-words text-display text-foreground">
             {about?.headline}
           </h1>
 
@@ -270,9 +269,7 @@ export default function About() {
               onPress={() => navigate("/repairs")}
             >
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-accent">
-                  <Wrench className="size-[18px]" />
-                </span>
+                <AppIcon color={(["red", "green", "teal", "orange", "purple", "pink", "blue", "yellow"] as IconColor[])[repairServices.indexOf(svc) % 8]} icon={Wrench} size={38} />
                 <strong className="break-words text-body-sm font-bold text-foreground">
                   {svc.name}
                 </strong>

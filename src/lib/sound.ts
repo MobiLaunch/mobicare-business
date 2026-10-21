@@ -12,6 +12,7 @@ import { create } from "zustand";
 
 export type SoundName =
   | "tap"
+  | "tick"
   | "launch"
   | "unlock"
   | "send"
@@ -143,6 +144,11 @@ export function play(name: SoundName) {
   switch (name) {
     case "tap":
       tone(c, t, 1200, 0.04, { type: "triangle", gain: 0.07, to: 700 });
+      break;
+    case "tick":
+      // The picker-wheel detent: a dry, woody click with a touch of body.
+      noiseSweep(c, t, 0.03, 3800, 2200, 0.1);
+      tone(c, t, 1500, 0.025, { type: "square", gain: 0.045, to: 700 });
       break;
     case "launch":
       noiseSweep(c, t, 0.55, 300, 3400, 0.22);
