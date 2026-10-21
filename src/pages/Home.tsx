@@ -8,7 +8,7 @@ import HowItWorks from "@/components/home/HowItWorks";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import ProtectionTeaser from "@/components/home/ProtectionTeaser";
 import CtaStrip from "@/components/home/CtaStrip";
-import BookingWizard from "@/components/BookingWizard";
+import BookingWizard from "@/components/LazyBookingWizard";
 
 export default function Home() {
   // `true` = open with no preselected service; a string = open on that service.

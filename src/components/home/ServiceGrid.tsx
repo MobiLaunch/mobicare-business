@@ -16,7 +16,8 @@ const ICONS: Record<string, LucideIcon> = {
 const COLORS: IconColor[] = ["red", "green", "teal", "orange", "purple", "pink", "blue", "yellow"];
 
 interface ServiceGridProps {
-  onSelect: (serviceId: string) => void;
+  /** BookingWizard preselects by service *name*. */
+  onSelect: (serviceName: string) => void;
 }
 
 /**
@@ -46,7 +47,7 @@ export default function ServiceGrid({ onSelect }: ServiceGridProps) {
                   aria-label={`Book ${s.name}, ${s.priceRange}`}
                   className="ios-icon-tile w-full"
                   type="button"
-                  onClick={() => onSelect(s.id)}
+                  onClick={() => onSelect(s.name)}
                 >
                   <AppIcon color={COLORS[i % COLORS.length]} icon={ICONS[s.icon] ?? Wrench} size={68} />
                   <span className="ios-icon-label leading-tight">{s.name}</span>

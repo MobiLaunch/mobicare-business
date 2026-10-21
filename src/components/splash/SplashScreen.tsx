@@ -123,9 +123,10 @@ export default function SplashScreen({ onDone }: { onDone: () => void }) {
   const screenRef = useRef<HTMLDivElement>(null);
   const targetRef = useRef<HTMLButtonElement>(null);
   const [phase, setPhase] = useState<"home" | "opening" | "leaving">("home");
-  const [rect, setRect] = useState<{ top: number; left: number; size: number } | null>(null);
+  const [rect, setRect] = useState<{ top: number; left: number; size: number; w: number; h: number } | null>(null);
   const [expanded, setExpanded] = useState(false);
   const started = useRef(false);
+  const timers = useRef<number[]>([]);
 
   const finish = useCallback(() => {
     try {
@@ -152,16 +153,24 @@ export default function SplashScreen({ onDone }: { onDone: () => void }) {
     }
 
     play("launch");
-    setRect({ top: target.top - screen.top, left: target.left - screen.left, size: target.width });
+    setRect({ top: target.top - screen.top, left: target.left - screen.left, size: target.width, w: screen.width, h: screen.height });
     setPhase("opening");
     // Two frames: first paints the launch image at the icon's position, second flips it to full-bleed so the CSS transition has a start state.
     requestAnimationFrame(() => requestAnimationFrame(() => setExpanded(true)));
-    window.setTimeout(() => {
-      setPhase("leaving");
-      play("unlock");
-      window.setTimeout(finish, 520);
-    }, 720);
+    timers.current.push(
+      window.setTimeout(() => {
+        setPhase("leaving");
+        play("unlock");
+        timers.current.push(window.setTimeout(finish, 520));
+      }, 720),
+    );
   }, [finish]);
+
+  useEffect(() => {
+    const pending = timers.current;
+
+    return () => pending.forEach((t) => window.clearTimeout(t));
+  }, []);
 
   // Auto-open so nobody is held hostage by the intro.
   useEffect(() => {
@@ -274,39 +283,24 @@ export default function SplashScreen({ onDone }: { onDone: () => void }) {
             ))}
           </div>
 
-          {/* The app opening: grows from the icon to fill the screen */}
+          {/* The app opening: a full-screen layer that starts scaled down onto
+              the icon and animates to identity. Transform-only, so it stays
+              on the compositor instead of re-laying-out every frame. */}
           {rect && (
             <div
               aria-hidden="true"
-              className="absolute z-20 overflow-hidden bg-[#cdd1d7]"
+              className="absolute left-0 top-0 z-20 overflow-hidden bg-[#cdd1d7] will-change-transform"
               style={{
-                top: expanded ? 0 : rect.top,
-                left: expanded ? 0 : rect.left,
-                width: expanded ? "100%" : rect.size,
-                height: expanded ? "100%" : rect.size,
-                borderRadius: expanded ? 0 : "22.5%",
-                transition: "all 0.62s cubic-bezier(0.3, 0.9, 0.25, 1)",
-                backgroundImage:
-                  "repeating-linear-gradient(0deg, rgba(255,255,255,.22) 0 1px, rgba(60,70,90,.07) 1px 2px), repeating-linear-gradient(90deg, rgba(255,255,255,.18) 0 1px, rgba(60,70,90,.07) 1px 2px)",
+                width: rect.w,
+                height: rect.h,
+                transformOrigin: "0 0",
+                transform: expanded ? "none" : `translate(${rect.left}px, ${rect.top}px) scale(${rect.size / rect.w}, ${rect.size / rect.h})`,
+                borderRadius: expanded ? 0 : rect.w * 0.225,
+                transition: "transform 0.62s cubic-bezier(0.3, 0.9, 0.25, 1), border-radius 0.62s ease",
+                backgroundImage: "var(--ios-linen, none)",
               }}
             >
-              <div
-                className="absolute left-0 top-0"
-                style={{
-                  width: "var(--sw)",
-                  height: "var(--sh)",
-                  opacity: expanded ? 1 : 0,
-                  transition: "opacity 0.3s ease 0.2s",
-                }}
-                ref={(el) => {
-                  const s = screenRef.current;
-
-                  if (el && s) {
-                    el.style.setProperty("--sw", `${s.clientWidth}px`);
-                    el.style.setProperty("--sh", `${s.clientHeight}px`);
-                  }
-                }}
-              >
+              <div style={{ opacity: expanded ? 1 : 0, transition: "opacity 0.3s ease 0.2s", height: "100%" }}>
                 <LaunchImage />
               </div>
             </div>

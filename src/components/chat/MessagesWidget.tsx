@@ -3,7 +3,7 @@ import { Phone, Send, X } from "lucide-react";
 import { MessageSquare } from "lucide-react";
 
 import AppIcon from "@/components/ios/AppIcon";
-import BookingWizard from "@/components/BookingWizard";
+import BookingWizard from "@/components/LazyBookingWizard";
 import { useNavigate } from "react-router-dom";
 import { BUSINESS } from "@/lib/config";
 import { QUICK_REPLIES, getReply, type BotContext, type ChatAction } from "@/lib/chatbot";
@@ -136,13 +136,21 @@ export default function MessagesWidget() {
 
     inputRef.current?.focus({ preventScroll: true });
 
+    // On phones the sheet is full-screen: stop the page scrolling behind it.
+    const prevOverflow = document.body.style.overflow;
+
+    if (window.matchMedia("(max-width: 639px)").matches) document.body.style.overflow = "hidden";
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
 
     document.addEventListener("keydown", onKey);
 
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   const send = (raw: string) => {

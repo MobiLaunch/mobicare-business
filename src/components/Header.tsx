@@ -7,7 +7,7 @@ import { useCartStore } from "@/lib/store";
 import { useAuth } from "@/lib/AuthContext";
 import { useSoundStore } from "@/lib/sound";
 import localLogo from "@/assets/mobicare-logo.svg";
-import BookingWizard from "@/components/BookingWizard";
+import BookingWizard from "@/components/LazyBookingWizard";
 
 const NAV_LINKS = [
   { to: "/", label: "Home" },

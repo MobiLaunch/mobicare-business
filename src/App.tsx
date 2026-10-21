@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Spinner, ToastProvider } from "@heroui/react";
 
@@ -6,32 +6,32 @@ import { useProductStore, useCartStore } from "@/lib/store";
 import { useSiteStore, applyAppearance, getEffectiveColorScheme } from "@/lib/siteStore";
 import { sbFetchSiteSettings, isSupabaseConfigured } from "@/lib/supabase";
 import PublicLayout from "@/layouts/PublicLayout";
+const CheckoutDrawer = lazy(() => import("@/components/CheckoutDrawer"));
 import RequireAdmin from "@/components/RequireAdmin";
-import CheckoutDrawer from "@/components/CheckoutDrawer";
-import Login from "@/pages/Login";
+const Login = lazy(() => import("@/pages/Login"));
 import Home from "@/pages/Home";
-import Shop from "@/pages/Shop";
-import ProductDetail from "@/pages/ProductDetail";
-import OrderSuccess from "@/pages/OrderSuccess";
-import Repairs from "@/pages/Repairs";
-import Protection from "@/pages/Protection";
-import About from "@/pages/About";
-import AdminLogin from "@/admin/AdminLogin";
-import AdminLayout from "@/admin/AdminLayout";
-import AdminProducts from "@/admin/Products";
+const Shop = lazy(() => import("@/pages/Shop"));
+const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
+const OrderSuccess = lazy(() => import("@/pages/OrderSuccess"));
+const Repairs = lazy(() => import("@/pages/Repairs"));
+const Protection = lazy(() => import("@/pages/Protection"));
+const About = lazy(() => import("@/pages/About"));
+const AdminLogin = lazy(() => import("@/admin/AdminLogin"));
+const AdminLayout = lazy(() => import("@/admin/AdminLayout"));
+const AdminProducts = lazy(() => import("@/admin/Products"));
 // Lazy-loaded: pulls in lucide-react's full ~1,767-icon dictionary for its
 // icon picker (~120KB gzipped), which would otherwise ship to every visitor
 // in the main bundle even though only admins ever load this page.
 const AdminCategories = lazy(() => import("@/admin/Categories"));
-import AdminOrders from "@/admin/Orders";
-import AdminBookings from "@/admin/Bookings";
-import AdminDashboard from "@/admin/Dashboard";
-import AdminSettings from "@/admin/Settings";
-import SiteContent from "@/admin/SiteContent";
-import Signup from "@/pages/Signup";
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
-import Account from "@/pages/Account";
+const AdminOrders = lazy(() => import("@/admin/Orders"));
+const AdminBookings = lazy(() => import("@/admin/Bookings"));
+const AdminDashboard = lazy(() => import("@/admin/Dashboard"));
+const AdminSettings = lazy(() => import("@/admin/Settings"));
+const SiteContent = lazy(() => import("@/admin/SiteContent"));
+const Signup = lazy(() => import("@/pages/Signup"));
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const Account = lazy(() => import("@/pages/Account"));
 
 let storeInitPromise: Promise<void> | null = null;
 let siteContentInitPromise: Promise<void> | null = null;
@@ -87,27 +87,74 @@ function CartRedirect() {
   return null;
 }
 
+// Mounts the (Stripe-heavy) checkout drawer only once the cart has been opened.
+function CheckoutMount() {
+  const open = useCartStore((s) => s.cartDrawerOpen);
+  const [armed, setArmed] = useState(false);
+
+  useEffect(() => { if (open) setArmed(true); }, [open]);
+
+  return armed ? <Suspense fallback={null}><CheckoutDrawer /></Suspense> : null;
+}
+
+// After first paint, warm the chunks a visitor is most likely to navigate to so
+// route changes feel instant instead of waiting on the network.
+function usePrefetchRoutes() {
+  useEffect(() => {
+    const loaders = [
+      () => import("@/pages/Shop"),
+      () => import("@/components/BookingWizard"),
+      () => import("@/pages/Repairs"),
+      () => import("@/pages/ProductDetail"),
+      () => import("@/pages/Protection"),
+      () => import("@/components/CheckoutDrawer"),
+    ];
+    const w = window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+    let timer = 0;
+    let i = 0;
+
+    // One chunk per idle slot, spaced out, so parsing a chunk never lands
+    // in the middle of a scroll or an animation.
+    const next = () => {
+      if (i >= loaders.length) return;
+      const load = loaders[i++];
+      const go = () => { void load().catch(() => undefined); timer = window.setTimeout(next, 700); };
+
+      if (w.requestIdleCallback) w.requestIdleCallback(go, { timeout: 3000 });
+      else go();
+    };
+
+    timer = window.setTimeout(next, 4000);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+}
+
 export default function App() {
+  usePrefetchRoutes();
+
   return <>
-    <StoreInit /><ScrollToTop /><ToastProvider /><CheckoutDrawer />
+    <StoreInit /><ScrollToTop /><ToastProvider /><CheckoutMount />
     <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Spinner size="lg" /></div>}>
     <Routes>
-      <Route element={<PublicLayout><Home /></PublicLayout>} path="/" />
-      <Route element={<PublicLayout><Shop /></PublicLayout>} path="/shop" />
-      <Route element={<PublicLayout><ProductDetail /></PublicLayout>} path="/product/:id" />
-      <Route element={<PublicLayout><CartRedirect /></PublicLayout>} path="/cart" />
-      <Route element={<PublicLayout><OrderSuccess /></PublicLayout>} path="/order-success" />
-      <Route element={<PublicLayout><Repairs /></PublicLayout>} path="/repairs" />
-      <Route element={<PublicLayout><Protection /></PublicLayout>} path="/protection" />
+      <Route element={<PublicLayout />}>
+        <Route element={<Home />} path="/" />
+        <Route element={<Shop />} path="/shop" />
+        <Route element={<ProductDetail />} path="/product/:id" />
+        <Route element={<CartRedirect />} path="/cart" />
+        <Route element={<OrderSuccess />} path="/order-success" />
+        <Route element={<Repairs />} path="/repairs" />
+        <Route element={<Protection />} path="/protection" />
+        <Route element={<About />} path="/about" />
+        <Route element={<Login />} path="/login" />
+        <Route element={<Signup />} path="/signup" />
+        <Route element={<ForgotPassword />} path="/forgot-password" />
+        <Route element={<ResetPassword />} path="/reset-password" />
+        <Route element={<Account />} path="/account" />
+      </Route>
       <Route element={<Navigate replace to="/protection" />} path="/insurance" />
-      <Route element={<PublicLayout><About /></PublicLayout>} path="/about" />
-      <Route element={<PublicLayout><Login /></PublicLayout>} path="/login" />
       <Route element={<Navigate replace to="/login" />} path="/signin" />
       <Route element={<Navigate replace to="/login" />} path="/sign-in" />
-      <Route element={<PublicLayout><Signup /></PublicLayout>} path="/signup" />
-      <Route element={<PublicLayout><ForgotPassword /></PublicLayout>} path="/forgot-password" />
-      <Route element={<PublicLayout><ResetPassword /></PublicLayout>} path="/reset-password" />
-      <Route element={<PublicLayout><Account /></PublicLayout>} path="/account" />
       <Route path="/admin"><Route index element={<Navigate replace to="login" />} /><Route element={<AdminLogin />} path="login" /><Route element={<RequireAdmin><AdminLayout /></RequireAdmin>}><Route element={<AdminDashboard />} path="dashboard" /><Route element={<AdminProducts />} path="products" /><Route element={<AdminCategories />} path="categories" /><Route element={<AdminOrders />} path="orders" /><Route element={<AdminBookings />} path="bookings" /><Route element={<AdminSettings />} path="settings" /><Route element={<SiteContent />} path="content" /><Route index element={<Navigate replace to="dashboard" />} /></Route></Route>
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
