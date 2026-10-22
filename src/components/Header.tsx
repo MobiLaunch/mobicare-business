@@ -1,101 +1,103 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { CalendarDays, CircleUserRound, ShoppingBag, Smartphone, Volume2, VolumeX } from "lucide-react";
+import { Suspense, lazy, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { CalendarDays, CircleUser, Menu, ShoppingBag } from "lucide-react";
 
-import { useSiteStore } from "@/lib/siteStore";
-import { useCartStore } from "@/lib/store";
+import { Button } from "@/components/arc/button/button";
+import { Drawer, DrawerContent } from "@/components/arc/drawer/drawer";
+import { ThemeSwitch } from "@/components/arc/theme-switch/theme-switch";
 import { useAuth } from "@/lib/AuthContext";
-import { useSoundStore } from "@/lib/sound";
+import { useCartStore } from "@/lib/store";
+import { getEffectiveColorScheme, useSiteStore } from "@/lib/siteStore";
 import localLogo from "@/assets/mobicare-logo.svg";
-import BookingWizard from "@/components/LazyBookingWizard";
 
-const NAV_LINKS = [
-  { to: "/", label: "Home" },
+const BookingWizard = lazy(() => import("@/components/BookingWizard"));
+
+const NAV = [
+  { to: "/", label: "Home", end: true },
   { to: "/shop", label: "Shop" },
   { to: "/repairs", label: "Repairs" },
   { to: "/protection", label: "Protection" },
   { to: "/about", label: "About" },
 ];
 
-/**
- * iOS 6 navigation bar. On phones it's the classic three-slot bar (sound ·
- * title · Book); from `lg` up the title slot grows into a segmented set of
- * links. Primary navigation on phones lives in the tab bar (BottomNav).
- */
 export default function Header() {
+  const navigate = useNavigate();
   const location = useLocation();
   const brand = useSiteStore((s) => s.brand);
   const appearance = useSiteStore((s) => s.appearance);
+  const viewerColorScheme = useSiteStore((s) => s.viewerColorScheme);
+  const setViewerColorScheme = useSiteStore((s) => s.setViewerColorScheme);
   const cart = useCartStore((s) => s.items);
   const setCartDrawerOpen = useCartStore((s) => s.setCartDrawerOpen);
-  const { user, loading: authLoading } = useAuth();
-  const muted = useSoundStore((s) => s.muted);
-  const toggleSound = useSoundStore((s) => s.toggle);
-  const [bookingOpen, setBookingOpen] = useState(false);
+  const { user } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [booking, setBooking] = useState(false);
 
-  const logoSrc = appearance?.logoUrl || localLogo;
-  const isActive = (path: string) => (path === "/" ? location.pathname === "/" : location.pathname.startsWith(path));
-  const accountLabel = authLoading ? "Account" : user ? (user.user_metadata?.full_name as string | undefined)?.split(" ")[0] || "Account" : "Sign In";
-  const accountPath = user ? "/account" : "/login";
-  const cartItemCount = cart.reduce((total, item) => total + (item?.qty || 0), 0);
+  const theme = appearance ? getEffectiveColorScheme({ appearance, viewerColorScheme }) : "light";
+  const count = cart.reduce((n, item) => n + (item?.qty || 0), 0);
+  const logo = appearance?.logoType === "image" && appearance.logoUrl ? appearance.logoUrl : localLogo;
+  const accountTo = user ? "/account" : "/login";
+  const isCurrent = (to: string, end?: boolean) => (end ? location.pathname === to : location.pathname.startsWith(to));
 
   return (
-    <header className="ios-navbar fixed inset-x-0 top-0 z-40 px-2 sm:px-4" id="site-header">
-      <div className="mx-auto grid h-11 w-full max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <div className="flex items-center gap-2">
-          <button
-            aria-label={muted ? "Turn sounds on" : "Turn sounds off"}
-            aria-pressed={!muted}
-            className="ios-bar-btn w-9 !px-0"
-            type="button"
-            onClick={toggleSound}
-          >
-            {muted ? <VolumeX aria-hidden="true" className="size-4" /> : <Volume2 aria-hidden="true" className="size-4" />}
-          </button>
-
-          <nav aria-label="Primary navigation" className="ml-2 !hidden items-center gap-1 lg:!flex">
-            {NAV_LINKS.map(({ to, label }) => (
-              <Link key={to} aria-current={isActive(to) ? "page" : undefined} className="ios-bar-link" to={to}>
-                {label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        <Link aria-label={brand?.name || "Mobicare Device Recovery"} className="min-w-0 justify-self-center" id="header-brand-logo" to="/">
-          {appearance?.logoType === "image" && logoSrc ? (
-            <img alt={appearance.logoAlt || brand?.name || "Logo"} className="mx-auto h-6 max-w-[150px] object-contain brightness-0 invert" src={logoSrc} />
-          ) : (
-            <span className="ios-navbar-title flex items-center gap-1.5 text-[17px]">
-              <Smartphone aria-hidden="true" className="size-4" />
-              {brand?.name || "Mobicare"}
-            </span>
-          )}
+    <header className="mc-header" id="site-header">
+      <div className="mc-page mc-header-in">
+        <Link aria-label={brand?.name || "Mobicare"} className="mc-brand" id="header-brand-logo" to="/">
+          <img alt="" className="mc-logo" src={logo} />
         </Link>
 
-        <div className="flex items-center justify-end gap-2">
-          <button
-            aria-label={`Open Shopping Cart${cartItemCount > 0 ? `, ${cartItemCount} items` : ""}`}
-            className="ios-bar-btn relative !hidden w-9 !px-0 lg:!inline-flex"
-            type="button"
-            onClick={() => setCartDrawerOpen(true)}
-          >
-            <ShoppingBag aria-hidden="true" className="size-4" />
-            {cartItemCount > 0 && <span className="ios-badge absolute -right-2 -top-2 !min-w-5 !h-5 !leading-4 !text-[11px]">{cartItemCount}</span>}
-          </button>
+        <nav aria-label="Primary" className="mc-nav">
+          {NAV.map((n) => (
+            <NavLink key={n.to} end={n.end} to={n.to}>{n.label}</NavLink>
+          ))}
+        </nav>
 
-          <Link aria-label={user ? "My Account" : "Sign in"} className="ios-bar-link !hidden lg:!inline-flex" to={accountPath}>
-            <CircleUserRound aria-hidden="true" className="size-4" />
-            {accountLabel}
-          </Link>
+        <div className="mc-header-actions">
+          <ThemeSwitch iconOnly theme={theme === "dark" ? "dark" : "light"} onThemeChange={(next) => setViewerColorScheme?.(next)} />
 
-          <button aria-label="Book repair appointment" className="ios-bar-btn ios-bar-btn--done" type="button" onClick={() => setBookingOpen(true)}>
-            <CalendarDays aria-hidden="true" className="size-3.5" />
-            <span>Book</span>
-          </button>
+          <span className="mc-cart">
+            <Button aria-label={`Open cart${count ? `, ${count} items` : ""}`} size="sm" variant="secondary" onClick={() => setCartDrawerOpen(true)}>
+              <ShoppingBag aria-hidden="true" size={16} strokeWidth={1.75} />
+            </Button>
+            {count > 0 && <span aria-hidden="true" className="mc-count">{count > 99 ? "99+" : count}</span>}
+          </span>
+
+          <span className="mc-only-wide">
+            <Button size="sm" variant="secondary" onClick={() => navigate(accountTo)}>
+              <CircleUser aria-hidden="true" size={16} strokeWidth={1.75} />
+              {user ? "Account" : "Sign in"}
+            </Button>
+          </span>
+
+          <Button size="sm" onClick={() => setBooking(true)}>
+            <CalendarDays aria-hidden="true" size={16} strokeWidth={1.75} />
+            Book a repair
+          </Button>
+
+          <span className="mc-only-narrow">
+            <Button aria-label="Open menu" size="sm" variant="secondary" onClick={() => setMenuOpen(true)}>
+              <Menu aria-hidden="true" size={16} strokeWidth={1.75} />
+            </Button>
+          </span>
         </div>
       </div>
-      {bookingOpen && <BookingWizard onClose={() => setBookingOpen(false)} />}
+
+      <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
+        <DrawerContent description="Navigate the site" side="right" title="Menu">
+          <nav aria-label="Mobile" className="mc-drawer-links">
+            {NAV.map((n) => (
+              <NavLink key={n.to} aria-current={isCurrent(n.to, n.end) ? "page" : undefined} end={n.end} to={n.to} onClick={() => setMenuOpen(false)}>{n.label}</NavLink>
+            ))}
+            <NavLink to={accountTo} onClick={() => setMenuOpen(false)}>{user ? "Account" : "Sign in"}</NavLink>
+          </nav>
+        </DrawerContent>
+      </Drawer>
+
+      {booking && (
+        <Suspense fallback={null}>
+          <BookingWizard onClose={() => setBooking(false)} />
+        </Suspense>
+      )}
     </header>
   );
 }

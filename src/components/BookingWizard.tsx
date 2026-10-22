@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import emailjs from "@emailjs/browser";
-import { Check, ChevronLeft, ChevronRight, Home, MapPin, Shield, Store, Wrench, X } from "lucide-react";
-import { Modal } from "@heroui/react";
-import AppIcon, { type IconColor } from "@/components/ios/AppIcon";
-import { IosChoice, IosField, IosGroup, IosNote, IosProgress, IosSegmented, IosSheetHeader, IosSummaryRow } from "@/components/ios/Forms";
-import { play } from "@/lib/sound";
+import { Home, MapPin, Store } from "lucide-react";
+import { Alert } from "@/components/arc/alert/alert";
+import { Button } from "@/components/arc/button/button";
+import { Calendar } from "@/components/arc/calendar/calendar";
+import { ChipGroup } from "@/components/arc/chip-group/chip-group";
+import { Dialog, DialogContent } from "@/components/arc/dialog/dialog";
+import { Input } from "@/components/arc/input/input";
+import { RadioCards } from "@/components/arc/radio-cards/radio-cards";
+import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
+import { Select } from "@/components/arc/select/select";
+import { Stepper } from "@/components/arc/stepper/stepper";
 import { BUSINESS, getEmailJSConfig } from "@/lib/config";
 import { DEVICE_KIND_ORDER, useSiteStore } from "@/lib/siteStore";
 import { useToastStore } from "@/lib/store";
@@ -40,8 +46,6 @@ interface BookingWizardProps { onClose?: () => void; defaultService?: string | n
 function money(n: number) {
   return n % 1 === 0 ? `$${n}` : `$${n.toFixed(2)}`;
 }
-
-const SERVICE_COLORS: IconColor[] = ["red", "green", "teal", "orange", "purple", "pink", "blue", "yellow"];
 
 export default function BookingWizard({ onClose = () => {}, defaultService = null, mode = "modal" }: BookingWizardProps) {
   const navigate = useNavigate();
@@ -156,6 +160,11 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
     setSending(false); setDone(true);
   };
   const days = getNextDays();
+  const firstDay = days[0];
+  const lastDay = days[days.length - 1];
+  const dayLabel = (d: Date) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const pickedDay = days.find((d) => dayLabel(d) === form.date);
+
   const goBack = () => {
     if (step > 0) { setStep((s) => s - 1); return; }
     if (visitType === "home" && form.visitLocationType) { update("visitLocationType", ""); return; }
@@ -163,215 +172,243 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
   };
 
   const isPage = mode === "page";
-  const title = <>{isPage ? <h2 className="m-0 inline text-[16px]">Book Appointment</h2> : <Modal.Heading className="m-0 inline text-[16px] text-white">Book Appointment</Modal.Heading>}</>;
-  const cancelBtn = isPage ? undefined : (
-    <button className="ios-bar-btn" type="button" onClick={onClose}><X aria-hidden="true" className="size-3.5" />Cancel</button>
-  );
-  const backBtn = (
-    <button className="ios-bar-btn" type="button" onClick={goBack}><ChevronLeft aria-hidden="true" className="size-3.5" />Back</button>
-  );
-  const visitLabel = visitType === "home" ? `Home visit · ${form.visitLocationType === "commercial" ? "Commercial" : "Residential"}` : "In-store";
-  const reviewRows = (
-    <>
-      <IosSummaryRow label="Visit" value={visitType === "home" ? `Home Visit — ${form.visitLocationType === "commercial" ? "Commercial" : "Residential"}` : "In-Store (Fairfield shop)"} />
-      <IosSummaryRow label="Service" value={`${selectedService?.name || ""}${form.variant ? ` (${form.variant})` : ""}`} />
-      <IosSummaryRow label="Device" value={deviceSummary} />
-      {form.issue && <IosSummaryRow label="Issue" value={form.issue} />}
-      <IosSummaryRow label="When" value={`${form.date} at ${form.time}`} />
-      {visitType === "home" && <IosSummaryRow label="Address" value={`${form.homeAddress}, ${form.homeCity}, ${form.homeState} ${form.homeZip}`} />}
-      <IosSummaryRow label="Name" value={form.name} />
-      <IosSummaryRow label="Phone" value={form.phone} />
-      <IosSummaryRow label="Email" value={form.email} />
-      {form.notes && <IosSummaryRow label="Notes" value={form.notes} />}
-      {visitType === "home" && <IosSummaryRow label="House call" value={`${activeHouseCallRate} (collected at service)`} />}
-    </>
+  const needsVisit = visitType === "";
+  const needsLocation = visitType === "home" && !form.visitLocationType;
+  const lastStep = step === STEPS.length - 1;
+  const visitLabel = visitType === "home" ? `Home visit, ${form.visitLocationType === "commercial" ? "commercial" : "residential"}` : "In-store visit";
+
+  const summary = (
+    <div className="mc-group">
+      {[
+        ["Visit", visitType === "home" ? `Home visit (${form.visitLocationType})` : "In-store, Fairfield shop"],
+        ["Service", `${selectedService?.name || ""}${form.variant ? ` (${form.variant})` : ""}`],
+        ["Device", deviceSummary],
+        ...(form.issue ? [["Issue", form.issue]] : []),
+        ["When", `${form.date} at ${form.time}`],
+        ...(visitType === "home" ? [["Address", `${form.homeAddress}, ${form.homeCity}, ${form.homeState} ${form.homeZip}`], ["House call rate", `${activeHouseCallRate}, collected at service`]] : []),
+        ["Name", form.name],
+        ["Phone", form.phone],
+        ["Email", form.email],
+        ...(form.notes ? [["Notes", form.notes]] : []),
+      ].map(([k, v]) => (
+        <div key={k} className="mc-item mc-item--between" style={{ alignItems: "start" }}>
+          <span className="mc-item-label">{k}</span>
+          <span className="mc-strong" style={{ textAlign: "right", overflowWrap: "anywhere" }}>{v}</span>
+        </div>
+      ))}
+    </div>
   );
 
-  const content = done ? (
-    <>
-      <IosSheetHeader right={isPage ? undefined : <button className="ios-bar-btn ios-bar-btn--done" type="button" onClick={onClose}>Done</button>} title={title} />
-      <div className="ios-sheet-body flex flex-col items-center gap-3 pt-6 text-center">
-        <span className="ios-bounce"><AppIcon color="green" icon={Check} size={76} /></span>
-        <h3 className="letterpress m-0 text-xl font-extrabold text-[var(--ios-ink)]">You&rsquo;re all set!</h3>
-        <p className="m-0 max-w-[34ch] text-sm text-[var(--ios-slate)]">Your appointment request has been submitted. We&rsquo;ll confirm via phone or email within 2 hours during business hours.</p>
-        {visitType === "home" && <IosNote><Home aria-hidden="true" className="mt-0.5 size-4 shrink-0" /><span>Our technician will come to your address.</span></IosNote>}
-        <IosGroup className="w-full text-left" title="Your appointment">{reviewRows}</IosGroup>
-        <button className="ios-leather w-full rounded-card p-4 text-left" type="button" onClick={() => { onClose(); navigate("/protection"); }}>
-          <span className="relative flex items-center gap-3">
-            <AppIcon color="purple" icon={Shield} size={44} />
-            <span className="min-w-0 flex-1"><strong className="block text-sm">Protect this device from future damage</strong><span className="text-xs opacity-90">AKKO device insurance from $5/mo with $29 deductibles</span></span>
-            <ChevronRight aria-hidden="true" className="size-5" />
-          </span>
-        </button>
+  let title = "Book a repair";
+  let description = "How would you like your device serviced?";
+
+  if (done) { title = "You're all set"; description = "Your appointment request has been submitted."; }
+  else if (needsLocation) description = "Is this a residential or commercial address?";
+  else if (!needsVisit) description = `${visitLabel}. Step ${step + 1} of ${STEPS.length}: ${STEPS[step]}.`;
+
+  const body = done ? (
+    <div className="mc-stack">
+      <p className="mc-text">We&apos;ll confirm by phone or email within 2 hours during business hours.{visitType === "home" ? " Our technician will come to your address." : ""}</p>
+      {summary}
+      <Alert title="Protect this device from future damage" tone="info">
+        AKKO device insurance starts at $5 a month with $29 deductibles.{" "}
+        <a className="mc-link" href="/protection" onClick={(e) => { e.preventDefault(); onClose(); navigate("/protection"); }}>View plans</a>
+      </Alert>
+      <div className="mc-actions" style={{ justifyContent: "flex-end" }}>
+        <Button onClick={isPage ? resetWizard : onClose}>{isPage ? "Book another repair" : "Done"}</Button>
       </div>
-      <div className="ios-sheet-footer"><button className="ios-btn ios-btn--green ios-btn--lg w-full" type="button" onClick={isPage ? resetWizard : onClose}>{isPage ? "Book another repair" : "Done"}</button></div>
-    </>
-  ) : visitType === "" ? (
-    <>
-      <IosSheetHeader left={cancelBtn} title={title} subtitle="How would you like your device serviced?" />
-      <div className="ios-sheet-body grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <button className="ios-bigchoice" id="visit-type-in-store" type="button" onClick={() => setVisitType("in-store")}>
-          <AppIcon color="green" icon={Store} size={64} />
-          <strong className="text-lg text-[var(--ios-ink)]">In-Store Visit</strong>
-          <span className="text-sm leading-snug text-muted">Drop off at our Fairfield, IL shop. Most repairs done same-day while you wait.</span>
-          <span className="ios-pill !normal-case !tracking-normal">Same-day · $35 bench fee · No travel fee</span>
-        </button>
-        <button className="ios-bigchoice" id="visit-type-home" type="button" onClick={() => setVisitType("home")}>
-          <AppIcon color="blue" icon={Home} size={64} />
-          <strong className="text-lg text-[var(--ios-ink)]">Home Visit</strong>
-          <span className="text-sm leading-snug text-muted">We come to you. A technician visits your home or office at a time that works for you.</span>
-          <span className="ios-pill !normal-case !tracking-normal">Residential &amp; commercial rates</span>
-        </button>
-        <p className="ios-group-footer sm:col-span-2">Home visits are available within 25 miles of Fairfield, IL. House call fees are collected at time of service.</p>
-      </div>
-    </>
-  ) : visitType === "home" && !form.visitLocationType ? (
-    <>
-      <IosSheetHeader left={backBtn} right={cancelBtn} title={title} subtitle="Home Visit" />
-      <div className="ios-sheet-body">
-        <IosGroup footer="Flat rate for the first hour, 50% off every hour after. Collected at time of service." title="Is this a residential or commercial address?">
-          <IosChoice detail={locationRateLine("residential")} id="visit-location-residential" selected={false} title="Residential" onClick={() => update("visitLocationType", "residential")} />
-          <IosChoice detail={locationRateLine("commercial")} id="visit-location-commercial" selected={false} title="Commercial" onClick={() => update("visitLocationType", "commercial")} />
-        </IosGroup>
-      </div>
-    </>
+    </div>
   ) : (
-    <>
-      <IosSheetHeader left={backBtn} right={cancelBtn} subtitle={visitLabel} title={title} />
-      <IosProgress index={step} steps={STEPS} />
-      <div className="ios-sheet-body flex flex-col">
-        {visitType === "home" && <IosNote><MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0" /><span><strong>House call rate</strong> — {activeHouseCallRate}, collected at service time.</span></IosNote>}
+    <div className="mc-stack">
+      {!needsVisit && !needsLocation && <Stepper compact current={step} label="Booking progress" steps={STEPS.map((label) => ({ id: label, label }))} />}
 
-        {step === 0 && (
-          <>
-            <IosGroup footer="Select the repair you need." title="What needs fixing?">
-              {repairServices.map((svc, i) => (
-                <IosChoice
-                  key={svc.id}
-                  detail={`${svc.priceRange} · ${svc.duration}`}
-                  icon={<AppIcon color={SERVICE_COLORS[i % SERVICE_COLORS.length]} icon={Wrench} size={36} />}
-                  selected={form.service === svc.id}
-                  title={svc.name}
-                  onClick={() => { update("service", svc.id); update("variant", ""); }}
-                />
-              ))}
-            </IosGroup>
-            {selectedService?.variants && selectedService.variants.length > 0 && (
-              <IosGroup title="Select part option">
-                {selectedService.variants.map((v) => (
-                  <IosChoice key={v.name} selected={form.variant === v.name} title={v.name} trailing={v.price} onClick={() => update("variant", v.name)} />
-                ))}
-              </IosGroup>
-            )}
-          </>
-        )}
+      {needsVisit && (
+        <>
+          <RadioCards
+            aria-label="Visit type"
+            layout="list"
+            options={[
+              { value: "in-store", label: "In-store visit", description: "Drop off at our Fairfield, IL shop. Most repairs are done the same day. $35 bench fee, no travel fee.", icon: <Store aria-hidden="true" size={18} strokeWidth={1.75} /> },
+              { value: "home", label: "Home visit", description: "A technician comes to your home or office within 25 miles of Fairfield. House call fees are collected at service.", icon: <Home aria-hidden="true" size={18} strokeWidth={1.75} /> },
+            ]}
+            value={null}
+            onValueChange={(v) => setVisitType(v as "in-store" | "home")}
+          />
+        </>
+      )}
 
-        {step === 1 && (
-          <>
-            <IosGroup footer="Two quick questions — we'll confirm the exact model when we see it." title="Tell us about your device">
-              <div className="p-3"><IosSegmented ariaLabel="Device type" options={deviceKinds.map((k) => ({ value: k, label: k }))} value={form.deviceKind} onChange={(kind) => { update("deviceKind", kind); update("deviceManufacturer", ""); update("deviceModelText", ""); }} /></div>
-            </IosGroup>
-            {form.deviceKind && (
-              <IosGroup title="Brand">
-                <div className="p-3"><IosSegmented ariaLabel="Brand" options={[...brandsForKind.map((m) => ({ value: m.id, label: m.name })), { value: "__other__", label: "Other…" }]} value={form.deviceManufacturer} onChange={(id) => { update("deviceManufacturer", id); update("deviceModelText", ""); }} /></div>
-              </IosGroup>
-            )}
-            <IosGroup footer={brandIsOther ? "Whatever you know — make and model." : "Not sure? Leave the model blank and we'll identify it when you drop the device off."} title="Details">
-              {form.deviceManufacturer && <IosField label={brandIsOther ? "Device" : "Model"} list="booking-model-suggestions" placeholder={brandIsOther ? "e.g. Fairphone 5" : `e.g. ${modelSuggestions[0] || "exact model"}`} value={form.deviceModelText} onChange={(v) => update("deviceModelText", v)} />}
-              <IosField label="Issue" placeholder="Cracked screen, won't charge…" value={form.issue} onChange={(v) => update("issue", v)} />
-            </IosGroup>
-            {/* Native datalist: suggestions one keystroke away, no chip wall, and typing something not on the list is always allowed. */}
-            <datalist id="booking-model-suggestions">{modelSuggestions.map((m) => <option key={m} value={m} />)}</datalist>
-          </>
-        )}
+      {needsLocation && (
+        <>
+          <RadioCards
+            aria-label="Location type"
+            layout="list"
+            options={[
+              { value: "residential", label: "Residential", description: locationRateLine("residential") },
+              { value: "commercial", label: "Commercial", description: locationRateLine("commercial") },
+            ]}
+            value={null}
+            onValueChange={(v) => update("visitLocationType", v as "residential" | "commercial")}
+          />
+          <p className="mc-small">Flat rate for the first hour, 50% off every hour after. Collected at time of service.</p>
+        </>
+      )}
 
-        {step === 2 && (
-          <>
-            <h3 className="ios-group-title">Pick a day</h3>
-            <div aria-label="Appointment day" className="ios-days" role="radiogroup">
-              {days.map((d) => {
-                const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      {!needsVisit && !needsLocation && visitType === "home" && (
+        <Alert title={`House call rate: ${activeHouseCallRate}`} tone="info">Collected at service time.</Alert>
+      )}
 
-                return (
-                  <button key={label} aria-checked={form.date === label} className={`ios-day ${form.date === label ? "is-selected" : ""}`} role="radio" type="button" onClick={() => update("date", label)}>
-                    <span>{d.toLocaleDateString("en-US", { month: "short" })}</span>
-                    <strong>{d.getDate()}</strong>
-                    <span>{d.toLocaleDateString("en-US", { weekday: "short" })}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="ios-group-footer mb-3">Monday – Saturday. Sundays closed.</p>
-            {form.date && (
-              <>
-                <h3 className="ios-group-title">Pick a time</h3>
-                <div aria-label="Appointment time" className="ios-slots" role="radiogroup">
-                  {TIMES.map((t) => (
-                    <button key={t} aria-checked={form.time === t} className={`ios-btn ios-btn--sm ${form.time === t ? "ios-btn--green" : "ios-btn--gray"}`} role="radio" type="button" onClick={() => update("time", t)}>
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </>
-        )}
+      {!needsVisit && !needsLocation && step === 0 && (
+        <>
+          <RadioCards
+            aria-label="Repair service"
+            layout="list"
+            options={repairServices.map((svc) => ({ value: svc.id, label: svc.name, description: svc.duration, meta: svc.priceRange }))}
+            value={form.service || null}
+            onValueChange={(v) => { update("service", v); update("variant", ""); }}
+          />
+          {selectedService?.variants && selectedService.variants.length > 0 && (
+            <RadioCards
+              aria-label="Part option"
+              layout="list"
+              options={selectedService.variants.map((v) => ({ value: v.name, label: v.name, meta: v.price }))}
+              value={form.variant || null}
+              onValueChange={(v) => update("variant", v)}
+            />
+          )}
+        </>
+      )}
 
-        {isHomeAddressStep && (
-          <>
-            <IosGroup footer={<>Home visits are available within 25 miles of Fairfield, IL. The <strong>{activeHouseCallRate}</strong> house call rate is collected at time of service.</>} title="Your service address">
-              <IosField autoComplete="street-address" label="Street" placeholder="123 Main St" required value={form.homeAddress} onChange={(v) => update("homeAddress", v)} />
-              <IosField autoComplete="address-level2" label="City" placeholder="Fairfield" required value={form.homeCity} onChange={(v) => update("homeCity", v)} />
-              <IosField autoComplete="address-level1" label="State" placeholder="IL" required value={form.homeState} onChange={(v) => update("homeState", v)} />
-              <IosField autoComplete="postal-code" inputMode="numeric" label="ZIP" placeholder="62837" required value={form.homeZip} onChange={(v) => update("homeZip", v)} />
-            </IosGroup>
-          </>
-        )}
+      {!needsVisit && !needsLocation && step === 1 && (
+        <>
+          <div className="mc-stack-sm">
+            <span className="mc-gl" style={{ margin: 0 }}>Device type</span>
+            <SegmentedControl
+              label="Device type"
+              options={deviceKinds.map((k) => ({ value: k, label: k }))}
+              value={form.deviceKind}
+              onValueChange={(kind) => { update("deviceKind", kind); update("deviceManufacturer", ""); update("deviceModelText", ""); }}
+            />
+          </div>
+          {form.deviceKind && (
+            <Select
+              label="Brand"
+              options={[...brandsForKind.map((m) => ({ value: m.id, label: m.name })), { value: "__other__", label: "Other" }]}
+              placeholder="Choose a brand"
+              value={form.deviceManufacturer}
+              onValueChange={(id) => { update("deviceManufacturer", id); update("deviceModelText", ""); }}
+            />
+          )}
+          {form.deviceManufacturer && (
+            <Input
+              description={brandIsOther ? "Whatever you know: make and model." : "Not sure? Leave it blank and we'll identify it at drop-off."}
+              label={brandIsOther ? "Which device is it?" : "Model (optional)"}
+              list="booking-model-suggestions"
+              placeholder={brandIsOther ? "For example, Fairphone 5" : `For example, ${modelSuggestions[0] || "the exact model"}`}
+              value={form.deviceModelText}
+              onChange={(e) => update("deviceModelText", e.target.value)}
+            />
+          )}
+          {/* Native datalist: suggestions one keystroke away, and typing something not on the list is always allowed. */}
+          <datalist id="booking-model-suggestions">{modelSuggestions.map((m) => <option key={m} value={m} />)}</datalist>
+          <Input label="What's wrong? (optional)" placeholder="Cracked screen, won't charge" value={form.issue} onChange={(e) => update("issue", e.target.value)} />
+        </>
+      )}
 
-        {step === contactStepIndex && (
-          <IosGroup footer="We'll confirm your appointment and reach out with any questions." title="Your contact info">
-            <IosField autoComplete="name" label="Name" placeholder="Jane Doe" required value={form.name} onChange={(v) => update("name", v)} />
-            <IosField autoComplete="tel" inputMode="tel" label="Phone" placeholder="618-555-0123" required type="tel" value={form.phone} onChange={(v) => update("phone", v)} />
-            <IosField autoComplete="email" inputMode="email" label="Email" placeholder="jane@example.com" required type="email" value={form.email} onChange={(v) => update("email", v)} />
-            <IosField label="Notes" placeholder="Optional" value={form.notes} onChange={(v) => update("notes", v)} />
-          </IosGroup>
-        )}
+      {!needsVisit && !needsLocation && step === 2 && (
+        <>
+          <div className="mc-stack-sm">
+            <span className="mc-gl" style={{ margin: 0 }}>Day (Monday to Saturday)</span>
+            <Calendar
+              disabledDates={(d) => d.getDay() === 0}
+              maxDate={lastDay}
+              minDate={firstDay}
+              showToday={false}
+              value={pickedDay}
+              onChange={(d) => update("date", dayLabel(d))}
+            />
+          </div>
+          {form.date && (
+            <ChipGroup
+              label="Time"
+              multiple={false}
+              options={TIMES.map((t) => ({ value: t, label: t }))}
+              value={form.time ? [form.time] : []}
+              onValueChange={(v) => update("time", v[0] ?? "")}
+            />
+          )}
+        </>
+      )}
 
-        {step === confirmStepIndex && (
-          <IosGroup footer={visitType === "home" ? "By confirming, you agree to be available at the provided address at the scheduled time. Same-day cancellations should be made by phone." : "By confirming, you agree to bring your device in at the scheduled time. Same-day cancellations should be made by phone."} title="Review your booking">
-            {reviewRows}
-          </IosGroup>
-        )}
-      </div>
-      <div className="ios-sheet-footer">
-        {step < STEPS.length - 1 ? (
-          <button className="ios-btn ios-btn--lg w-full" disabled={!canNext()} type="button" onClick={() => setStep((s) => s + 1)}>
-            <span>Continue</span><ChevronRight aria-hidden="true" className="size-5" />
-          </button>
-        ) : (
-          <button className="ios-btn ios-btn--green ios-btn--lg w-full" disabled={sending} type="button" onClick={() => { play("success"); void handleSubmit(); }}>
-            <span>{sending ? "Sending…" : "Confirm Booking"}</span>{!sending && <Check aria-hidden="true" className="size-5" />}
-          </button>
-        )}
-      </div>
-    </>
+      {!needsVisit && !needsLocation && isHomeAddressStep && (
+        <>
+          <Input autoComplete="street-address" label="Street address" placeholder="123 Main St" required value={form.homeAddress} onChange={(e) => update("homeAddress", e.target.value)} />
+          <div className="mc-form-2">
+            <Input autoComplete="address-level2" label="City" placeholder="Fairfield" required value={form.homeCity} onChange={(e) => update("homeCity", e.target.value)} />
+            <Input autoComplete="address-level1" label="State" placeholder="IL" required value={form.homeState} onChange={(e) => update("homeState", e.target.value)} />
+          </div>
+          <Input autoComplete="postal-code" inputMode="numeric" label="ZIP code" placeholder="62837" required value={form.homeZip} onChange={(e) => update("homeZip", e.target.value)} />
+          <p className="mc-small"><MapPin aria-hidden="true" size={14} strokeWidth={1.75} style={{ verticalAlign: "-2px", marginRight: 6 }} />Home visits are available within 25 miles of Fairfield, IL. The {activeHouseCallRate} rate is collected at time of service.</p>
+        </>
+      )}
+
+      {!needsVisit && !needsLocation && step === contactStepIndex && (
+        <>
+          <Input autoComplete="name" label="Full name" required value={form.name} onChange={(e) => update("name", e.target.value)} />
+          <div className="mc-form-2">
+            <Input autoComplete="tel" inputMode="tel" label="Phone" required type="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
+            <Input autoComplete="email" inputMode="email" label="Email" required type="email" value={form.email} onChange={(e) => update("email", e.target.value)} />
+          </div>
+          <Input description="We'll confirm your appointment and reach out with any questions." label="Notes (optional)" value={form.notes} onChange={(e) => update("notes", e.target.value)} />
+        </>
+      )}
+
+      {!needsVisit && !needsLocation && step === confirmStepIndex && (
+        <>
+          {summary}
+          <p className="mc-small">
+            {visitType === "home"
+              ? "By confirming, you agree to be available at the provided address at the scheduled time. Same-day cancellations should be made by phone."
+              : "By confirming, you agree to bring your device in at the scheduled time. Same-day cancellations should be made by phone."}
+          </p>
+        </>
+      )}
+
+      {!needsVisit && !needsLocation && (
+        <div className="mc-actions" style={{ justifyContent: "space-between" }}>
+          <Button variant="secondary" onClick={goBack}>Back</Button>
+          {lastStep ? (
+            <Button loading={sending} onClick={handleSubmit}>Confirm booking</Button>
+          ) : (
+            <Button disabled={!canNext()} onClick={() => setStep((s) => s + 1)}>Continue</Button>
+          )}
+        </div>
+      )}
+
+      {(needsVisit || needsLocation) && (
+        <div className="mc-actions" style={{ justifyContent: "space-between" }}>
+          <Button variant="secondary" onClick={needsVisit ? onClose : goBack}>{needsVisit && !isPage ? "Cancel" : "Back"}</Button>
+        </div>
+      )}
+    </div>
   );
 
   if (isPage) {
     return (
-      <div className="ios-dialog mx-auto flex w-full max-w-3xl flex-col rounded-panel border border-[#6f7686] shadow-[var(--elev-3)]">
-        {content}
+      <div className="mc-card mx-auto" style={{ maxWidth: "44rem", marginInline: "auto" }}>
+        <div className="mc-stack" style={{ marginBottom: "var(--space-6)", gap: "var(--space-1)" }}>
+          <h2 className="mc-h3">{title}</h2>
+          <p className="mc-small">{description}</p>
+        </div>
+        {body}
       </div>
     );
   }
 
   return (
-    <Modal>
-      <Modal.Backdrop isOpen className="z-[100]" onOpenChange={(open) => !open && onClose()}>
-        <Modal.Container className="pb-24 lg:pb-0" scroll="inside" size="lg">
-          <Modal.Dialog className="ios-dialog flex max-h-[min(800px,calc(100dvh-1rem))] flex-col">{content}</Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="mc-dialog" description={description} title={title}>
+        {body}
+      </DialogContent>
+    </Dialog>
   );
 }

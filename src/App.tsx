@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Spinner, ToastProvider } from "@heroui/react";
+import ToastBridge from "@/components/ToastBridge";
 
 import { useProductStore, useCartStore } from "@/lib/store";
 import { useSiteStore, applyAppearance, getEffectiveColorScheme } from "@/lib/siteStore";
@@ -138,8 +138,8 @@ export default function App() {
   usePrefetchRoutes();
 
   return <>
-    <StoreInit /><ScrollToTop /><ToastProvider /><CheckoutMount />
-    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Spinner size="lg" /></div>}>
+    <ToastBridge><StoreInit /><ScrollToTop /><CheckoutMount /></ToastBridge>
+    <Suspense fallback={<div aria-label="Loading" className="mc-spinner" role="status" />}>
     <Routes>
       <Route element={<PublicLayout />}>
         <Route element={<Home />} path="/" />

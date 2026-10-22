@@ -1,20 +1,13 @@
+import { Link } from "react-router-dom";
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, CheckCircle2, Lock, KeyRound } from "lucide-react";
-import {
-  Alert,
-  Button,
-  FieldError,
-  Form,
-  InputGroup,
-  Label,
-  Spinner,
-  TextField,
-} from "@heroui/react";
-
 import { getClient, updateCustomerPassword } from "@/lib/supabase";
 import AuthCardShell from "@/components/auth/AuthCardShell";
 import AuthSuccessPanel from "@/components/auth/AuthSuccessPanel";
+import { Alert } from "@/components/arc/alert/alert";
+import { Button } from "@/components/arc/button/button";
+import { PasswordField } from "@/components/arc/password-field/password-field";
+
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -97,14 +90,13 @@ export default function ResetPassword() {
     return (
       <AuthCardShell
         metaDescription="Set a new secure password for your Mobicare customer account."
-        metaTitle="Password Updated — Mobicare Device Recovery"
+        metaTitle="Password updated | Mobicare Device Recovery"
       >
         <AuthSuccessPanel
-          ctaLabel="Sign In Now"
+          ctaLabel="Sign in now"
           ctaTo="/login"
-          icon={<CheckCircle2 className="size-10 text-accent" />}
-          message="Your password has been changed successfully. Redirecting you to sign in…"
-          title="Password Updated"
+          message="Your password has been changed. Redirecting you to sign in."
+          title="Password updated"
         />
       </AuthCardShell>
     );
@@ -112,97 +104,24 @@ export default function ResetPassword() {
 
   return (
     <AuthCardShell
-      chipLabel="Security"
-      description="Create a secure password with at least 8 characters."
-      icon={<KeyRound className="size-3.5" />}
+      description={ready ? "Choose a new password for your account." : undefined}
       metaDescription="Set a new secure password for your Mobicare customer account."
-      metaTitle="Choose New Password — Mobicare Device Recovery"
-      title="New Password"
+      metaTitle="Set a new password | Mobicare Device Recovery"
+      title="Set a new password"
     >
-      {!ready && !error && (
-        <div className="flex flex-col items-center gap-3 py-4 text-center">
-          <Spinner size="lg" />
-          <p className="text-muted">Authenticating secure reset session…</p>
-        </div>
-      )}
+      {error && <Alert title={error} tone="danger" />}
 
-      {error && (
-        <Alert role="alert" status="danger">
-          <Alert.Content>
-            <Alert.Description>{error}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
+      {!ready && !error && <p className="mc-text" role="status">Checking your reset link.</p>}
 
       {ready && (
-        <Form className="flex flex-col gap-4" onSubmit={submit}>
-          <TextField
-            isRequired
-            className="flex flex-col gap-1.5"
-            isDisabled={busy}
-            minLength={8}
-            name="password"
-            type="password"
-            value={password}
-            onChange={setPassword}
-          >
-            <Label>New password</Label>
-            <InputGroup>
-              <InputGroup.Prefix>
-                <Lock className="size-4" />
-              </InputGroup.Prefix>
-              <InputGroup.Input
-                autoComplete="new-password"
-                placeholder="••••••••"
-              />
-            </InputGroup>
-            <FieldError />
-          </TextField>
-
-          <TextField
-            isRequired
-            className="flex flex-col gap-1.5"
-            isDisabled={busy}
-            minLength={8}
-            name="confirm"
-            type="password"
-            value={confirm}
-            onChange={setConfirm}
-          >
-            <Label>Confirm new password</Label>
-            <InputGroup>
-              <InputGroup.Prefix>
-                <Lock className="size-4" />
-              </InputGroup.Prefix>
-              <InputGroup.Input
-                autoComplete="new-password"
-                placeholder="••••••••"
-              />
-            </InputGroup>
-            <FieldError />
-          </TextField>
-
-          <Button
-            fullWidth
-            isDisabled={busy}
-            size="lg"
-            type="submit"
-            variant="primary"
-          >
-            {busy ? (
-              <>
-                <Spinner size="sm" />
-                <span>Updating password…</span>
-              </>
-            ) : (
-              <>
-                <span>Update Password</span>
-                <ArrowRight className="size-4" />
-              </>
-            )}
-          </Button>
-        </Form>
+        <form className="mc-form" onSubmit={submit}>
+          <PasswordField autoComplete="new-password" description="At least 8 characters." disabled={busy} label="New password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordField autoComplete="new-password" disabled={busy} label="Confirm new password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+          <Button loading={busy} size="lg" type="submit">Update password</Button>
+        </form>
       )}
+
+      {!ready && error && <Link className="mc-link" to="/forgot-password">Request a new reset link</Link>}
     </AuthCardShell>
   );
 }

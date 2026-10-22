@@ -5,14 +5,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Elements, CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, Lock, ShoppingBag, Trash2, Truck, X } from "lucide-react";
-import { Modal } from "@heroui/react";
-
+import { Lock, ShoppingBag, Trash2 } from "lucide-react";
+import { Button } from "@/components/arc/button/button";
+import { Drawer, DrawerContent } from "@/components/arc/drawer/drawer";
+import { EmptyState } from "@/components/arc/empty-state/empty-state";
+import { Alert } from "@/components/arc/alert/alert";
+import { Input } from "@/components/arc/input/input";
+import { NumberField } from "@/components/arc/number-field/number-field";
+import { RadioCards } from "@/components/arc/radio-cards/radio-cards";
+import { Stepper } from "@/components/arc/stepper/stepper";
 import { useAuth } from "@/lib/AuthContext";
-import { PickerPanel, QuantityStepper } from "@/components/ios/QuantityPicker";
-import AppIcon from "@/components/ios/AppIcon";
-import { IosChoice, IosField, IosGroup, IosNote, IosProgress, IosSheetHeader, IosSummaryRow } from "@/components/ios/Forms";
-import { play } from "@/lib/sound";
 import { useCartStore, useProductStore, useToastStore } from "@/lib/store";
 import { getDynamicShippingOptions } from "@/lib/shipping";
 import { getStripePublishableKey } from "@/lib/config";
@@ -84,7 +86,6 @@ function PaymentStep({ session, shippingInfo, items, shippingMethod, onSuccess, 
         total: saved.total,
       };
       onSuccess(order);
-      play("success");
       addToast("Payment successful! Your order has been placed.", "success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment could not be completed.");
@@ -93,35 +94,34 @@ function PaymentStep({ session, shippingInfo, items, shippingMethod, onSuccess, 
     }
   };
 
+  const link = (path: string, label: string) => (
+    <a className="mc-link" href={path} onClick={(e) => { e.preventDefault(); onNavigate(path); }}>{label}</a>
+  );
+
   return (
-    <>
-      <div className="ios-sheet-body">
-        <IosNote><Lock aria-hidden="true" className="mt-0.5 size-4 shrink-0" /><span><strong>Secure payment.</strong> Your card details are handled by Stripe and never touch our servers.</span></IosNote>
-        {error && <div role="alert"><IosNote tone="warn"><span>{error}</span></IosNote></div>}
-        <IosGroup title="Card details">
-          <div className="ios-row !py-3">
-            <div className="w-full">
-              <CardElement options={{ hidePostalCode: true, style: { base: { fontSize: "16px", color: "#1f2430", fontFamily: "Helvetica Neue, Helvetica, Arial, sans-serif", "::placeholder": { color: "#a3a8b3" } } } }} />
-            </div>
-          </div>
-        </IosGroup>
-        <IosGroup footer={<>By paying you agree to our <a className="underline" href="/shipping" onClick={(e) => { e.preventDefault(); onNavigate("/shipping"); }}>Shipping</a>, <a className="underline" href="/returns" onClick={(e) => { e.preventDefault(); onNavigate("/returns"); }}>Returns &amp; Exchanges</a> and <a className="underline" href="/refunds" onClick={(e) => { e.preventDefault(); onNavigate("/refunds"); }}>Refund</a> policies. All sales are final; defective items are eligible for exchange.</>} title="Summary">
-          <IosSummaryRow label="Delivering to" value={`${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zip}`} />
-          <IosSummaryRow label="Total due" value={<span className="text-lg text-[var(--ios-blue-dark)]">${session.total.toFixed(2)}</span>} />
-        </IosGroup>
+    <div className="mc-stack">
+      <Alert title="Secure payment" tone="info">Your card details are handled by Stripe and never touch our servers.</Alert>
+      {error && <Alert title="Payment problem" tone="danger">{error}</Alert>}
+      <div className="mc-stack-sm">
+        <span className="mc-gl" style={{ margin: 0 }}>Card details</span>
+        <div className="mc-card" style={{ padding: "var(--space-4)" }}>
+          <CardElement options={{ hidePostalCode: true, style: { base: { fontSize: "16px", color: getComputedStyle(document.documentElement).getPropertyValue("--foreground").trim() || "#111", fontFamily: "Inter Variable, system-ui, sans-serif" } } }} />
+        </div>
       </div>
-      <div className="ios-sheet-footer">
-        <button className="ios-btn ios-btn--green ios-btn--lg w-full" disabled={busy || !stripe} type="button" onClick={pay}>
-          <Lock aria-hidden="true" className="size-4" />{busy ? "Processing securely…" : `Pay $${session.total.toFixed(2)}`}
-        </button>
-        <button className="ios-btn ios-btn--gray w-full" disabled={busy} type="button" onClick={onBack}><ArrowLeft aria-hidden="true" className="size-4" />Back to delivery</button>
+      <div className="mc-group">
+        <div className="mc-item mc-item--between"><span className="mc-item-label">Delivering to</span><span className="mc-strong">{shippingInfo.city}, {shippingInfo.state} {shippingInfo.zip}</span></div>
+        <div className="mc-item mc-item--between"><span className="mc-item-label">Total due</span><span className="mc-price">${session.total.toFixed(2)}</span></div>
       </div>
-    </>
+      <p className="mc-small">By paying you agree to our {link("/shipping", "shipping")}, {link("/returns", "returns and exchanges")} and {link("/refunds", "refund")} policies. All sales are final; defective items are eligible for exchange.</p>
+      <div className="mc-actions" style={{ justifyContent: "space-between" }}>
+        <Button disabled={busy} variant="secondary" onClick={onBack}>Back</Button>
+        <Button disabled={!stripe} loading={busy} onClick={pay}><Lock aria-hidden="true" size={16} strokeWidth={1.75} />Pay ${session.total.toFixed(2)}</Button>
+      </div>
+    </div>
   );
 }
 
 export default function CheckoutDrawer() {
-  const [pickerFor, setPickerFor] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const items = useCartStore((s) => s.items);
@@ -174,133 +174,122 @@ export default function CheckoutDrawer() {
     }
   };
 
-  const stepTitle = step === "cart" ? "Shopping Cart" : step === "shipping" ? "Delivery Details" : step === "payment" ? "Secure Payment" : "Order Confirmed";
+  const stepTitle = step === "cart" ? "Your cart" : step === "shipping" ? "Delivery" : step === "payment" ? "Payment" : "Order confirmed";
   const itemCount = items.reduce((n, item) => n + item.qty, 0);
   const progressSteps = ["Cart", "Delivery", "Payment"];
   const progressIndex = step === "cart" ? 0 : step === "shipping" ? 1 : step === "payment" ? 2 : 3;
 
   const goTo = (path: string) => { close(); navigate(path); };
-  const showBack = step === "shipping" || step === "payment";
   const onBack = () => { if (step === "shipping") setStep("cart"); else if (step === "payment") { setSession(null); setStep("shipping"); } };
+  const description = step === "success" ? "Thank you for your order." : `${itemCount} ${itemCount === 1 ? "item" : "items"}`;
+  const link = (path: string, label: string) => (
+    <a className="mc-link" href={path} onClick={(e) => { e.preventDefault(); goTo(path); }}>{label}</a>
+  );
 
   return (
-    <Modal>
-      <Modal.Backdrop isOpen={open} onOpenChange={(value) => !value && close()}>
-        <Modal.Container className="w-[calc(100%-1rem)] max-w-xl" scroll="inside" size="lg">
-          <Modal.Dialog className="ios-dialog flex max-h-[min(820px,calc(100dvh-1rem))] flex-col">
-            <IosSheetHeader
-              left={showBack ? <button className="ios-bar-btn" disabled={quoting} type="button" onClick={onBack}><ChevronLeft aria-hidden="true" className="size-3.5" />Back</button> : undefined}
-              right={<button className="ios-bar-btn" type="button" onClick={close}><X aria-hidden="true" className="size-3.5" />{step === "success" ? "Close" : "Cancel"}</button>}
-              subtitle={step !== "success" ? `${itemCount} ${itemCount === 1 ? "item" : "items"}` : undefined}
-              title={<Modal.Heading className="m-0 inline text-[16px] text-white">{stepTitle}</Modal.Heading>}
+    <Drawer open={open} onOpenChange={(value) => !value && close()}>
+      <DrawerContent description={description} side="right" title={stepTitle}>
+        <div className="mc-stack">
+          {step !== "success" && <Stepper compact current={progressIndex} label="Checkout progress" steps={progressSteps.map((label) => ({ id: label, label }))} />}
+
+          {step === "cart" && (items.length === 0 ? (
+            <EmptyState
+              action={<Button onClick={() => goTo("/shop")}>Browse the shop</Button>}
+              description="Find something useful for your next repair or upgrade."
+              icon={<ShoppingBag aria-hidden="true" size={20} strokeWidth={1.75} />}
+              title="Your cart is empty"
             />
-            {step !== "success" && <IosProgress index={progressIndex} steps={progressSteps} />}
+          ) : (
+            <>
+              <div className="mc-group">
+                {items.map((item) => {
+                  const stock = products.find((p) => p.id === item.id)?.stock ?? item.stock;
 
-            {step === "cart" && <>
-              <div className="ios-sheet-body">
-                {items.length === 0 ? (
-                  <div className="flex min-h-72 flex-col items-center justify-center gap-3 px-4 text-center">
-                    <AppIcon color="orange" icon={ShoppingBag} size={72} />
-                    <h3 className="letterpress m-0 text-lg font-extrabold text-[var(--ios-ink)]">Your cart is empty</h3>
-                    <p className="m-0 max-w-xs text-sm text-[var(--ios-slate)]">Find something useful for your next repair or upgrade.</p>
-                    <button className="ios-btn ios-btn--green" type="button" onClick={() => goTo("/shop")}>Browse shop <ArrowRight aria-hidden="true" className="size-4" /></button>
-                  </div>
-                ) : (
-                  <IosGroup>
-                    {items.map((item) => {
-                      const stock = products.find((p) => p.id === item.id)?.stock ?? item.stock;
-                      const lineTotal = item.price * item.qty;
-                      return (
-                        <div key={item.id} className="ios-row !items-start !py-3">
-                          <div className="surface-sunken relative size-20 shrink-0 overflow-hidden rounded-field"><ProductImage alt={item.name} src={item.images?.[0]} /></div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0"><strong className="block truncate text-[15px]">{item.name}</strong><span className="mt-0.5 block text-xs text-muted">${item.price.toFixed(2)} each</span></div>
-                              <button aria-label={`Remove ${item.name}`} className="ios-btn ios-btn--red ios-btn--sm !min-h-8 !px-2" type="button" onClick={() => removeItem(item.id)}><Trash2 aria-hidden="true" className="size-4" /></button>
-                            </div>
-                            <div className="mt-2.5 flex items-center justify-between gap-3">
-                              <QuantityStepper max={stock} size="sm" value={item.qty} onChange={(q) => updateQty(item.id, q, stock)} onOpen={() => setPickerFor(pickerFor === item.id ? null : item.id)} />
-                              <strong className="text-base font-extrabold text-[var(--ios-blue-dark)]">${lineTotal.toFixed(2)}</strong>
-                            </div>
-                            {pickerFor === item.id && <div className="mt-3"><PickerPanel max={stock} value={item.qty} onChange={(q) => updateQty(item.id, q, stock)} onDone={() => setPickerFor(null)} /></div>}
+                  return (
+                    <div key={item.id} className="mc-item" style={{ alignItems: "start" }}>
+                      <div className="mc-media" style={{ width: "4.5rem", flexShrink: 0, position: "relative" }}><ProductImage alt={item.name} src={item.images?.[0]} /></div>
+                      <div className="mc-stack-sm" style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-2)" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <strong className="mc-strong" style={{ display: "block", overflowWrap: "anywhere" }}>{item.name}</strong>
+                            <span className="mc-small">${item.price.toFixed(2)} each</span>
                           </div>
+                          <Button aria-label={`Remove ${item.name}`} size="sm" variant="ghost" onClick={() => removeItem(item.id)}><Trash2 aria-hidden="true" size={16} strokeWidth={1.75} /></Button>
                         </div>
-                      );
-                    })}
-                  </IosGroup>
-                )}
-                {items.length > 0 && (
-                  <IosGroup footer={<>All sales are final. Defective items may be exchanged — see our <a className="underline" href="/returns" onClick={(e) => { e.preventDefault(); goTo("/returns"); }}>Returns &amp; Exchanges</a> policy.</>}>
-                    <IosSummaryRow label="Subtotal" value={<span className="text-lg">${subtotal.toFixed(2)}</span>} />
-                  </IosGroup>
-                )}
+                        <div style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: "var(--space-3)" }}>
+                          <NumberField label={`Quantity of ${item.name}`} max={Math.max(1, stock)} min={1} size="sm" value={item.qty} onValueChange={(q) => updateQty(item.id, q, stock)} />
+                          <span className="mc-price">${(item.price * item.qty).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              {items.length > 0 && <div className="ios-sheet-footer"><button className="ios-btn ios-btn--lg w-full" type="button" onClick={proceedDelivery}>Continue to delivery <ArrowRight aria-hidden="true" className="size-5" /></button></div>}
-            </>}
-
-            {step === "shipping" && <>
-              <div className="ios-sheet-body">
-                <IosGroup footer="Choose the option that works best for you." title="How would you like to receive it?">
-                  {options.map((option) => (
-                    <IosChoice
-                      key={option.id}
-                      detail={`${option.description} · ${option.shortArrival}`}
-                      icon={<AppIcon color={option.id === "express" ? "orange" : option.id === "pickup" ? "green" : "blue"} icon={Truck} size={36} />}
-                      selected={shippingMethod === option.id}
-                      title={option.name}
-                      trailing={option.formattedCost}
-                      onClick={() => setShippingMethod(option.id)}
-                    />
-                  ))}
-                </IosGroup>
-                <IosGroup footer="Where should we send your order?" title="Delivery address">
-                  <IosField autoComplete="name" label="Name" placeholder="Jane Doe" required value={shippingInfo.name} onChange={(v) => setShippingInfo((s) => ({ ...s, name: v }))} />
-                  <IosField autoComplete="email" inputMode="email" label="Email" placeholder="jane@example.com" required type="email" value={shippingInfo.email} onChange={(v) => setShippingInfo((s) => ({ ...s, email: v }))} />
-                  <IosField autoComplete="tel" inputMode="tel" label="Phone" placeholder="Optional" type="tel" value={shippingInfo.phone} onChange={(v) => setShippingInfo((s) => ({ ...s, phone: v }))} />
-                  <IosField autoComplete="street-address" label="Street" placeholder="123 Main St" required value={shippingInfo.address} onChange={(v) => setShippingInfo((s) => ({ ...s, address: v }))} />
-                  <IosField autoComplete="address-level2" label="City" placeholder="Fairfield" required value={shippingInfo.city} onChange={(v) => setShippingInfo((s) => ({ ...s, city: v }))} />
-                  <IosField autoComplete="address-level1" label="State" placeholder="IL" required value={shippingInfo.state} onChange={(v) => setShippingInfo((s) => ({ ...s, state: v }))} />
-                  <IosField autoComplete="postal-code" inputMode="numeric" label="ZIP" placeholder="62837" required value={shippingInfo.zip} onChange={(v) => setShippingInfo((s) => ({ ...s, zip: v }))} />
-                </IosGroup>
-                <IosGroup footer={<>Tax and your final total are calculated securely at checkout. See our <a className="underline" href="/shipping" onClick={(e) => { e.preventDefault(); goTo("/shipping"); }}>Shipping</a> policy.</>}>
-                  <IosSummaryRow label="Subtotal" value={`$${subtotal.toFixed(2)}`} />
-                  <IosSummaryRow label="Shipping" value={shipping.cost ? `$${shipping.cost.toFixed(2)}` : "FREE"} />
-                </IosGroup>
+              <div className="mc-group">
+                <div className="mc-item mc-item--between"><span className="mc-item-label">Subtotal</span><span className="mc-price">${subtotal.toFixed(2)}</span></div>
               </div>
-              <div className="ios-sheet-footer">
-                <button className="ios-btn ios-btn--lg w-full" disabled={quoting} type="button" onClick={proceedPayment}>{quoting ? "Preparing secure checkout…" : "Continue to payment"} {!quoting && <ArrowRight aria-hidden="true" className="size-5" />}</button>
-              </div>
-            </>}
+              <p className="mc-small">All sales are final. Defective items may be exchanged. See our {link("/returns", "returns and exchanges")} policy.</p>
+              <Button onClick={proceedDelivery}>Continue to delivery</Button>
+            </>
+          ))}
 
-            {step === "payment" && session && (stripePromise
-              ? <Elements stripe={stripePromise} options={{ appearance: { theme: "stripe" } }}><PaymentStep session={session} shippingInfo={shippingInfo} items={items} shippingMethod={shippingMethod} onSuccess={finish} onBack={onBack} onNavigate={goTo} /></Elements>
-              : <div className="ios-sheet-body flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center"><p className="m-0 text-sm font-bold">Payments are temporarily unavailable.</p><p className="m-0 text-xs text-muted">Please call the shop to complete your order, or try again shortly.</p><button className="ios-btn ios-btn--gray" type="button" onClick={onBack}><ArrowLeft aria-hidden="true" className="size-4" />Back</button></div>)}
-
-            {step === "success" && order && (
-              <>
-                <div className="ios-sheet-body flex flex-col items-center gap-4 pt-8 text-center">
-                  <span className="ios-bounce"><AppIcon color="green" icon={Check} size={84} /></span>
-                  <div>
-                    <span className="ios-pill">Order #{order.id}</span>
-                    <h3 className="letterpress mt-3 text-2xl font-extrabold text-[var(--ios-ink)]">Order confirmed</h3>
-                    <p className="mx-auto mt-1 max-w-sm text-sm text-[var(--ios-slate)]">Your payment was processed securely. A confirmation will be sent to {order.customer.email}.</p>
-                  </div>
-                  <IosGroup className="w-full text-left">
-                    <IosSummaryRow label="Ship to" value={shippingInfo.name} />
-                    <IosSummaryRow label="Delivery" value={shipping.name} />
-                    <IosSummaryRow label="Total paid" value={<span className="text-lg text-[var(--ios-blue-dark)]">${order.total.toFixed(2)}</span>} />
-                  </IosGroup>
+          {step === "shipping" && (
+            <>
+              <RadioCards
+                aria-label="Delivery method"
+                layout="list"
+                options={options.map((o) => ({ value: o.id, label: o.name, description: `${o.description}. ${o.shortArrival}`, meta: o.formattedCost }))}
+                value={shippingMethod}
+                onValueChange={(v) => setShippingMethod(v as "standard" | "express" | "pickup")}
+              />
+              <div className="mc-form">
+                <Input autoComplete="name" label="Full name" required value={shippingInfo.name} onChange={(e) => setShippingInfo((v) => ({ ...v, name: e.target.value }))} />
+                <div className="mc-form-2">
+                  <Input autoComplete="email" inputMode="email" label="Email" required type="email" value={shippingInfo.email} onChange={(e) => setShippingInfo((v) => ({ ...v, email: e.target.value }))} />
+                  <Input autoComplete="tel" inputMode="tel" label="Phone (optional)" type="tel" value={shippingInfo.phone} onChange={(e) => setShippingInfo((v) => ({ ...v, phone: e.target.value }))} />
                 </div>
-                <div className="ios-sheet-footer">
-                  <button className="ios-btn ios-btn--lg w-full" type="button" onClick={() => goTo("/account")}>View order <ArrowRight aria-hidden="true" className="size-5" /></button>
-                  <button className="ios-btn ios-btn--gray w-full" type="button" onClick={() => goTo("/shop")}>Continue shopping</button>
+                <Input autoComplete="street-address" label="Street address" required value={shippingInfo.address} onChange={(e) => setShippingInfo((v) => ({ ...v, address: e.target.value }))} />
+                <div className="mc-form-2">
+                  <Input autoComplete="address-level2" label="City" required value={shippingInfo.city} onChange={(e) => setShippingInfo((v) => ({ ...v, city: e.target.value }))} />
+                  <Input autoComplete="address-level1" label="State" required value={shippingInfo.state} onChange={(e) => setShippingInfo((v) => ({ ...v, state: e.target.value }))} />
                 </div>
-              </>
-            )}
-            {step !== "success" && <div className="flex items-center justify-center gap-2 bg-[#1d1f24] px-4 py-2 text-caption text-white/60"><Lock aria-hidden="true" className="size-3" />Secure checkout powered by Stripe</div>}
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+                <Input autoComplete="postal-code" inputMode="numeric" label="ZIP code" required value={shippingInfo.zip} onChange={(e) => setShippingInfo((v) => ({ ...v, zip: e.target.value }))} />
+              </div>
+              <div className="mc-group">
+                <div className="mc-item mc-item--between"><span className="mc-item-label">Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+                <div className="mc-item mc-item--between"><span className="mc-item-label">Shipping</span><span>{shipping.cost ? `$${shipping.cost.toFixed(2)}` : "Free"}</span></div>
+              </div>
+              <p className="mc-small">Tax and your final total are calculated securely at checkout. See our {link("/shipping", "shipping")} policy.</p>
+              <div className="mc-actions" style={{ justifyContent: "space-between" }}>
+                <Button disabled={quoting} variant="secondary" onClick={onBack}>Back</Button>
+                <Button loading={quoting} onClick={proceedPayment}>Continue to payment</Button>
+              </div>
+            </>
+          )}
+
+          {step === "payment" && session && (stripePromise
+            ? <Elements stripe={stripePromise} options={{ appearance: { theme: "stripe" } }}><PaymentStep session={session} shippingInfo={shippingInfo} items={items} shippingMethod={shippingMethod} onSuccess={finish} onBack={onBack} onNavigate={goTo} /></Elements>
+            : <EmptyState action={<Button variant="secondary" onClick={onBack}>Back</Button>} description="Please call the shop to complete your order, or try again shortly." title="Payments are temporarily unavailable" />)}
+
+          {step === "success" && order && (
+            <>
+              <p className="mc-text">Your payment was processed securely. A confirmation will be sent to {order.customer.email}.</p>
+              <div className="mc-group">
+                <div className="mc-item mc-item--between"><span className="mc-item-label">Order</span><span className="mc-strong">#{order.id}</span></div>
+                <div className="mc-item mc-item--between"><span className="mc-item-label">Ship to</span><span>{shippingInfo.name}</span></div>
+                <div className="mc-item mc-item--between"><span className="mc-item-label">Delivery</span><span>{shipping.name}</span></div>
+                <div className="mc-item mc-item--between"><span className="mc-item-label">Total paid</span><span className="mc-price">${order.total.toFixed(2)}</span></div>
+              </div>
+              <div className="mc-actions">
+                <Button onClick={() => goTo("/account")}>View order</Button>
+                <Button variant="secondary" onClick={() => goTo("/shop")}>Continue shopping</Button>
+              </div>
+            </>
+          )}
+
+          {step !== "success" && <p className="mc-small" style={{ textAlign: "center" }}><Lock aria-hidden="true" size={12} strokeWidth={1.75} style={{ verticalAlign: "-1px", marginRight: 6 }} />Secure checkout powered by Stripe</p>}
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }

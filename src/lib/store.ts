@@ -10,7 +10,7 @@ import type { User } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { v4 as uuidv4 } from "uuid";
-import { toast } from "@heroui/react";
+import type { ToastStackApi } from "@/components/arc/toast-stack/toast-stack";
 
 import {
   isSupabaseConfigured,
@@ -871,30 +871,22 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 }));
 
 // ─── Toasts ────────────────────────────────────────────────────────────────
-// `add`/`remove` keep the exact same signature every call site already uses
-// (`useToastStore(s => s.add)` → `addToast(message, type)`), but now delegate
-// to HeroUI v3's real toast queue instead of a hand-rolled array + setTimeout.
-// Rendering/positioning/auto-dismiss timing is now HeroUI's, via <ToastProvider />
-// in components/Toast.tsx — this store no longer holds any toast state itself.
+// `add`/`remove` keep the signature every call site already uses
+// (`useToastStore(s => s.add)` → `addToast(message, type)`), but delegate to
+// Arc's toast stack. <ToastBridge /> (components/ToastBridge.tsx) hands this
+// module the live stack API once it mounts; calls made before that are dropped.
+let toastApi: ToastStackApi | null = null;
+
+export function registerToastApi(api: ToastStackApi | null) {
+  toastApi = api;
+}
+
 interface ToastStoreState {
   add: (message: string, type?: ToastType) => string;
   remove: (id: string) => void;
 }
 
-// HeroUI's real toast variant union is 'default' | 'accent' | 'success' |
-// 'warning' | 'danger' — there's no 'info', so the app's 'info' type (the
-// default when none is passed) maps to HeroUI's 'default' variant.
-function toToastVariant(
-  type: ToastType,
-): "default" | "success" | "warning" | "danger" {
-  if (type === "error") return "danger";
-  if (type === "info") return "default";
-
-  return type;
-}
-
 export const useToastStore = create<ToastStoreState>(() => ({
-  add: (message, type = "info") =>
-    toast(message, { variant: toToastVariant(type) }),
-  remove: (id) => toast.close(id),
+  add: (message, type = "info") => toastApi?.toast({ title: message, type }) ?? "",
+  remove: (id) => toastApi?.dismiss(id),
 }));

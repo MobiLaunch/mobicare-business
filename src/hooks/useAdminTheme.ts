@@ -1,17 +1,20 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 
 import { applyAppearance, getEffectiveColorScheme, useSiteStore } from "@/lib/siteStore";
 
 /**
- * The iOS 6 skin is public-site only. Admin screens call this to drop the
- * `ios6` class from <html> (restoring the original tokens) while mounted.
+ * The public site uses Arc's design tokens. Admin screens call this to switch
+ * <html> into `.admin-mode` (restoring the HeroUI tokens in globals.css) and to
+ * drop Arc's accent preset while mounted.
  */
 export function useAdminTheme() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
-    const wasIos = root.classList.contains("ios6");
+    const accent = root.getAttribute("data-accent");
+    const wasAdmin = root.classList.contains("admin-mode");
 
-    root.classList.remove("ios6");
+    root.classList.add("admin-mode");
+    root.removeAttribute("data-accent");
 
     const state = useSiteStore.getState();
 
@@ -20,13 +23,9 @@ export function useAdminTheme() {
     }
 
     return () => {
-      if (!wasIos) return;
-      root.classList.add("ios6");
-
-      const { appearance } = useSiteStore.getState();
-
-      // applyAppearance pins the scheme to light while `ios6` is present.
-      if (appearance) applyAppearance(appearance);
+      if (wasAdmin) return;
+      root.classList.remove("admin-mode");
+      if (accent) root.setAttribute("data-accent", accent);
     };
   }, []);
 }

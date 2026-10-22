@@ -1,22 +1,26 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Clock, PackageX, RotateCcw, Shield, ShoppingCart, Tag, TriangleAlert, Truck } from "lucide-react";
-import { Button } from "@heroui/react";
+import { RotateCcw, Shield, ShoppingCart, Truck } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
+
 import { useCartStore, useProductStore, useToastStore } from "@/lib/store";
 import { getEstimatedArrivalWindow, getDispatchCutoff } from "@/lib/shipping";
 import PageMeta from "@/components/PageMeta";
 import ProductCard from "@/components/ProductCard";
-import QuantityPicker from "@/components/ios/QuantityPicker";
+import ProductImage from "@/components/ProductImage";
+import { Alert } from "@/components/arc/alert/alert";
+import { Badge } from "@/components/arc/badge/badge";
+import { Breadcrumb } from "@/components/arc/breadcrumb/breadcrumb";
+import { Button } from "@/components/arc/button/button";
+import { EmptyState } from "@/components/arc/empty-state/empty-state";
+import { NumberField } from "@/components/arc/number-field/number-field";
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const product = useProductStore((s) => s.getProduct(id || ""));
   const related = useProductStore(useShallow((s) => s.products.filter((p) => p.active && p.category === product?.category && p.id !== id).slice(0, 4)));
-  const categoryName = useProductStore(
-    (s) => s.categories.find((c) => c.id === product?.category)?.name,
-  );
+  const categoryName = useProductStore((s) => s.categories.find((c) => c.id === product?.category)?.name);
   const addItem = useCartStore((s) => s.addItem);
   const addToast = useToastStore((s) => s.add);
   const [qty, setQty] = useState(1);
@@ -24,7 +28,16 @@ export default function ProductDetail() {
   useEffect(() => setQty(1), [id]);
 
   if (!product || !product.active) {
-    return <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-12 text-center"><PageMeta description="The requested product was not found." title="Product Not Found | Mobicare" /><span aria-hidden="true" className="mb-5 flex size-20 items-center justify-center rounded-full bg-surface-secondary text-accent"><PackageX className="size-10" /></span><h2 className="m-0 mb-2 text-heading-xl font-extrabold">Product Not Found</h2><p className="m-0 mb-6 max-w-[400px] text-base text-muted">The item you are looking for may have been removed or is unavailable.</p><Button variant="primary" onPress={() => navigate("/shop")}><span>Back to Shop</span><ArrowRight aria-hidden="true" className="size-4" /></Button></div>;
+    return (
+      <div className="mc-page mc-section">
+        <PageMeta description="The requested product was not found." title="Product not found | Mobicare" />
+        <EmptyState
+          action={<Button onClick={() => navigate("/shop")}>Back to the shop</Button>}
+          description="The item you are looking for may have been removed or is unavailable."
+          title="Product not found"
+        />
+      </div>
+    );
   }
 
   const arrival = getEstimatedArrivalWindow(product.shippingDays?.min || 3, product.shippingDays?.max || 5);
@@ -36,36 +49,80 @@ export default function ProductDetail() {
     else addToast(`Only ${product.stock} available in stock`, "error");
   };
   const trustRows = [
-    { icon: Truck, title: "Estimated Delivery", sub: arrival.formatted },
-    { icon: Shield, title: "Direct Stripe Checkout", sub: "256-bit SSL encrypted & secure" },
-    { icon: RotateCcw, title: "Exchange if Defective", sub: "All sales final. Defective items exchanged in like-new condition with original packaging." },
+    { icon: Truck, title: "Estimated delivery", sub: arrival.formatted },
+    { icon: Shield, title: "Secure checkout", sub: "Payments are encrypted and handled by Stripe." },
+    { icon: RotateCcw, title: "Exchange if defective", sub: "All sales are final. Defective items are exchanged in like-new condition with original packaging." },
   ];
 
   return (
-    <main className="mx-auto max-w-[1400px] overflow-x-hidden px-[clamp(12px,3vw,24px)] py-4 pb-16 sm:py-6">
+    <div className="mc-page mc-section" id="product-page" style={{ paddingTop: "var(--space-6)" }}>
       <PageMeta description={`${product.name} - ${(product.description || "").slice(0, 150)}... Buy electronic accessories at Mobicare.`} title={`${product.name} | Mobicare Shop`} />
-      <Button aria-label="Go back" className="mb-4 inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-2 font-semibold text-foreground transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:mb-5" variant="ghost" onPress={() => navigate(-1)}><ArrowLeft aria-hidden="true" className="size-4" /><span>Back</span></Button>
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2 lg:gap-10">
-        <div className="relative min-w-0 lg:sticky lg:top-24">
-          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-4/5 w-4/5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-soft/50 blur-[60px]" />
-          <div className="surface-raised ios-card-gloss relative z-[1] overflow-hidden rounded-panel p-2"><img alt={product.name} className="aspect-square w-full rounded-card object-cover" decoding="async" fetchPriority="high" src={product.images[0]} />{discount && <span className="ios-badge absolute right-4 top-4 !h-auto !rounded-md !px-2.5 !py-1 !text-sm">{discount}% OFF</span>}</div>
+
+      <div style={{ marginBottom: "var(--space-6)" }}>
+        <Breadcrumb items={[{ label: "Shop", href: "/shop", onClick: (e) => { e.preventDefault(); navigate("/shop"); } }, { label: product.name }]} />
+      </div>
+
+      <div className="mc-grid mc-grid-2" style={{ gap: "clamp(24px, 5vw, 64px)", alignItems: "start" }}>
+        <div className="mc-media" style={{ position: "relative", borderRadius: "var(--radius-panel)" }}>
+          <ProductImage alt={product.name} src={product.images?.[0]} />
         </div>
-        <div className="flex min-w-0 flex-col lg:pt-2">
-          <span className="mb-3 inline-flex w-max items-center gap-1.5 self-start rounded-full bg-accent-soft px-3 py-1 text-caption font-bold uppercase tracking-widest text-accent"><Tag aria-hidden="true" className="size-3.5" />{categoryName || product.category.replace("-", " ")}</span>
-          <h1 className="type-display m-0 mb-3 break-words text-display text-foreground sm:mb-4">{product.name}</h1>
-          <div className="mb-4 flex flex-wrap items-center gap-2.5 sm:mb-5 sm:gap-3"><strong className="text-heading-xl font-extrabold leading-none text-accent">${product.price.toFixed(2)}</strong>{product.comparePrice && <><span className="text-lg text-muted line-through">${product.comparePrice.toFixed(2)}</span><span className="rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">Save ${(product.comparePrice - product.price).toFixed(2)}</span></>}</div>
-          <p className="mb-5 break-words text-body-sm leading-relaxed text-muted sm:mb-6 sm:text-base">{product.description}</p>
-          {product.tags?.length > 0 && <div className="mb-5 flex flex-wrap gap-2 sm:mb-6">{product.tags.map((t) => <span key={t} className="rounded-pill border border-border bg-surface px-3 py-1 text-label font-semibold">#{t}</span>)}</div>}
-          <div className="my-1 mb-4 border-t border-border" />
-          <div className="mb-5 flex items-start gap-2.5 rounded-2xl bg-accent-soft p-3 text-sm text-foreground" role="status"><Clock aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-accent" /><div className="min-w-0"><span className="font-semibold text-accent">{cutoff.text}</span><span className="text-muted"> — estimated delivery by </span><strong>{arrival.formatted}</strong></div></div>
-          {product.stock > 0 ? <div className="mb-3 flex w-full flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center"><QuantityPicker max={product.stock} value={qty} onChange={setQty} /><button className="ios-btn ios-btn--green ios-btn--lg w-full min-w-0 sm:min-w-[220px]" type="button" onClick={handleAddToCart}><ShoppingCart aria-hidden="true" className="size-[18px]" /><span className="truncate">Add to Cart — ${(product.price * qty).toFixed(2)}</span></button></div> : <div className="mb-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-center font-bold text-rose-600 dark:text-rose-400">Out of Stock — Check Back Soon</div>}
-          {product.stock > 0 && product.stock < 5 && <p className="mb-4 flex items-center gap-1.5 text-label font-bold text-amber-600 dark:text-amber-400"><TriangleAlert aria-hidden="true" className="size-[18px]" />Only {product.stock} left in stock — order soon</p>}
-          <article className="surface-raised mb-5 mt-4 overflow-hidden rounded-card sm:mt-6">{trustRows.map((row, i) => <div key={row.title} className={`flex items-center gap-3.5 p-[14px_16px] sm:p-[14px_20px] ${i < trustRows.length - 1 ? "border-b border-border" : ""}`}><span aria-hidden="true" className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent"><row.icon className="size-5" /></span><div className="min-w-0"><strong className="block break-words text-sm font-bold text-foreground">{row.title}</strong><span className="break-words text-label text-muted">{row.sub}</span></div></div>)}</article>
-          <p className="m-0 text-xs font-semibold text-muted">SKU: {product.sku}</p>
-          <p className="m-0 mt-2 text-xs font-semibold text-muted"><Link className="underline" to="/returns">Returns &amp; Exchanges</Link> · <Link className="underline" to="/shipping">Shipping</Link> · <Link className="underline" to="/refunds">Refunds</Link></p>
+
+        <div className="mc-stack">
+          <div className="mc-stack-sm">
+            <p className="mc-small">{categoryName || product.category.replace("-", " ")}</p>
+            <h1 className="mc-h1" style={{ fontSize: "clamp(1.75rem, 4vw, var(--text-3xl))" }}>{product.name}</h1>
+          </div>
+
+          <p className="mc-price" style={{ fontSize: "var(--text-2xl)" }}>
+            ${product.price.toFixed(2)}
+            {product.comparePrice ? <s>${product.comparePrice.toFixed(2)}</s> : null}
+            {discount ? <span style={{ marginLeft: "var(--space-3)" }}><Badge tone="success">Save {discount}%</Badge></span> : null}
+          </p>
+
+          <p className="mc-text">{product.description}</p>
+          {product.tags?.length > 0 && <div className="mc-badge-row">{product.tags.map((t) => <Badge key={t}>{t}</Badge>)}</div>}
+
+          <Alert title={cutoff.text} tone="info">Estimated delivery by {arrival.formatted}.</Alert>
+
+          {product.stock > 0 ? (
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: "var(--space-3)" }}>
+              <NumberField label="Quantity" max={Math.min(product.stock, 99)} min={1} value={qty} onValueChange={setQty} />
+              <Button size="lg" onClick={handleAddToCart}>
+                <ShoppingCart aria-hidden="true" size={16} strokeWidth={1.75} />
+                Add to cart, ${(product.price * qty).toFixed(2)}
+              </Button>
+            </div>
+          ) : (
+            <Alert title="Out of stock" tone="warning">Check back soon.</Alert>
+          )}
+          {product.stock > 0 && product.stock < 5 && <p className="mc-small" style={{ color: "var(--warning)" }}>Only {product.stock} left in stock.</p>}
+
+          <div className="mc-group">
+            {trustRows.map((row) => (
+              <div key={row.title} className="mc-item" style={{ alignItems: "start" }}>
+                <span className="mc-icon" style={{ flexShrink: 0 }}><row.icon aria-hidden="true" size={18} strokeWidth={1.75} /></span>
+                <div>
+                  <strong className="mc-strong" style={{ display: "block" }}>{row.title}</strong>
+                  <span className="mc-small">{row.sub}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="mc-small">
+            SKU {product.sku}. <Link className="mc-link" to="/returns">Returns and exchanges</Link>, <Link className="mc-link" to="/shipping">shipping</Link>, <Link className="mc-link" to="/refunds">refunds</Link>.
+          </p>
         </div>
       </div>
-      {related.length > 0 && <div className="mt-12 sm:mt-16"><div className="mb-5 flex items-end justify-between sm:mb-6"><div><p className="m-0 text-caption font-bold uppercase tracking-widest text-accent">Explore More</p><h3 className="m-0 mt-1 text-heading-lg font-extrabold text-foreground">More in {categoryName || product.category.replace("-", " ")}</h3></div></div><div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{related.map((p) => <ProductCard key={p.id} product={p} onClick={() => navigate(`/product/${p.id}`)} />)}</div></div>}
-    </main>
+
+      {related.length > 0 && (
+        <section aria-labelledby="related-title" style={{ marginTop: "var(--space-16)" }}>
+          <h2 className="mc-h2" id="related-title" style={{ marginBottom: "var(--space-6)" }}>More in {categoryName || product.category.replace("-", " ")}</h2>
+          <div className="mc-grid mc-grid-products">
+            {related.map((p) => <ProductCard key={p.id} product={p} onClick={() => navigate(`/product/${p.id}`)} />)}
+          </div>
+        </section>
+      )}
+    </div>
   );
 }

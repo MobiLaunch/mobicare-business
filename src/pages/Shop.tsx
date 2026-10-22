@@ -1,21 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FilterX, Layers, Search, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
-import { InputGroup, ListBox, Menu, Select, TextField, ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { useShallow } from "zustand/react/shallow";
 
 import { useProductStore } from "@/lib/store";
 import ProductCard from "@/components/ProductCard";
 import PageMeta from "@/components/PageMeta";
-import CategoryIcon from "@/components/CategoryIcon";
-import AppIcon from "@/components/ios/AppIcon";
+import { Button } from "@/components/arc/button/button";
+import { ChipGroup } from "@/components/arc/chip-group/chip-group";
+import { EmptyState } from "@/components/arc/empty-state/empty-state";
+import { SearchField } from "@/components/arc/search-field/search-field";
+import { Select } from "@/components/arc/select/select";
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured" },
-  { value: "price-asc", label: "Price: Low to High" },
-  { value: "price-desc", label: "Price: High to Low" },
-  { value: "name", label: "A–Z Name" },
-  { value: "newest", label: "Newest First" },
+  { value: "price-asc", label: "Price: low to high" },
+  { value: "price-desc", label: "Price: high to low" },
+  { value: "name", label: "Name A to Z" },
+  { value: "newest", label: "Newest first" },
 ];
 
 export default function Shop() {
@@ -24,24 +25,15 @@ export default function Shop() {
   const products = useProductStore(useShallow((s) => s.products.filter((p) => p.active)));
   const categories = useProductStore((s) => s.categories);
   const [search, setSearch] = useState("");
-  const [searchMenuOpen, setSearchMenuOpen] = useState(false);
   const [sort, setSort] = useState("featured");
   const [selectedCat, setSelectedCat] = useState(searchParams.get("cat") || "all");
   const [selectedSubcat, setSelectedSubcat] = useState(searchParams.get("subcat") || "all");
-  const searchWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSelectedCat(searchParams.get("cat") || "all");
     setSelectedSubcat(searchParams.get("subcat") || "all");
   }, [searchParams]);
 
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) setSearchMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
 
   // Selecting a new top-level category always drops any previously-chosen
   // subcategory — there's no guarantee the old subcategory belongs to the
@@ -116,95 +108,59 @@ export default function Shop() {
     return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
   });
 
-  const searchSuggestions = filterCategories.slice(0, 3);
-  const selectedSort = SORT_OPTIONS.find((option) => option.value === sort) || SORT_OPTIONS[0];
-  const applySearch = (value: string) => { setSearch(value); setSearchMenuOpen(false); };
-  const applyCategorySuggestion = (catId: string) => { handleCatChange(catId); setSearch(""); setSearchMenuOpen(false); };
-  const categoryButtonClass = (active: boolean) => `ios-btn ios-btn--sm shrink-0 ${active ? "" : "ios-btn--gray"}`;
-  const subcatChipClass = (active: boolean) => `ios-btn ios-btn--sm !min-h-8 ${active ? "ios-btn--orange" : "ios-btn--gray"}`;
+  const applySearch = (value: string) => setSearch(value);
 
   return (
-    <main className="mx-auto max-w-[1400px] overflow-x-hidden px-[clamp(12px,3vw,24px)] pb-16 pt-4 sm:pt-6">
-      <PageMeta description="Shop premium phone accessories at Mobicare." title="Shop — Mobicare" />
-      <div className="relative py-[clamp(14px,3vw,26px)]">
-        <div className="relative z-[1] flex items-end justify-between gap-3 sm:gap-4">
-          <div className="flex min-w-0 items-center gap-4">
-            <AppIcon color="orange" icon={ShoppingBag} size={64} />
-            <div className="min-w-0">
-              <span className="ios-pill mb-2">Accessories &amp; Gear</span>
-              <h1 className="type-display m-0 text-display text-foreground">Shop Catalog</h1>
-            </div>
-          </div>
-          <span aria-live="polite" className="ios-badge shrink-0 !h-auto !rounded-full !px-3 !py-1 !text-label tabular-nums">{filtered.length} Product{filtered.length !== 1 ? "s" : ""}</span>
+    <div className="mc-page mc-section" id="shop-page">
+      <PageMeta description="Shop premium phone accessories at Mobicare." title="Shop | Mobicare" />
+
+      <div className="mc-section-head mc-section-head--row">
+        <div className="mc-stack-sm">
+          <h1 className="mc-h1">Shop</h1>
+          <p className="mc-lead">Cases, chargers, cables and protection for the device we just fixed.</p>
+        </div>
+        <p aria-live="polite" className="mc-small">{filtered.length} product{filtered.length !== 1 ? "s" : ""}</p>
+      </div>
+
+      <div className="mc-toolbar">
+        <div className="mc-grow">
+          <SearchField label="Search products" placeholder="Search accessories, cases, chargers" value={search} onValueChange={applySearch} />
+        </div>
+        <div style={{ minWidth: "12rem" }}>
+          <Select label="Sort by" options={SORT_OPTIONS} value={sort} onValueChange={setSort} />
         </div>
       </div>
 
-      <div className="ios-searchbar mb-4 flex items-center gap-2 rounded-panel p-2.5 sm:mb-5 sm:gap-2.5">
-        <div ref={searchWrapRef} className="relative min-w-0 flex-1">
-          <TextField aria-label="Search products" className="flex flex-col" value={search} onChange={setSearch}>
-            <InputGroup className="ios-search rounded-full">
-              <InputGroup.Prefix><Search aria-hidden="true" className="size-4" /></InputGroup.Prefix>
-              <InputGroup.Input placeholder="Search accessories, cases, chargers…" type="search" onFocus={() => setSearchMenuOpen(true)} onKeyDown={(e) => e.key === "Enter" && applySearch(e.currentTarget.value)} />
-              {search && <InputGroup.Suffix><button aria-label="Clear search" className="flex size-9 items-center justify-center rounded-full" type="button" onClick={() => applySearch("")}><X aria-hidden="true" className="size-4" /></button></InputGroup.Suffix>}
-            </InputGroup>
-          </TextField>
-          {searchMenuOpen && searchSuggestions.length > 0 && (
-            <div className="absolute inset-x-0 top-[calc(100%+6px)] z-20 overflow-hidden rounded-2xl border border-border bg-surface shadow-lg">
-              <Menu aria-label="Search suggestions" className="gap-0 p-1.5" onAction={(key) => applyCategorySuggestion(String(key))}>
-                {searchSuggestions.map((suggestion) => (
-                  <Menu.Item key={suggestion.id} className="min-h-11 w-full gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-sm text-foreground" id={suggestion.id} textValue={`Browse ${suggestion.name}`}>
-                    <Layers aria-hidden="true" className="size-4 text-muted" />
-                    <span>Browse {suggestion.name}</span>
-                  </Menu.Item>
-                ))}
-              </Menu>
-            </div>
-          )}
-        </div>
-
-        <Select className="shrink-0" selectedKey={sort} onSelectionChange={(key) => setSort(String(key))}>
-          <Select.Trigger aria-label={`Sort products: ${selectedSort.label}`} className="ios-bar-btn !size-10 !p-0 sm:!size-11">
-            <SlidersHorizontal aria-hidden="true" className="size-[17px] sm:size-[18px]" />
-          </Select.Trigger>
-          <Select.Popover className="w-56">
-            <ListBox aria-label="Sort products">
-              {SORT_OPTIONS.map((option) => <ListBox.Item key={option.value} id={option.value}>{option.label}</ListBox.Item>)}
-            </ListBox>
-          </Select.Popover>
-        </Select>
+      <div className="mc-stack-sm" style={{ marginBottom: "var(--space-6)" }}>
+        <ChipGroup
+          label="Category"
+          multiple={false}
+          options={[{ value: "all", label: "All" }, ...filterCategories.map((c) => ({ value: c.id, label: c.name }))]}
+          value={[selectedCat]}
+          onValueChange={(v) => handleCatChange(v[0] ?? "all")}
+        />
+        {activeSubcategories.length > 0 && (
+          <ChipGroup
+            label="Subcategory"
+            multiple={false}
+            options={[{ value: "all", label: `All ${filterCategories.find((c) => c.id === selectedCat)?.name ?? ""}` }, ...activeSubcategories.map((c) => ({ value: c.id, label: c.name }))]}
+            value={[selectedSubcat]}
+            onValueChange={(v) => handleSubcatChange(v[0] ?? "all")}
+          />
+        )}
       </div>
 
-      <ToggleButtonGroup aria-label="Product categories" className={`flex gap-2 overflow-x-auto px-0.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-2.5 ${activeSubcategories.length > 0 ? "mb-2.5" : "mb-6 sm:mb-8"}`} disallowEmptySelection isDetached selectedKeys={[selectedCat]} selectionMode="single" onSelectionChange={(keys) => { const next = Array.from(keys)[0]; if (next != null) handleCatChange(String(next)); }}>
-        <ToggleButton aria-label="All products" className={({ isSelected }) => categoryButtonClass(isSelected)} id="all">
-          <>
-            <ShoppingBag aria-hidden="true" className="size-4 shrink-0" />
-            <span>All</span>
-          </>
-        </ToggleButton>
-        {filterCategories.map((cat) => (
-          <ToggleButton key={cat.id} aria-label={cat.name} className={({ isSelected }) => categoryButtonClass(isSelected)} id={cat.id}>
-            <>
-              <CategoryIcon className="size-4 shrink-0" iconId={categories.find((c) => c.id === cat.id)?.icon || "Shapes"} />
-              <span>{cat.name}</span>
-            </>
-          </ToggleButton>
-        ))}
-      </ToggleButtonGroup>
-
-      {activeSubcategories.length > 0 && (
-        <ToggleButtonGroup aria-label="Subcategories" className="mb-6 flex flex-wrap gap-2 sm:mb-8" disallowEmptySelection isDetached selectedKeys={[selectedSubcat]} selectionMode="single" onSelectionChange={(keys) => { const next = Array.from(keys)[0]; if (next != null) handleSubcatChange(String(next)); }}>
-          <ToggleButton className={({ isSelected }) => subcatChipClass(isSelected)} id="all">
-            All {filterCategories.find((c) => c.id === selectedCat)?.name}
-          </ToggleButton>
-          {activeSubcategories.map((sub) => (
-            <ToggleButton key={sub.id} className={({ isSelected }) => subcatChipClass(isSelected)} id={sub.id}>
-              {sub.name}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
+      {filtered.length > 0 ? (
+        <div className="mc-grid mc-grid-products">
+          {filtered.map((p) => <ProductCard key={p.id} product={p} onClick={() => navigate(`/product/${p.id}`)} />)}
+        </div>
+      ) : (
+        <EmptyState
+          action={<Button variant="secondary" onClick={() => { setSearch(""); handleCatChange("all"); }}>Clear filters</Button>}
+          description="We couldn't find anything matching your search. Try resetting your filters."
+          title="No matching products"
+        />
       )}
-
-      {filtered.length > 0 ? <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">{filtered.map((p) => <ProductCard key={p.id} product={p} onClick={() => navigate(`/product/${p.id}`)} />)}</div> : <div className="mt-8 rounded-panel border border-border bg-surface-secondary p-8 text-center sm:p-12"><span className="mx-auto mb-4 flex size-[72px] items-center justify-center rounded-full bg-surface-tertiary text-accent"><Search aria-hidden="true" className="size-9" /></span><h3 className="m-0 mb-2 text-2xl font-bold text-foreground">No matching products</h3><p className="mx-auto mb-6 max-w-[360px] text-muted">We couldn&rsquo;t find anything matching your search. Try resetting your filters.</p><button className="inline-flex h-11 items-center gap-2 rounded-full bg-accent px-6 font-semibold text-accent-foreground" type="button" onClick={() => { setSearch(""); handleCatChange("all"); }}><FilterX aria-hidden="true" className="size-4" /><span>Clear Filters</span></button></div>}
-    </main>
+    </div>
   );
 }

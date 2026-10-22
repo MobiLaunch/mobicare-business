@@ -1,9 +1,6 @@
-import { ChevronDown, Wrench } from "lucide-react";
-import { Accordion } from "@heroui/react";
-
-import BookingWizard from "@/components/BookingWizard";
 import PageMeta from "@/components/PageMeta";
-import HeroBadge from "@/components/ios/HeroBadge";
+import BookingWizard from "@/components/BookingWizard";
+import { Accordion } from "@/components/arc/accordion/accordion";
 
 const FAQS = [
   {
@@ -41,77 +38,30 @@ const BADGES = [
 
 export default function Repairs() {
   return (
-    <main className="mx-auto max-w-[1400px] overflow-x-hidden px-[clamp(12px,3vw,24px)] pb-16">
+    <div className="mc-page">
       <PageMeta
         description="Professional same-day phone repairs, cracked screens, dead batteries, water damage diagnostics and repairs for iPhones, iPads, Samsung and more in Fairfield, IL."
-        title="Device Repair Services — Screen, Battery & More | Mobicare Fairfield IL"
+        title="Device repair services: screen, battery and more | Mobicare Fairfield IL"
       />
 
-      {/* Hero */}
-      <section className="pb-8 pt-[clamp(24px,5vw,48px)] text-center">
-        <HeroBadge color="red" icon={Wrench} label="Device Repair Services" />
-        <h1 className="type-display m-0 mb-3 text-display text-foreground">
-          We Fix What&rsquo;s Broken.
-        </h1>
-        <p className="mx-auto mb-7 max-w-[640px] text-body-lg leading-relaxed text-muted">
-          Fast, honest repairs on every major device brand. $35 bench fee,
-          90-day parts warranty, same-day turnaround on most jobs.
-        </p>
-
-        <div className="mb-8 flex flex-wrap justify-center gap-3">
-          {BADGES.map((badge) => (
-            <span
-              key={badge}
-              className="ios-pill !normal-case !tracking-normal !text-[13px] !text-[var(--ios-ink)]"
-            >
-              ✓ {badge}
-            </span>
-          ))}
+      <header className="mc-stack mc-section" style={{ maxWidth: "48rem", paddingBottom: "var(--space-8)" }}>
+        <h1 className="mc-h1">We fix what&apos;s broken.</h1>
+        <p className="mc-lead">Fast, honest repairs on every major device brand. $35 bench fee, 90-day parts warranty, same-day turnaround on most jobs.</p>
+        <div className="mc-hero-meta">
+          {BADGES.map((badge) => <span key={badge}>{badge}</span>)}
         </div>
-      </section>
+      </header>
 
-      {/* Booking flow — the wizard itself is the service picker, so there's
-          one continuous path from "what needs fixing" through confirmation
-          instead of a card grid that opens a second, separate flow. */}
-      <section className="mb-14" id="repairs-booking-section">
+      {/* The wizard itself is the service picker, so there is one continuous
+          path from "what needs fixing" through confirmation. */}
+      <section aria-label="Book a repair" id="repairs-booking-section" style={{ paddingBottom: "var(--space-16)" }}>
         <BookingWizard mode="page" />
       </section>
 
-      {/* FAQ */}
-      <section className="mx-auto mb-14 max-w-[840px]">
-        <div className="mb-8 text-center">
-          <p className="m-0 mb-1 text-caption font-bold uppercase tracking-widest text-accent">
-            Got Questions?
-          </p>
-          <h2 className="m-0 text-heading-lg font-extrabold text-foreground">
-            Frequently Asked Questions
-          </h2>
-        </div>
-
-        <Accordion className="flex flex-col gap-3">
-          {FAQS.map((faq) => (
-            <Accordion.Item
-              key={faq.q}
-              className="ios-paper overflow-hidden rounded-card transition-all duration-200"
-              id={faq.q}
-            >
-              <Accordion.Heading>
-                <Accordion.Trigger className="w-full gap-3 px-5 py-4 text-left text-base font-bold text-foreground">
-                  <span>{faq.q}</span>
-                  <Accordion.Indicator>
-                    <ChevronDown className="size-5 shrink-0 text-accent" />
-                  </Accordion.Indicator>
-                </Accordion.Trigger>
-              </Accordion.Heading>
-              <Accordion.Panel>
-                <Accordion.Body className="px-5 pb-[18px] pt-0 text-sm leading-relaxed text-muted">
-                  {faq.a}
-                </Accordion.Body>
-              </Accordion.Panel>
-            </Accordion.Item>
-          ))}
-        </Accordion>
+      <section aria-labelledby="faq-title" className="mc-narrow" style={{ paddingBottom: "var(--space-16)" }}>
+        <div className="mc-section-head"><h2 className="mc-h2" id="faq-title">Frequently asked questions</h2></div>
+        <Accordion items={FAQS.map((f) => ({ title: f.q, content: f.a }))} />
       </section>
-    </main>
+    </div>
   );
 }

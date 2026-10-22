@@ -1,48 +1,15 @@
-import type { LucideIcon } from "lucide-react";
-
 import { useNavigate } from "react-router-dom";
-import {
-  ArrowRight,
-  BadgeCheck,
-  Clock,
-  Mail,
-  MapPin,
-  Phone,
-  Shield,
-  Smartphone,
-  Star,
-  Wrench,
-  Zap,
-} from "lucide-react";
+import { Mail, MapPin, Phone, Smartphone, Shield, Star, Zap, type LucideIcon } from "lucide-react";
 
-import { Button } from "@heroui/react";
-
-import { useSiteStore } from "@/lib/siteStore";
+import { Button } from "@/components/arc/button/button";
 import PageMeta from "@/components/PageMeta";
-import HeroBadge from "@/components/ios/HeroBadge";
-import AppIcon, { type IconColor } from "@/components/ios/AppIcon";
+import { useSiteStore } from "@/lib/siteStore";
 
 const VALUE_PROPS: { icon: LucideIcon; title: string; desc: string }[] = [
-  {
-    icon: Shield,
-    title: "90-Day Warranty",
-    desc: "Every part we replace is covered for 90 days. If it fails, we replace it free.",
-  },
-  {
-    icon: Zap,
-    title: "Same-Day Service",
-    desc: "Most screen and battery repairs are done within 1–2 hours while you wait.",
-  },
-  {
-    icon: Star,
-    title: "Honest Pricing",
-    desc: "$35 flat bench fee for diagnostics. No hidden fees. You approve the cost before we start.",
-  },
-  {
-    icon: Smartphone,
-    title: "All Major Brands",
-    desc: "iPhones, Samsung, Google Pixel, iPads, tablets, and more — we fix them all.",
-  },
+  { icon: Shield, title: "90-day warranty", desc: "Every part we replace is covered for 90 days. If it fails, we replace it free." },
+  { icon: Zap, title: "Same-day service", desc: "Most screen and battery repairs are done within one to two hours while you wait." },
+  { icon: Star, title: "Honest pricing", desc: "A $35 flat bench fee for diagnostics. No hidden fees. You approve the cost before we start." },
+  { icon: Smartphone, title: "All major brands", desc: "iPhones, Samsung, Google Pixel, iPads, tablets and more. We fix them all." },
 ];
 
 export default function About() {
@@ -51,236 +18,94 @@ export default function About() {
   const business = useSiteStore((s) => s.business);
   const repairServices = useSiteStore((s) => s.repairServices) || [];
 
-  const contactRows: {
-    icon: LucideIcon;
-    label: string;
-    val?: string;
-    href?: string;
-  }[] = [
-    {
-      icon: Phone,
-      label: "Phone",
-      val: business?.phone,
-      href: business?.phone
-        ? `tel:${business.phone.replace(/[^0-9+]/g, "")}`
-        : undefined,
-    },
-    {
-      icon: Mail,
-      label: "Email",
-      val: business?.email,
-      href: business?.email ? `mailto:${business.email}` : undefined,
-    },
+  const contactRows: { icon: LucideIcon; label: string; val?: string; href?: string }[] = [
+    { icon: Phone, label: "Phone", val: business?.phone, href: business?.phone ? `tel:${business.phone.replace(/[^0-9+]/g, "")}` : undefined },
+    { icon: Mail, label: "Email", val: business?.email, href: business?.email ? `mailto:${business.email}` : undefined },
     { icon: MapPin, label: "Location", val: business?.city },
   ];
 
   return (
-    <main className="mx-auto max-w-[1400px] overflow-x-hidden px-[clamp(12px,3vw,24px)] pb-16">
+    <div className="mc-page">
       <PageMeta
         description="Learn more about Mobicare, southern Illinois' trusted repair shop for iPhones, Androids, and laptops. Fast turnarounds, 90-day warranty, honest pricing."
-        title="About Mobicare — Local Device Repair in Fairfield, Illinois"
+        title="About Mobicare: local device repair in Fairfield, Illinois"
       />
 
-      {/* Hero */}
-      <div className="relative pb-[clamp(36px,6vw,56px)] pt-[clamp(32px,6vw,64px)] text-center">
-        <div className="pointer-events-none absolute left-1/2 top-[40%] h-[200px] w-[clamp(280px,60vw,540px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-soft/60 blur-[50px]" />
+      <header className="mc-stack mc-section" style={{ maxWidth: "52rem" }}>
+        <p className="mc-small">{about?.eyebrow || "About Mobicare"}</p>
+        <h1 className="mc-h1">{about?.headline}</h1>
+        <p className="mc-lead">{about?.lead}</p>
+      </header>
 
-        <div className="relative z-[1]">
-          <HeroBadge color="green" icon={BadgeCheck} label={about?.eyebrow || "About Mobicare"} />
-
-          <h1 className="type-display m-0 mb-5 break-words text-display text-foreground">
-            {about?.headline}
-          </h1>
-
-          <p className="mx-auto max-w-[680px] break-words text-body-lg leading-relaxed text-muted">
-            {about?.lead}
-          </p>
-        </div>
-      </div>
-
-      {/* Value props */}
-      <section className="pb-[clamp(32px,6vw,48px)]">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section aria-label="Why customers choose us" className="mc-section" style={{ paddingTop: 0 }}>
+        <div className="mc-grid mc-grid-cards">
           {VALUE_PROPS.map((v) => (
-            <article
-              key={v.title}
-              className="surface-raised lift h-full min-w-0 rounded-card p-6"
-            >
-              <span className="mb-5 flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
-                <v.icon className="size-6" />
-              </span>
-              <h3 className="m-0 mb-2 break-words text-xl font-bold text-foreground">
-                {v.title}
-              </h3>
-              <p className="m-0 break-words text-sm leading-relaxed text-muted">
-                {v.desc}
-              </p>
-            </article>
+            <div key={v.title} className="mc-stack-sm" style={{ padding: "var(--space-5)", borderTop: "1px solid var(--border)" }}>
+              <span className="mc-icon"><v.icon aria-hidden="true" size={20} strokeWidth={1.75} /></span>
+              <h2 className="mc-h3" style={{ fontSize: "var(--text-lg)" }}>{v.title}</h2>
+              <p className="mc-text">{v.desc}</p>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* Story & Find Us */}
-      <section className="surface-raised my-4 overflow-hidden rounded-panel">
-        <div className="flex w-full flex-wrap gap-10 p-[clamp(24px,5vw,56px)]">
-          {/* Story */}
-          <div className="min-w-0 flex-[1_1_340px] break-words">
-            <span className="mb-1.5 block text-caption font-bold uppercase tracking-widest text-accent">
-              Who We Are
-            </span>
-            <h2 className="m-0 mb-5 text-heading-xl font-extrabold tracking-tight text-foreground">
-              Our Story
-            </h2>
-
-            {(about?.story || []).map((para, i) => (
-              <p
-                key={i}
-                className="mb-[18px] break-words text-body-lg leading-[1.75] text-muted"
-              >
-                {para}
-              </p>
-            ))}
-
-            <div className="surface-sunken my-7 grid grid-cols-3 gap-4 rounded-card p-5">
-              <div>
-                <strong className="block text-xl font-extrabold text-accent">
-                  100%
-                </strong>
-                <span className="text-xs text-muted">Guaranteed Parts</span>
-              </div>
-              <div>
-                <strong className="block text-xl font-extrabold text-accent">
-                  1–2 Hr
-                </strong>
-                <span className="text-xs text-muted">Avg Turnaround</span>
-              </div>
-              <div>
-                <strong className="block text-xl font-extrabold text-accent">
-                  Free
-                </strong>
-                <span className="text-xs text-muted">Diagnostics</span>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button
-                className="flex h-12 items-center gap-1.5 rounded-full bg-accent px-6 text-sm font-bold text-accent-foreground"
-                variant="primary"
-                onPress={() => navigate("/shop")}
-              >
-                <span>Shop Accessories</span>
-                <ArrowRight className="size-4" />
-              </Button>
-              <Button
-                className="h-12 rounded-pill border border-border bg-surface px-6 text-label font-bold text-foreground"
-                variant="outline"
-                onPress={() => navigate("/repairs")}
-              >
-                View Repair Services
-              </Button>
-            </div>
+      <section className="mc-section mc-grid mc-grid-2" style={{ paddingTop: 0, gap: "clamp(24px, 5vw, 64px)", alignItems: "start" }}>
+        <div className="mc-stack">
+          <h2 className="mc-h2">Our story</h2>
+          {(about?.story || []).map((para, i) => <p key={i} className="mc-text" style={{ fontSize: "var(--text-lg)", lineHeight: 1.65 }}>{para}</p>)}
+          <div className="mc-stats">
+            <div className="mc-stat"><strong>100%</strong><span>Guaranteed parts</span></div>
+            <div className="mc-stat"><strong>1 to 2 hr</strong><span>Average turnaround</span></div>
+            <div className="mc-stat"><strong>Free</strong><span>Diagnostics with repair</span></div>
           </div>
+          <div className="mc-actions">
+            <Button onClick={() => navigate("/shop")}>Shop accessories</Button>
+            <Button variant="secondary" onClick={() => navigate("/repairs")}>View repair services</Button>
+          </div>
+        </div>
 
-          {/* Find Us */}
-          <div className="min-w-0 flex-[1_1_280px]">
-            <article className="surface-raised rounded-card p-6">
-              <h3 className="m-0 mb-5 text-heading font-extrabold text-foreground">
-                Find Us
-              </h3>
+        <div className="mc-stack-sm">
+          <h2 className="mc-gl">Find us</h2>
+          <div className="mc-group">
+            {contactRows.map((row) => {
+              const Tag = row.href ? "a" : "div";
 
-              <div className="flex flex-col gap-2">
-                {contactRows.map((row) => {
-                  const Tag = row.href ? "a" : "div";
-
-                  return (
-                    <Tag
-                      key={row.label}
-                      className="flex items-center gap-3.5 rounded-2xl p-3 no-underline transition-all hover:translate-x-1 hover:bg-surface"
-                      href={row.href}
-                      rel={row.href ? "noopener noreferrer" : undefined}
-                    >
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-                        <row.icon className="size-5" />
-                      </span>
-                      <div className="min-w-0 overflow-hidden">
-                        <strong className="block text-xs uppercase tracking-wide text-muted">
-                          {row.label}
-                        </strong>
-                        <span className="block break-all text-sm font-semibold text-foreground">
-                          {row.val || "Available"}
-                        </span>
-                      </div>
-                    </Tag>
-                  );
-                })}
-
-                <div className="flex items-start gap-3.5 p-3">
-                  <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-                    <Clock className="size-5" />
+              return (
+                <Tag key={row.label} className="mc-item" href={row.href} rel={row.href ? "noopener noreferrer" : undefined}>
+                  <row.icon aria-hidden="true" size={18} strokeWidth={1.75} style={{ color: "var(--text-secondary)", flexShrink: 0 }} />
+                  <span style={{ minWidth: 0 }}>
+                    <small className="mc-small" style={{ display: "block" }}>{row.label}</small>
+                    <span className="mc-strong" style={{ overflowWrap: "anywhere" }}>{row.val || "Available"}</span>
                   </span>
-                  <div className="min-w-0">
-                    <strong className="mb-1 block text-xs uppercase tracking-wide text-muted">
-                      Hours
-                    </strong>
-                    {(business?.hours || []).map((h) => (
-                      <span
-                        key={h.days}
-                        className="block text-label leading-relaxed text-muted"
-                      >
-                        <strong className="text-foreground">{h.days}:</strong>{" "}
-                        {h.hours}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      {/* Popular repairs preview */}
-      <section className="pb-4 pt-[clamp(32px,6vw,56px)]">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="m-0 text-caption font-bold uppercase tracking-widest text-accent">
-              What We Do
-            </p>
-            <h2 className="m-0 mt-1 text-heading-xl font-extrabold text-foreground">
-              Popular Repairs
-            </h2>
-          </div>
-          <Button
-            className="flex h-[42px] items-center gap-1.5 rounded-full border border-border bg-surface-secondary px-5 text-sm font-bold text-foreground"
-            variant="outline"
-            onPress={() => navigate("/repairs")}
-          >
-            <span>View All Services</span>
-            <ArrowRight className="size-4" />
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {repairServices.map((svc) => (
-            <Button
-              key={svc.id}
-              className="flex items-center justify-between gap-3 rounded-2xl bg-surface px-5 py-4 text-left transition-all hover:-translate-y-0.5"
-              variant="ghost"
-              onPress={() => navigate("/repairs")}
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <AppIcon color={(["red", "green", "teal", "orange", "purple", "pink", "blue", "yellow"] as IconColor[])[repairServices.indexOf(svc) % 8]} icon={Wrench} size={38} />
-                <strong className="break-words text-body-sm font-bold text-foreground">
-                  {svc.name}
-                </strong>
-              </div>
-              <span className="shrink-0 whitespace-nowrap rounded-full bg-accent-soft px-2.5 py-1 text-xs font-bold text-accent">
-                {svc.priceRange}
+                </Tag>
+              );
+            })}
+            <div className="mc-item" style={{ alignItems: "start" }}>
+              <span className="mc-small" style={{ minWidth: "3.5rem" }}>Hours</span>
+              <span className="mc-footer-hours">
+                {(business?.hours || []).map((h) => <span key={h.days}><span className="mc-strong">{h.days}:</span> {h.hours}</span>)}
               </span>
-            </Button>
-          ))}
+            </div>
+          </div>
         </div>
       </section>
-    </main>
+
+      {repairServices.length > 0 && (
+        <section aria-labelledby="popular-title" className="mc-section" style={{ paddingTop: 0 }}>
+          <div className="mc-section-head mc-section-head--row">
+            <h2 className="mc-h2" id="popular-title">Popular repairs</h2>
+            <Button variant="secondary" onClick={() => navigate("/repairs")}>View all services</Button>
+          </div>
+          <div className="mc-group">
+            {repairServices.map((svc) => (
+              <button key={svc.id} className="mc-item mc-item--between" style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: 0, font: "inherit" }} type="button" onClick={() => navigate("/repairs")}>
+                <span className="mc-strong">{svc.name}</span>
+                <span className="mc-small">{svc.priceRange}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
   );
 }

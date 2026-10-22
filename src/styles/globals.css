@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "@heroui/styles";
-@import "./ios6.css";
 
 /* Tailwind CSS v4 dark: variant configured for both [data-theme="dark"] and .dark */
 @custom-variant dark (&:is(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
@@ -63,9 +62,12 @@
 }
 
 /* ─── Light Mode Theme Tokens ─── */
-:root,
-[data-theme="light"],
-.light {
+/* The public site runs on Arc's tokens (components/arc/foundation.css). The
+   admin console keeps its HeroUI tokens: they apply only while <html> carries
+   .admin-mode, which the admin layout sets (see hooks/useAdminTheme). */
+html.admin-mode,
+html.admin-mode[data-theme="light"],
+html.admin-mode.light {
   color-scheme: light;
   --background: #F8FAF7;
   --foreground: #111B14;
@@ -109,8 +111,8 @@
 }
 
 /* ─── Dark Mode Theme Tokens ─── */
-[data-theme="dark"],
-.dark {
+html.admin-mode[data-theme="dark"],
+html.admin-mode.dark {
   color-scheme: dark;
   --background: #09150E; /* Deep Obsidian Pine */
   --foreground: #F3F7F4;
@@ -159,48 +161,6 @@ body {
   padding: 0;
   transition: background-color 0.2s ease, color 0.2s ease;
   -webkit-font-smoothing: antialiased;
-}
-
-/* Give larger phones a little more breathing room without changing desktop. */
-@media (min-width: 400px) and (max-width: 767px) {
-  #homepage-content-wrapper {
-    padding-inline: 20px;
-  }
-
-  #hero-bento-section {
-    padding: 32px 28px;
-  }
-
-  #hero-bento-section h1 {
-    font-size: 2.55rem;
-  }
-
-  #hero-bento-section p {
-    font-size: 1rem;
-  }
-
-  #location-card h3 {
-    font-size: 1.25rem;
-  }
-
-  #location-card [class*="text-micro"],
-  #location-card [class*="text-caption"],
-  #location-card [class*="text-label"] {
-    font-size: 0.875rem;
-  }
-
-  #cta-banner-section h2 {
-    font-size: 1.3rem;
-  }
-
-  #cta-banner-section p {
-    font-size: 0.9375rem;
-  }
-}
-
-@keyframes ticker-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
 }
 
 

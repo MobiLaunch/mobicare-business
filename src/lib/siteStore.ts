@@ -319,7 +319,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     bgElevated: "",
     fontFamily: "system",
     fontUrl: "",
-    colorScheme: "dark",
+    colorScheme: "light",
   },
   seo: {
     siteTitle: "Mobicare Device Recovery",
@@ -1446,9 +1446,6 @@ export function applyAppearance(a: Appearance) {
       ? "dark"
       : "light";
   }
-
-  // The public iOS 6 skin is light-only (iOS 6 had no dark mode).
-  if (root.classList.contains("ios6")) scheme = "light";
 
   const isDark = scheme === "dark";
 

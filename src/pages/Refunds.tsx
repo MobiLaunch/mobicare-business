@@ -1,23 +1,19 @@
 import { Link } from "react-router-dom";
-import { CircleDollarSign } from "lucide-react";
 
 import PolicyShell, { Glance } from "@/components/policy/PolicyShell";
 
 export default function Refunds() {
   return (
     <PolicyShell
-      color="green"
-      eyebrow="Refund Policy"
       glance={
         <Glance
           items={[
             { ok: false, text: <>We <strong>do not offer refunds</strong> on products or services.</> },
-            { ok: true, text: <>Defective products can be <strong>exchanged</strong> &mdash; see <Link className="underline" to="/returns">Returns &amp; Exchanges</Link>.</> },
+            { ok: true, text: <>Defective products can be <strong>exchanged</strong>, see <Link className="underline" to="/returns">Returns and exchanges</Link>.</> },
             { ok: true, text: "Repair parts are covered by our 90-day parts warranty (replacement at no charge)." },
           ]}
         />
       }
-      icon={CircleDollarSign}
       lead="We don't offer refunds. Here's what we do instead, and the few situations where a payment is reversed."
       metaDescription="Mobicare's refund policy: we do not offer refunds. Defective products may be exchanged; repair parts carry a 90-day warranty."
       path="/refunds"
@@ -37,7 +33,7 @@ export default function Refunds() {
           title: "Exchanges for defective items",
           body: (
             <>
-              <p>If a product is defective, we&rsquo;ll exchange it rather than refund it, provided it&rsquo;s in like-new condition with its original packaging and all included accessories. Full details are on our <Link to="/returns">Returns &amp; Exchanges</Link> page.</p>
+              <p>If a product is defective, we&rsquo;ll exchange it rather than refund it, provided it&rsquo;s in like-new condition with its original packaging and all included accessories. Full details are on our <Link to="/returns">Returns and exchanges</Link> page.</p>
             </>
           ),
         },
@@ -55,7 +51,7 @@ export default function Refunds() {
           title: "If we can’t fill your order",
           body: (
             <>
-              <p>If we&rsquo;re unable to fulfil an online order &mdash; for example, an item turns out to be out of stock after you&rsquo;ve paid &mdash; we&rsquo;ll let you know and cancel that order. A payment for goods we never ship is reversed to your original payment method.</p>
+              <p>If we&rsquo;re unable to fulfil an online order, for example, an item turns out to be out of stock after you&rsquo;ve paid, we&rsquo;ll let you know and cancel that order. A payment for goods we never ship is reversed to your original payment method.</p>
               <p>Your bank decides how long a reversal takes to appear, which is usually a few business days.</p>
             </>
           ),
@@ -70,7 +66,7 @@ export default function Refunds() {
           ),
         },
       ]}
-      title="Refund Policy"
+      title="Refund policy"
     />
   );
 }

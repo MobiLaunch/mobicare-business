@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { ShieldCheck } from "lucide-react";
 
 import PolicyShell, { Glance } from "@/components/policy/PolicyShell";
 import { BUSINESS } from "@/lib/config";
@@ -7,8 +6,6 @@ import { BUSINESS } from "@/lib/config";
 export default function Privacy() {
   return (
     <PolicyShell
-      color="purple"
-      eyebrow="Privacy Policy"
       glance={
         <Glance
           items={[
@@ -19,7 +16,6 @@ export default function Privacy() {
           ]}
         />
       }
-      icon={ShieldCheck}
       lead="What Mobicare collects, why, who helps us handle it, and the choices you have."
       metaDescription="Mobicare's privacy policy: what personal information we collect for repairs, orders and accounts, how it is used and shared, and how to contact us."
       path="/privacy"
@@ -30,12 +26,12 @@ export default function Privacy() {
           body: (
             <>
               <ul>
-                <li><strong>Account details</strong> &mdash; your name, email address, phone number and password (stored securely by our authentication provider) if you create an account.</li>
-                <li><strong>Repair bookings</strong> &mdash; your name, phone, email, the service and device you&rsquo;re booking, a description of the issue, your chosen appointment time and, for home visits, your service address.</li>
-                <li><strong>Orders</strong> &mdash; your name, email, phone (optional), delivery address, the items you buy and order totals.</li>
-                <li><strong>Messages</strong> &mdash; anything you send us through the chat in your account, by email or by phone.</li>
-                <li><strong>Payment information</strong> &mdash; you enter your card details into a form provided by Stripe. We receive the result of the payment and a payment reference, not your card number.</li>
-                <li><strong>Technical data</strong> &mdash; like most websites, our hosting and service providers may receive your IP address, browser type and device information when you visit.</li>
+                <li><strong>Account details</strong>, your name, email address, phone number and password (stored securely by our authentication provider) if you create an account.</li>
+                <li><strong>Repair bookings</strong>, your name, phone, email, the service and device you&rsquo;re booking, a description of the issue, your chosen appointment time and, for home visits, your service address.</li>
+                <li><strong>Orders</strong>, your name, email, phone (optional), delivery address, the items you buy and order totals.</li>
+                <li><strong>Messages</strong>, anything you send us through the chat in your account, by email or by phone.</li>
+                <li><strong>Payment information</strong>, you enter your card details into a form provided by Stripe. We receive the result of the payment and a payment reference, not your card number.</li>
+                <li><strong>Technical data</strong>, like most websites, our hosting and service providers may receive your IP address, browser type and device information when you visit.</li>
               </ul>
               <p>Repair devices may contain personal data. We only access what is needed to diagnose and fix the device, and we ask you to back up and remove anything sensitive beforehand where possible.</p>
             </>
@@ -64,12 +60,12 @@ export default function Privacy() {
             <>
               <p>We use a small number of service providers to run the site. They only receive what they need to do their job:</p>
               <ul>
-                <li><strong>Supabase</strong> &mdash; hosts our database and account sign-in.</li>
-                <li><strong>Stripe</strong> &mdash; processes card payments.</li>
-                <li><strong>EmailJS</strong> &mdash; delivers booking and order notification emails.</li>
-                <li><strong>Vercel</strong> &mdash; hosts the website and the secure order and payment functions.</li>
-                <li><strong>Google Maps</strong> &mdash; displays the map of our shop when it&rsquo;s enabled. Google may receive technical data from your browser when the map loads.</li>
-                <li><strong>Shipping carriers</strong> &mdash; receive your name, address and phone number to deliver your order.</li>
+                <li><strong>Supabase</strong>, hosts our database and account sign-in.</li>
+                <li><strong>Stripe</strong>, processes card payments.</li>
+                <li><strong>EmailJS</strong>, delivers booking and order notification emails.</li>
+                <li><strong>Vercel</strong>, hosts the website and the secure order and payment functions.</li>
+                <li><strong>Google Maps</strong>, displays the map of our shop when it&rsquo;s enabled. Google may receive technical data from your browser when the map loads.</li>
+                <li><strong>Shipping carriers</strong>, receive your name, address and phone number to deliver your order.</li>
               </ul>
               <p>We may also disclose information if the law requires it, or to protect our rights, our customers or the public.</p>
             </>
@@ -142,7 +138,7 @@ export default function Privacy() {
           ),
         },
       ]}
-      title="Privacy Policy"
+      title="Privacy policy"
     />
   );
 }

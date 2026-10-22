@@ -32,7 +32,8 @@ export default function ProductImage({ src, alt, className = "" }: ProductImageP
     return (
       <div
         aria-label={alt}
-        className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-surface-secondary text-muted"
+        className="flex h-full w-full flex-col items-center justify-center gap-1.5"
+        style={{ background: "var(--surface-muted, var(--surface-secondary))", color: "var(--text-muted, var(--muted))" }}
         role="img"
       >
         <ImageOff className="size-5 opacity-50" />
@@ -43,7 +44,7 @@ export default function ProductImage({ src, alt, className = "" }: ProductImageP
 
   return (
     <>
-      {state === "loading" && <div className="absolute inset-0 animate-pulse bg-surface-tertiary" />}
+      {state === "loading" && <div className="absolute inset-0 animate-pulse" style={{ background: "var(--border-subtle, var(--surface-tertiary))" }} />}
       <img
         alt={alt}
         className={`h-full w-full object-cover ${state === "loading" ? "opacity-0" : "opacity-100"} transition-opacity duration-300 ${className}`}

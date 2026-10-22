@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Truck } from "lucide-react";
 
 import PolicyShell, { Glance } from "@/components/policy/PolicyShell";
 import { getDispatchCutoff, getDynamicShippingOptions } from "@/lib/shipping";
@@ -17,8 +16,6 @@ export default function Shipping() {
 
   return (
     <PolicyShell
-      color="blue"
-      eyebrow="Shipping Policy"
       glance={
         <Glance
           items={[
@@ -29,7 +26,6 @@ export default function Shipping() {
           ]}
         />
       }
-      icon={Truck}
       lead="How and when your order gets to you, what it costs, and what to do if something goes wrong."
       metaDescription="Mobicare shipping policy: standard and express delivery, free shipping on orders $35+, same-day dispatch before 2 PM, and free local pickup in Fairfield, IL."
       path="/shipping"
@@ -46,7 +42,7 @@ export default function Shipping() {
                 <tbody>
                   <tr>
                     <td><strong>{options[0].name}</strong><br />USPS / UPS Ground, tracked</td>
-                    <td>${(5.99).toFixed(2)}<br /><span className="text-[var(--ios-green-dark)]"><strong>FREE</strong> on ${FREE_SHIPPING_MIN}+</span></td>
+                    <td>${(5.99).toFixed(2)}<br /><span style={{ color: "var(--success)" }}><strong>FREE</strong> on ${FREE_SHIPPING_MIN}+</span></td>
                     <td>{options[0].minDays}–{options[0].maxDays} business days</td>
                   </tr>
                   <tr>
@@ -71,7 +67,7 @@ export default function Shipping() {
           body: (
             <>
               <p>Orders placed before <strong>2:00 PM</strong>, Monday through Saturday, are dispatched the same day. Orders placed after the cutoff, or on Sunday, are dispatched the next business day.</p>
-              <p>Carriers don&rsquo;t deliver on Sundays, so we don&rsquo;t count Sundays in delivery estimates. Estimated arrival dates are estimates, not guarantees &mdash; carriers can run late, especially around holidays and bad weather.</p>
+              <p>Carriers don&rsquo;t deliver on Sundays, so we don&rsquo;t count Sundays in delivery estimates. Estimated arrival dates are estimates, not guarantees, carriers can run late, especially around holidays and bad weather.</p>
             </>
           ),
         },
@@ -95,7 +91,7 @@ export default function Shipping() {
           title: "Delivery addresses",
           body: (
             <>
-              <p>We ship to addresses in the United States. Please double-check your address before you pay &mdash; we ship to exactly what you enter at checkout, and we can&rsquo;t be responsible for packages sent to an incorrect address.</p>
+              <p>We ship to addresses in the United States. Please double-check your address before you pay, we ship to exactly what you enter at checkout, and we can&rsquo;t be responsible for packages sent to an incorrect address.</p>
               <p>If you need to correct an address, contact us right away. We&rsquo;ll do our best to fix it before the order ships.</p>
             </>
           ),
@@ -106,12 +102,12 @@ export default function Shipping() {
           body: (
             <>
               <p>Every standard and express shipment is tracked. If your tracking hasn&rsquo;t moved in several days, or your package arrives damaged or incomplete, contact us right away with your order number and, for damage, photos of the box and the item.</p>
-              <p>Items that arrive defective are handled under our <Link to="/returns">Returns &amp; Exchanges</Link> policy. As described on our <Link to="/refunds">Refund policy</Link>, we do not offer refunds.</p>
+              <p>Items that arrive defective are handled under our <Link to="/returns">Returns and exchanges</Link> policy. As described on our <Link to="/refunds">Refund policy</Link>, we do not offer refunds.</p>
             </>
           ),
         },
       ]}
-      title="Shipping Policy"
+      title="Shipping policy"
     />
   );
 }
