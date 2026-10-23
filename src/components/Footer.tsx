@@ -33,7 +33,7 @@ function Column({ title, links }: { title: string; links: Array<{ label: string;
       <h2 className="mc-gl">{title}</h2>
       <ul className="mc-stack-sm" style={{ listStyle: "none", margin: 0, padding: 0 }}>
         {links.map((l) => (
-          <li key={l.to}><Link className="mc-link" style={{ textDecoration: "none", color: "var(--text-secondary)", fontSize: "var(--text-sm)" }} to={l.to}>{l.label}</Link></li>
+          <li key={l.to}><Link className="mc-footer-link" to={l.to}>{l.label}</Link></li>
         ))}
       </ul>
     </nav>
@@ -51,7 +51,7 @@ export default function Footer() {
   const hours = business?.hours?.length ? business.hours : BUSINESS.hours;
 
   return (
-    <footer className="mc-footer" id="site-footer">
+    <footer className="mc-footer mc-band mc-band--ink" id="site-footer">
       <div className="mc-page mc-section" style={{ display: "grid", gap: "var(--space-10)" }}>
         <div className="mc-footer-grid">
           <div style={{ display: "grid", gap: "var(--space-3)", alignContent: "start" }}>
@@ -66,8 +66,8 @@ export default function Footer() {
           <div>
             <h2 className="mc-gl">Visit or call</h2>
             <div className="mc-footer-hours">
-              <a className="mc-link" href={`tel:${phone.replace(/[^0-9+]/g, "")}`} style={{ color: "var(--foreground)" }}>{phone}</a>
-              <a className="mc-link" href={`mailto:${email}`} style={{ color: "var(--text-secondary)" }}>{email}</a>
+              <a className="mc-footer-link" href={`tel:${phone.replace(/[^0-9+]/g, "")}`} style={{ color: "var(--foreground)", fontSize: "var(--text-lg)" }}>{phone}</a>
+              <a className="mc-footer-link" href={`mailto:${email}`}>{email}</a>
               <span>{business?.city || BUSINESS.city}</span>
               {hours.map((h) => (
                 <span key={h.days}>{h.days}: {h.hours}</span>
@@ -75,7 +75,7 @@ export default function Footer() {
             </div>
           </div>
         </div>
-        <p className="mc-small">© {new Date().getFullYear()} {footer.copyrightName || brand?.name}. All rights reserved.</p>
+        <div className="mc-footer-bar"><p className="mc-small">© {new Date().getFullYear()} {footer.copyrightName || brand?.name}. All rights reserved.</p><p className="mc-small">Fairfield, Illinois</p></div>
       </div>
     </footer>
   );

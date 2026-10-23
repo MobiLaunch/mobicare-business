@@ -1,4 +1,5 @@
 import PageMeta from "@/components/PageMeta";
+import PageIntro from "@/components/PageIntro";
 import BookingWizard from "@/components/BookingWizard";
 import { Accordion } from "@/components/arc/accordion/accordion";
 
@@ -38,30 +39,30 @@ const BADGES = [
 
 export default function Repairs() {
   return (
-    <div className="mc-page">
+    <>
       <PageMeta
         description="Professional same-day phone repairs, cracked screens, dead batteries, water damage diagnostics and repairs for iPhones, iPads, Samsung and more in Fairfield, IL."
         title="Device repair services: screen, battery and more | Mobicare Fairfield IL"
       />
 
-      <header className="mc-stack mc-section" style={{ maxWidth: "48rem", paddingBottom: "var(--space-8)" }}>
-        <h1 className="mc-h1">We fix what&apos;s broken.</h1>
-        <p className="mc-lead">Fast, honest repairs on every major device brand. $35 bench fee, 90-day parts warranty, same-day turnaround on most jobs.</p>
+      <PageIntro lead="Fast, honest repairs on every major device brand. $35 bench fee, 90-day parts warranty, same-day turnaround on most jobs." title={<>We fix what&apos;s broken.</>}>
         <div className="mc-hero-meta">
           {BADGES.map((badge) => <span key={badge}>{badge}</span>)}
         </div>
-      </header>
+      </PageIntro>
+      <div className="mc-page mc-pagebody mc-split">
 
       {/* The wizard itself is the service picker, so there is one continuous
           path from "what needs fixing" through confirmation. */}
-      <section aria-label="Book a repair" id="repairs-booking-section" style={{ paddingBottom: "var(--space-16)" }}>
+      <section aria-label="Book a repair" id="repairs-booking-section">
         <BookingWizard mode="page" />
       </section>
 
-      <section aria-labelledby="faq-title" className="mc-narrow" style={{ paddingBottom: "var(--space-16)" }}>
+      <section aria-labelledby="faq-title" className="mc-faq">
         <div className="mc-section-head"><h2 className="mc-h2" id="faq-title">Frequently asked questions</h2></div>
         <Accordion items={FAQS.map((f) => ({ title: f.q, content: f.a }))} />
       </section>
-    </div>
+      </div>
+    </>
   );
 }

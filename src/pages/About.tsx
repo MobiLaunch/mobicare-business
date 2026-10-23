@@ -3,6 +3,7 @@ import { Mail, MapPin, Phone, Smartphone, Shield, Star, Zap, type LucideIcon } f
 
 import { Button } from "@/components/arc/button/button";
 import PageMeta from "@/components/PageMeta";
+import PageIntro from "@/components/PageIntro";
 import { useSiteStore } from "@/lib/siteStore";
 
 const VALUE_PROPS: { icon: LucideIcon; title: string; desc: string }[] = [
@@ -25,17 +26,14 @@ export default function About() {
   ];
 
   return (
-    <div className="mc-page">
+    <>
       <PageMeta
         description="Learn more about Mobicare, southern Illinois' trusted repair shop for iPhones, Androids, and laptops. Fast turnarounds, 90-day warranty, honest pricing."
         title="About Mobicare: local device repair in Fairfield, Illinois"
       />
 
-      <header className="mc-stack mc-section" style={{ maxWidth: "52rem" }}>
-        <p className="mc-small">{about?.eyebrow || "About Mobicare"}</p>
-        <h1 className="mc-h1">{about?.headline}</h1>
-        <p className="mc-lead">{about?.lead}</p>
-      </header>
+      <PageIntro kicker={about?.eyebrow || "About Mobicare"} lead={about?.lead} title={about?.headline} />
+      <div className="mc-page mc-pagebody">
 
       <section aria-label="Why customers choose us" className="mc-section" style={{ paddingTop: 0 }}>
         <div className="mc-grid mc-grid-cards">
@@ -106,6 +104,7 @@ export default function About() {
           </div>
         </section>
       )}
-    </div>
+      </div>
+    </>
   );
 }

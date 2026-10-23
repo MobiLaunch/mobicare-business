@@ -5,6 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useProductStore } from "@/lib/store";
 import ProductCard from "@/components/ProductCard";
 import PageMeta from "@/components/PageMeta";
+import PageIntro from "@/components/PageIntro";
 import { Button } from "@/components/arc/button/button";
 import { ChipGroup } from "@/components/arc/chip-group/chip-group";
 import { EmptyState } from "@/components/arc/empty-state/empty-state";
@@ -111,16 +112,12 @@ export default function Shop() {
   const applySearch = (value: string) => setSearch(value);
 
   return (
-    <div className="mc-page mc-section" id="shop-page">
+    <>
       <PageMeta description="Shop premium phone accessories at Mobicare." title="Shop | Mobicare" />
+      <PageIntro lead="Cases, chargers, cables and protection for the device we just fixed." title="Shop" />
+    <div className="mc-page mc-pagebody" id="shop-page">
 
-      <div className="mc-section-head mc-section-head--row">
-        <div className="mc-stack-sm">
-          <h1 className="mc-h1">Shop</h1>
-          <p className="mc-lead">Cases, chargers, cables and protection for the device we just fixed.</p>
-        </div>
-        <p aria-live="polite" className="mc-small">{filtered.length} product{filtered.length !== 1 ? "s" : ""}</p>
-      </div>
+      <p aria-live="polite" className="mc-small" style={{ marginBottom: "var(--space-3)" }}>{filtered.length} product{filtered.length !== 1 ? "s" : ""}</p>
 
       <div className="mc-toolbar">
         <div className="mc-grow">
@@ -162,5 +159,6 @@ export default function Shop() {
         />
       )}
     </div>
+    </>
   );
 }

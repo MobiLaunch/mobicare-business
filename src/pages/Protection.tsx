@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, Droplet, ExternalLink, Gamepad2, Laptop, ShieldAlert, Smartphone, Zap } from "lucide-react";
 
 import PageMeta from "@/components/PageMeta";
+import PageIntro from "@/components/PageIntro";
 import { AKKO_CONFIG } from "@/lib/config";
 import { Accordion } from "@/components/arc/accordion/accordion";
 import { Badge } from "@/components/arc/badge/badge";
@@ -204,32 +205,30 @@ export default function Protection() {
   };
 
   return (
-    <div className="mc-page" id="protection-page">
+    <>
       <PageMeta
         description="Protect your phone, laptop, and personal electronics with AKKO Device Insurance at Mobicare in Fairfield, IL. Low $29 deductibles, theft coverage, and same-day local repairs."
         title="AKKO phone and device protection plans | Mobicare Fairfield IL"
       />
 
-      <section className="mc-hero" id="protection-hero" style={{ gridTemplateColumns: "1fr" }}>
-        <div className="mc-hero-copy" style={{ maxWidth: "48rem" }}>
-          <Badge tone="info">Official AKKO protection partner</Badge>
-          <h1 className="mc-h1">Full tech protection. <span style={{ color: "var(--accent-strong)" }}>Zero headaches.</span></h1>
-          <p className="mc-lead">
-            Protect your phone and up to 25 personal electronics from drops, spills, cracked screens and theft. Lower monthly rates, $29 deductibles, and claims repaired right here at Mobicare.
-          </p>
-          <div className="mc-actions">
-            <Button size="lg" onClick={handleEnroll}>Enroll with AKKO<ExternalLink aria-hidden="true" size={16} strokeWidth={1.75} /></Button>
-            <a href="#plans" style={{ textDecoration: "none" }}><Button size="lg" tabIndex={-1} variant="secondary">Compare plans</Button></a>
-          </div>
-          <div className="mc-hero-meta">
-            {["Low $29 to $99 deductibles", "Covers new, used and unlocked", "Local repairs at Mobicare", "Cancel anytime"].map((t) => (
-              <span key={t}><Check aria-hidden="true" size={16} strokeWidth={1.75} />{t}</span>
-            ))}
-          </div>
+      <PageIntro
+        kicker={<Badge tone="info">Official AKKO protection partner</Badge>}
+        lead="Protect your phone and up to 25 personal electronics from drops, spills, cracked screens and theft. Lower monthly rates, $29 deductibles, and claims repaired right here at Mobicare."
+        title={<>Full tech protection. <span className="mc-accent">Zero headaches.</span></>}
+      >
+        <div className="mc-actions">
+          <button className="mc-cta mc-cta--lg" type="button" onClick={handleEnroll}>Enroll with AKKO<ExternalLink aria-hidden="true" size={18} strokeWidth={1.75} /></button>
+          <a className="mc-ghost mc-ghost--lg" href="#plans">Compare plans</a>
         </div>
-      </section>
+        <div className="mc-hero-meta">
+          {["Low $29 to $99 deductibles", "Covers new, used and unlocked", "Local repairs at Mobicare", "Cancel anytime"].map((t) => (
+            <span key={t}><Check aria-hidden="true" size={16} strokeWidth={1.75} />{t}</span>
+          ))}
+        </div>
+      </PageIntro>
+      <div className="mc-page mc-pagebody">
 
-      <section aria-labelledby="plans-title" className="mc-section" id="plans" style={{ paddingTop: 0 }}>
+      <section aria-labelledby="plans-title" className="mc-section" id="plans" style={{ paddingTop: 0, scrollMarginTop: "5rem" }}>
         <div className="mc-section-head">
           <h2 className="mc-h2" id="plans-title">Choose your protection plan</h2>
           <p className="mc-lead">Save up to 60% compared with AppleCare+ and carrier insurance.</p>
@@ -314,6 +313,7 @@ export default function Protection() {
       </section>
 
       {bookingOpen && <BookingWizard onClose={() => setBookingOpen(false)} />}
-    </div>
+      </div>
+    </>
   );
 }

@@ -1,11 +1,11 @@
 import type { Product } from "@/types/domain";
 
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ShoppingCart } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 
 import ProductImage from "@/components/ProductImage";
 import { Badge } from "@/components/arc/badge/badge";
-import { Button } from "@/components/arc/button/button";
 import { useCartStore, useProductStore, useToastStore } from "@/lib/store";
 
 interface ProductCardProps {
@@ -18,10 +18,16 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
   const addToast = useToastStore((s) => s.add);
   const categoryName = useProductStore((s) => s.categories.find((c) => c.id === product.category)?.name);
 
+  const [added, setAdded] = useState(false);
+
   const handleAdd = () => {
     if (product.stock < 1) return;
 
-    if (addItem(product)) addToast(`${product.name} added to cart`, "success");
+    if (addItem(product)) {
+      addToast(`${product.name} added to cart`, "success");
+      setAdded(true);
+      setTimeout(() => setAdded(false), 1400);
+    }
     else addToast(`Only ${product.stock} available in stock`, "error");
   };
 
@@ -62,19 +68,18 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
           ${product.price?.toFixed(2)}
           {product.comparePrice ? <s>${product.comparePrice.toFixed(2)}</s> : null}
         </span>
-        <Button
-          aria-label={`Add ${product.name} to cart`}
+        <button
+          aria-label={added ? `${product.name} added` : `Add ${product.name} to cart`}
+          className={`mc-add${added ? " is-added" : ""}`}
           disabled={product.stock === 0}
-          size="sm"
-          variant="secondary"
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             handleAdd();
           }}
         >
-          <ShoppingCart aria-hidden="true" size={16} strokeWidth={1.75} />
-          Add
-        </Button>
+          {added ? <Check aria-hidden="true" size={18} strokeWidth={2} /> : <Plus aria-hidden="true" size={18} strokeWidth={2} />}
+        </button>
       </div>
     </article>
   );

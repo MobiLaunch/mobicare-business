@@ -384,7 +384,7 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
         </div>
       )}
 
-      {(needsVisit || needsLocation) && (
+      {((needsVisit && !isPage) || needsLocation) && (
         <div className="mc-actions" style={{ justifyContent: "space-between" }}>
           <Button variant="secondary" onClick={needsVisit ? onClose : goBack}>{needsVisit && !isPage ? "Cancel" : "Back"}</Button>
         </div>

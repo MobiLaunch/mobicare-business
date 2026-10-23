@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Check, X } from "lucide-react";
 
 import PageMeta from "@/components/PageMeta";
+import PageIntro from "@/components/PageIntro";
 import { BUSINESS } from "@/lib/config";
 import { useSiteStore } from "@/lib/siteStore";
 
@@ -38,14 +39,10 @@ export default function PolicyShell({ path, title, lead, metaDescription, glance
   const email = business?.email || BUSINESS.email;
 
   return (
-    <div className="mc-page mc-section">
+    <>
       <PageMeta description={metaDescription} title={`${title} | Mobicare Device Recovery`} />
-
-      <header className="mc-stack" style={{ maxWidth: "46rem", marginBottom: "var(--space-10)" }}>
-        <h1 className="mc-h1">{title}</h1>
-        <p className="mc-lead">{lead}</p>
-        <p className="mc-small">Last updated {POLICY_UPDATED}</p>
-      </header>
+      <PageIntro kicker={`Last updated ${POLICY_UPDATED}`} lead={lead} title={title} />
+      <div className="mc-page mc-pagebody">
 
       {glance && (
         <section aria-labelledby="glance-title" className="mc-card mc-card--muted" style={{ marginBottom: "var(--space-10)" }}>
@@ -85,7 +82,8 @@ export default function PolicyShell({ path, title, lead, metaDescription, glance
           </section>
         </article>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
