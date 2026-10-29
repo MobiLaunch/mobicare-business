@@ -97,6 +97,7 @@ export default function Products() {
   const [picked, setPicked] = useState<number[]>([]);
   const [linkCategory, setLinkCategory] = useState("");
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [costs, setCosts] = useState<Record<number, number>>({});
   const [lowOnly, setLowOnly] = useState(false);
   const synced = isSupabaseConfigured();
   const linkedIds = new Set(products.map((p) => p.inventoryId).filter((v): v is number => typeof v === "number"));
@@ -107,6 +108,12 @@ export default function Products() {
   };
 
   useEffect(loadMovements, [synced, products]);
+
+  // Cost lives on the POS item; the shop only needs it here to show margin.
+  useEffect(() => {
+    if (!synced) return;
+    void sbFetchPosInventory().then((items) => items && setCosts(Object.fromEntries(items.filter((i) => i.cost > 0).map((i) => [i.id, i.cost]))));
+  }, [synced]);
 
   const openLink = async () => {
     setLinkOpen(true);
@@ -270,6 +277,9 @@ export default function Products() {
   const priceCell = (p: Product) => (
     <div>
       <strong className="ad-num" style={{ fontWeight: 500 }}>${p.price.toFixed(2)}</strong>
+      {typeof p.inventoryId === "number" && costs[p.inventoryId] > 0 && p.price > 0 && (
+        <div className="ad-hint">{Math.round(((p.price - costs[p.inventoryId]) / p.price) * 100)}% margin</div>
+      )}
       {p.comparePrice && <div className="ad-hint" style={{ textDecoration: "line-through" }}>${p.comparePrice.toFixed(2)}</div>}
     </div>
   );

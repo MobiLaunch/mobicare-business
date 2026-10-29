@@ -141,7 +141,13 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
   // The model is optional now, so only join when there is one — otherwise the
   // review screen reads "Samsung Phone — " with nothing after the dash.
   const deviceSummary = [deviceTypeLabel, deviceModelLabel].filter(Boolean).join(" — ");
+  // The shop's POS price list is the source of truth for house calls; the Site editor rates are the fallback.
+  const posHouseCall = (type: "residential" | "commercial") =>
+    catalog.find((c) => c.category === "House Calls" && new RegExp(type === "residential" ? "^consumer" : "^commercial", "i").test(c.name));
   const locationRateLine = (type: "residential" | "commercial") => {
+    const live = posHouseCall(type);
+
+    if (live) return `${money(live.price)} house call fee`;
     const p = houseCallPricing;
     const first = type === "residential" ? p.residentialFirstHour : p.commercialFirstHour;
     const rest = type === "residential" ? p.residentialAdditionalHourRate : p.commercialAdditionalHourRate;
@@ -262,7 +268,7 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
             value={null}
             onValueChange={(v) => update("visitLocationType", v as "residential" | "commercial")}
           />
-          <p className="mc-small">Flat rate for the first hour, 50% off every hour after. Collected at time of service.</p>
+          <p className="mc-small">{posHouseCall("residential") ? "Collected at time of service." : "Flat rate for the first hour, 50% off every hour after. Collected at time of service."}</p>
         </>
       )}
 
