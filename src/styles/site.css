@@ -377,11 +377,12 @@ html[data-theme="dark"] .mc-accent, .mc-band--ink .mc-accent { color: var(--mc-b
 .mc-hero-meta svg { color: var(--accent-strong); }
 html[data-theme="dark"] .mc-hero-meta svg { color: var(--mc-brand); }
 
-.mc-strip { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--border); }
+.mc-strip { display: grid; grid-template-columns: repeat(var(--strip-cols, 3), minmax(0, 1fr)); border-top: 1px solid var(--border); }
 .mc-strip > div { display: grid; gap: 2px; padding: var(--space-5) var(--space-4); }
 .mc-strip > div + div { border-left: 1px solid var(--border); }
-.mc-strip strong { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 500; letter-spacing: var(--tracking-display); line-height: 1.1; }
+.mc-strip strong { font-family: var(--font-display); font-size: clamp(1.2rem, 2.2vw, 1.6rem); font-weight: 500; letter-spacing: var(--tracking-display); line-height: 1.1; }
 .mc-strip span { color: var(--text-secondary); font-size: var(--text-sm); }
+@media (max-width: 900px) { .mc-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mc-strip > div:nth-child(odd) { border-left: 0; } .mc-strip > div:nth-child(n+3) { border-top: 1px solid var(--border); } }
 @media (max-width: 560px) { .mc-strip { grid-template-columns: 1fr; } .mc-strip > div + div { border-left: 0; border-top: 1px solid var(--border); } }
 
 /* ─── Services / steps ─────────────────────────────────────────────────── */

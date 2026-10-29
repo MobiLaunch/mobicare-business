@@ -1,3 +1,4 @@
+import { useSiteStore } from "@/lib/siteStore";
 import PageMeta from "@/components/PageMeta";
 import PageIntro from "@/components/PageIntro";
 import BookingWizard from "@/components/BookingWizard";
@@ -38,6 +39,10 @@ const BADGES = [
 ];
 
 export default function Repairs() {
+  const banner = useSiteStore((s) => s.repairBanner);
+  const trustItems = useSiteStore((s) => s.trustItems) || [];
+  const badges = trustItems.length ? trustItems.map((t) => t.label) : BADGES;
+
   return (
     <>
       <PageMeta
@@ -45,9 +50,9 @@ export default function Repairs() {
         title="Device repair services: screen, battery and more | Mobicare Fairfield IL"
       />
 
-      <PageIntro lead="Fast, honest repairs on every major device brand. $35 bench fee, 90-day parts warranty, same-day turnaround on most jobs." title={<>We fix what&apos;s broken.</>}>
+      <PageIntro lead={banner?.description || "Fast, honest repairs on every major device brand."} title={banner?.headline ? banner.headline.split("\n").map((line, i) => <span key={i} style={{ display: "block" }}>{line}</span>) : <>We fix what&apos;s broken.</>}>
         <div className="mc-hero-meta">
-          {BADGES.map((badge) => <span key={badge}>{badge}</span>)}
+          {badges.map((badge) => <span key={badge}>{badge}</span>)}
         </div>
       </PageIntro>
       <div className="mc-page mc-pagebody mc-split">

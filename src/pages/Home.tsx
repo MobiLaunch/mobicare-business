@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, BatteryFull, Camera, CalendarCheck, Droplets, HardDrive, PlugZap, ShieldCheck, Smartphone, Wrench, Zap, type LucideIcon } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
@@ -34,6 +34,7 @@ export default function Home() {
   const hero = useSiteStore((s) => s.hero);
   const services = useSiteStore((s) => s.repairServices);
   const ctaStrip = useSiteStore((s) => s.ctaStrip);
+  const trustItems = useSiteStore((s) => s.trustItems) || [];
   const featured = useProductStore(useShallow((s) => s.products.filter((p) => p.featured && p.active).slice(0, 4)));
   // `null` closed; `{ service: null }` open with no preselection; a name opens on that service.
   const [booking, setBooking] = useState<{ service: string | null } | null>(null);
@@ -68,11 +69,13 @@ export default function Home() {
             </div>
             <LocationCard />
           </section>
-          <div className="mc-strip">
-            <div><strong>4 years</strong><span>Repairing devices in Fairfield</span></div>
-            <div><strong>90 days</strong><span>Warranty on every part we install</span></div>
-            <div><strong>1 to 2 hours</strong><span>Typical screen and battery turnaround</span></div>
-          </div>
+          {trustItems.length > 0 && (
+            <div className="mc-strip" style={{ "--strip-cols": trustItems.length } as CSSProperties}>
+              {trustItems.map((item, i) => (
+                <div key={i}><strong>{item.label}</strong><span>{item.desc}</span></div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
