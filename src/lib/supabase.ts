@@ -188,7 +188,7 @@ export async function getCustomerProfile(
   if (!sb || !userId) return { data: null, error: null };
 
   const { data, error } = await sb
-    .from("profiles")
+    .from("customer_profiles")
     .select("id, full_name, phone, created_at, updated_at")
     .eq("id", userId)
     .maybeSingle();
@@ -212,9 +212,8 @@ export async function updateCustomerProfile(
   };
 
   const { data, error } = await sb
-    .from("profiles")
-    .update(payload)
-    .eq("id", userId)
+    .from("customer_profiles")
+    .upsert({ id: userId, ...payload, updated_at: new Date().toISOString() })
     .select()
     .single();
 
@@ -250,10 +249,8 @@ export async function sbFetchCustomerOrders(userId: string) {
 }
 
 // ─── Customer <-> shop chat (NovaOps Messages -> Customer Chat) ────────────
-// customer_messages lives in the NovaOps repo's migrations; RLS there lets a
-// signed-in customer read/insert only their own thread (direction must be
-// 'inbound' on insert — the shop is the only side allowed to post 'outbound').
-
+// Website chat lives in the POS `messages` inbox (channel "chat"), so the shop
+// sees and answers it from the same place as every other customer message.
 export async function sbFetchCustomerChat(
   userId: string,
 ): Promise<{ data: CustomerChatMessage[]; error: unknown }> {
@@ -261,13 +258,15 @@ export async function sbFetchCustomerChat(
 
   if (!sb || !userId) return { data: [], error: null };
 
-  const { data, error } = await sb
-    .from("customer_messages")
-    .select("*")
-    .eq("customer_user_id", userId)
-    .order("created_at", { ascending: true });
+  const { data, error } = await sb.rpc("my_customer_messages");
 
-  return { data: (data as CustomerChatMessage[] | null) || [], error };
+  return {
+    data: ((data as CustomerChatMessage[] | null) || []).map((m) => ({
+      ...m,
+      customer_user_id: userId,
+    })),
+    error,
+  };
 }
 
 export async function sbSendCustomerChatMessage(
@@ -280,24 +279,27 @@ export async function sbSendCustomerChatMessage(
 
   if (!sb) return { data: null, error: { message: "Supabase not configured." } };
 
-  // profile_id (the shop's NovaOps account) is intentionally omitted — a
-  // database trigger on the NovaOps side (customer_messages_fill_profile_id,
-  // supabase/migrations/20260906_customer_messages_auto_profile.sql in the
-  // novaops-updated repo) fills it in from staff_users, so the website never
-  // needs to know or configure the shop's internal Supabase Auth user id.
-  const { data, error } = await sb
-    .from("customer_messages")
-    .insert({
+  const { data, error } = await sb.rpc("send_customer_message", {
+    p_body: sanitizeInput(body) as string,
+  });
+
+  if (error) return { data: null, error };
+
+  return {
+    data: {
+      id: Number(data),
+      profile_id: "",
       customer_user_id: userId,
+      ticket_id: null,
       customer_name: customerName,
       customer_email: customerEmail,
       direction: "inbound",
       body: sanitizeInput(body) as string,
-    })
-    .select()
-    .single();
-
-  return { data: data as CustomerChatMessage | null, error };
+      read: false,
+      created_at: new Date().toISOString(),
+    },
+    error: null,
+  };
 }
 
 export async function sendCustomerPasswordReset(email: string) {
