@@ -1,8 +1,13 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle, Phone, X } from "lucide-react";
+import { MessageCircle, Phone, Send, X } from "lucide-react";
 
+import { Alert } from "@/components/arc/alert/alert";
 import { Button } from "@/components/arc/button/button";
+import { Input } from "@/components/arc/input/input";
+import { Textarea } from "@/components/arc/textarea/textarea";
+import { useAuth } from "@/lib/AuthContext";
+import { isSupabaseConfigured, sbSendCustomerChatMessage, sbSendGuestMessage } from "@/lib/supabase";
 import { ChatComposer, ChatThread, type ChatDraft, type ChatMessage } from "@/components/arc/chat-thread/chat-thread";
 import { BUSINESS } from "@/lib/config";
 import { QUICK_REPLIES, getReply, type BotContext, type ChatAction } from "@/lib/chatbot";
@@ -21,6 +26,7 @@ const GREETING = "Hi, I'm the Mobicare assistant. Ask me about prices, hours, sh
  */
 export default function ChatWidget() {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const business = useSiteStore((s) => s.business);
   const repairServices = useSiteStore((s) => s.repairServices);
   const [open, setOpen] = useState(false);
@@ -31,6 +37,11 @@ export default function ChatWidget() {
   const counter = useRef(0);
   const timers = useRef<number[]>([]);
   const greeted = useRef(false);
+  // "Message the shop": a real message that lands in the shop's inbox, unlike the scripted replies.
+  const [composing, setComposing] = useState(false);
+  const [sendingMsg, setSendingMsg] = useState(false);
+  const [msgError, setMsgError] = useState("");
+  const [contact, setContact] = useState({ name: profile?.full_name || "", email: user?.email || "", phone: profile?.phone || "", body: "" });
 
   const phone = business?.phone || BUSINESS.phone;
   const digits = phone.replace(/[^0-9+]/g, "");
@@ -81,12 +92,45 @@ export default function ChatWidget() {
 
     if (!t) return;
     setActions([]);
+    lastAsked.current = t;
     push(ME.id, t, "delivered");
     reply(getReply(t, ctx));
   };
 
+  const sendToShop = async () => {
+    const { name, email, phone, body } = contact;
+
+    setSendingMsg(true);
+    setMsgError("");
+    let ok = false;
+    let error = "";
+
+    if (user) {
+      const res = await sbSendCustomerChatMessage(user.id, name || profile?.full_name || "", user.email || email, body);
+
+      ok = !res.error;
+      error = res.error && typeof res.error === "object" && "message" in res.error ? String((res.error as { message: string }).message) : "";
+    } else {
+      const res = await sbSendGuestMessage({ name, email, phone, body });
+
+      ok = res.ok;
+      error = res.error || "";
+    }
+    setSendingMsg(false);
+    if (!ok) return setMsgError(error || "We couldn't send that. Please try again or call us.");
+    push(ME.id, body, "delivered");
+    reply([{ text: `Thanks${name ? `, ${name.split(" ")[0]}` : ""}. Your message is with the shop. A person will reply${user ? " here and by email" : email ? ` to ${email}` : " by phone"}.` }]);
+    setContact((c) => ({ ...c, body: "" }));
+    setComposing(false);
+  };
+
+  const canSend = !!contact.body.trim() && !!contact.name.trim() && (!!contact.email.trim() || contact.phone.replace(/\D/g, "").length >= 7 || !!user);
+
+  const lastAsked = useRef("");
+
   const runAction = (a: ChatAction) => {
-    if (a.kind === "book") setBooking(true);
+    if (a.kind === "message") { setContact((c) => ({ ...c, body: c.body || lastAsked.current })); setComposing(true); }
+    else if (a.kind === "book") setBooking(true);
     else if (a.kind === "link") {
       if (/^https?:/.test(a.to)) window.open(a.to, "_blank", "noopener,noreferrer");
       else { setOpen(false); navigate(a.to); }
@@ -121,7 +165,7 @@ export default function ChatWidget() {
           <div className="mc-chat-head">
             <div>
               <strong className="mc-strong" style={{ display: "block" }}>Mobicare</strong>
-              <span className="mc-small">Automatic replies. People answer calls and texts.</span>
+              <span className="mc-small">Automatic replies. Tap Message the shop to reach a person.</span>
             </div>
             <a aria-label={`Call ${phone}`} href={`tel:${digits}`} style={{ textDecoration: "none" }}><Button size="sm" tabIndex={-1} variant="secondary"><Phone aria-hidden="true" size={16} strokeWidth={1.75} />Call</Button></a>
             <Button aria-label="Close chat" size="sm" variant="ghost" onClick={() => setOpen(false)}><X aria-hidden="true" size={16} strokeWidth={1.75} /></Button>
@@ -139,20 +183,44 @@ export default function ChatWidget() {
             />
           </div>
 
-          <div className="mc-chat-quick">
-            {actions.map((a) => (
-              a.kind === "tel" ? <a key={a.label} href={`tel:${digits}`} style={{ textDecoration: "none" }}><Button tabIndex={-1}>{a.label}</Button></a>
-              : a.kind === "sms" ? <a key={a.label} href={`sms:${digits}`} style={{ textDecoration: "none" }}><Button tabIndex={-1}>{a.label}</Button></a>
-              : <Button key={a.label} onClick={() => runAction(a)}>{a.label}</Button>
-            ))}
-            {QUICK_REPLIES.map((q) => (
-              <Button key={q} size="sm" variant="secondary" onClick={() => send(q)}>{q}</Button>
-            ))}
-          </div>
+          {composing ? (
+            <form className="mc-chat-compose" onSubmit={(e) => { e.preventDefault(); void sendToShop(); }}>
+              {!user && (
+                <>
+                  <Input autoComplete="name" label="Your name" required value={contact.name} onChange={(e) => setContact((c) => ({ ...c, name: e.target.value }))} />
+                  <div className="mc-form-2">
+                    <Input autoComplete="email" inputMode="email" label="Email" type="email" value={contact.email} onChange={(e) => setContact((c) => ({ ...c, email: e.target.value }))} />
+                    <Input autoComplete="tel" inputMode="tel" label="Phone" type="tel" value={contact.phone} onChange={(e) => setContact((c) => ({ ...c, phone: e.target.value }))} />
+                  </div>
+                </>
+              )}
+              <Textarea label="Message" required rows={3} value={contact.body} onChange={(e) => setContact((c) => ({ ...c, body: e.target.value }))} />
+              {msgError && <Alert title={msgError} tone="danger" />}
+              <div className="mc-actions" style={{ justifyContent: "space-between" }}>
+                <Button type="button" variant="ghost" onClick={() => setComposing(false)}>Back to chat</Button>
+                <Button disabled={!canSend} loading={sendingMsg} type="submit"><Send aria-hidden="true" size={16} strokeWidth={1.75} />Send to shop</Button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <div className="mc-chat-quick">
+                {actions.map((a) => (
+                  a.kind === "message" ? <Button key={a.label} onClick={() => runAction(a)}>{a.label}</Button>
+                  : a.kind === "tel" ? <a key={a.label} href={`tel:${digits}`} style={{ textDecoration: "none" }}><Button tabIndex={-1}>{a.label}</Button></a>
+                  : a.kind === "sms" ? <a key={a.label} href={`sms:${digits}`} style={{ textDecoration: "none" }}><Button tabIndex={-1}>{a.label}</Button></a>
+                  : <Button key={a.label} onClick={() => runAction(a)}>{a.label}</Button>
+                ))}
+                {isSupabaseConfigured() && !actions.some((a) => a.kind === "message") && <Button onClick={() => setComposing(true)}>Message the shop</Button>}
+                {QUICK_REPLIES.map((q) => (
+                  <Button key={q} size="sm" variant="secondary" onClick={() => send(q)}>{q}</Button>
+                ))}
+              </div>
 
-          <div style={{ padding: "var(--space-3) var(--space-4) var(--space-4)", borderTop: "1px solid var(--border-subtle)" }}>
-            <ChatComposer allowAttachments={false} placeholder="Message" onSend={(d: ChatDraft) => send(d.text)} />
-          </div>
+              <div style={{ padding: "var(--space-3) var(--space-4) var(--space-4)", borderTop: "1px solid var(--border-subtle)" }}>
+                <ChatComposer allowAttachments={false} placeholder="Ask about prices, hours, booking" onSend={(d: ChatDraft) => send(d.text)} />
+              </div>
+            </>
+          )}
         </div>
       )}
 

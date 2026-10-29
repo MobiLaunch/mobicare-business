@@ -605,3 +605,5 @@ html[data-theme="dark"] .mc-icon { color: var(--mc-brand); }
 .mc-img-failed span { padding: 0 12px; opacity: 0.8; }
 @keyframes mc-pulse { 50% { opacity: 0.5; } }
 @media (prefers-reduced-motion: reduce) { .mc-img-skel { animation: none; } .mc-img { transition: none; } }
+
+.mc-chat-compose { display: grid; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); border-top: 1px solid var(--border-subtle); max-height: 60%; overflow-y: auto; }

@@ -302,6 +302,26 @@ export async function sbSendCustomerChatMessage(
   };
 }
 
+/** A visitor without an account leaves a message for the shop; it lands in the POS inbox. */
+export async function sbSendGuestMessage(input: {
+  name: string;
+  email: string;
+  phone: string;
+  body: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const sb = getClient();
+
+  if (!sb) return { ok: false, error: "Messaging isn't available right now. Please call us." };
+  const { error } = await sb.rpc("send_guest_message", {
+    p_name: sanitizeInput(input.name),
+    p_email: input.email,
+    p_phone: input.phone,
+    p_body: sanitizeInput(input.body),
+  });
+
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
 export async function sendCustomerPasswordReset(email: string) {
   const sb = getClient();
 

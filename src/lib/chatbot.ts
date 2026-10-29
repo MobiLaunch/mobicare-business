@@ -13,7 +13,8 @@ export type ChatAction =
   | { kind: "book"; label: string }
   | { kind: "link"; label: string; to: string }
   | { kind: "tel"; label: string }
-  | { kind: "sms"; label: string };
+  | { kind: "sms"; label: string }
+  | { kind: "message"; label: string };
 
 export interface BotReply {
   text: string;
@@ -154,7 +155,7 @@ export function getReply(input: string, ctx: BotContext): BotReply[] {
   }
 
   return [
-    { text: "Hmm, I'm a simple bot and didn't catch that one. I can help with prices, hours, location and booking — or a real human can help by call or text." },
-    { text: "Want to reach the shop?", action: { kind: "sms", label: "Text the Shop" } },
+    { text: "Hmm, I'm a simple bot and didn't catch that one. I can help with prices, hours, location and booking — or a real human can help. Send the shop a message and a person will reply." },
+    { text: "Want to reach the shop?", action: { kind: "message", label: "Message the shop" } },
   ];
 }
