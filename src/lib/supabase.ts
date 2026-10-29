@@ -663,8 +663,168 @@ export async function sbRefundOrder(
 }
 
 // ─── Bookings ──────────────────────────────────────────────────────────────
-export async function sbInsertBooking(booking: Booking): Promise<boolean> {
+export interface BookingResult {
+  ok: boolean;
+  bookingId?: string;
+  ticketId?: number;
+  price?: number;
+}
+
+/**
+ * Books through the shared database: one call matches or creates the customer,
+ * puts the visit on the POS calendar and opens a draft ticket with the quoted price.
+ * Returns null when the RPC is unavailable so the caller can fall back.
+ */
+async function sbSubmitBookingRpc(booking: Booking): Promise<BookingResult | null> {
   const sb = getClient();
+
+  if (!sb) return null;
+  const b = booking as Record<string, unknown>;
+  const { data, error } = await sb.rpc("submit_booking", {
+    payload: {
+      name: b.name || b.customer_name,
+      email: b.email || b.customer_email,
+      phone: b.phone || b.customer_phone,
+      service: b.service,
+      service_id: b.service_id || null,
+      device_type: b.device_type || b.deviceType,
+      device_model: b.device_model || b.deviceModel,
+      issue: b.issue,
+      date: b.date_iso || b.appt_date || b.date,
+      time: b.time || b.appt_time,
+      notes: b.notes,
+      visit_type: b.visit_type || b.visitType || "in-store",
+      visit_location_type: b.visit_location_type || b.visitLocationType || null,
+      home_address: b.home_address || b.homeAddress || "",
+    },
+  });
+
+  if (error) {
+    // Validation failures are the customer's to fix; anything else falls back.
+    if (error.code === "P0001") throw new Error(error.message);
+    console.warn("submit_booking unavailable, falling back:", error);
+
+    return null;
+  }
+  const r = data as { booking_id?: string; ticket_id?: number; price?: number } | null;
+
+  return { ok: true, bookingId: r?.booking_id, ticketId: r?.ticket_id, price: r?.price };
+}
+
+export interface RepairCatalogItem {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  minutes: number | null;
+}
+
+export async function sbFetchRepairCatalog(): Promise<RepairCatalogItem[] | null> {
+  const sb = getClient();
+
+  if (!sb) return null;
+  const { data, error } = await sb
+    .from("public_repair_catalog")
+    .select("id,name,category,price,minutes")
+    .order("name");
+
+  if (error) {
+    console.warn("sbFetchRepairCatalog:", error.message);
+
+    return null;
+  }
+
+  return (data || []).map((r) => ({ ...r, price: Number(r.price) })) as RepairCatalogItem[];
+}
+
+export interface PosInventoryItem {
+  id: number;
+  name: string;
+  sku: string;
+  category: string;
+  stock: number;
+  low: number | null;
+  cost: number;
+  price: number;
+}
+
+export async function sbFetchPosInventory(): Promise<PosInventoryItem[] | null> {
+  const sb = getClient();
+
+  if (!sb) return null;
+  const { data, error } = await sb
+    .from("inventory")
+    .select("id,name,sku,category,stock,low,cost,price")
+    .neq("item_type", "service")
+    .order("name");
+
+  if (error) {
+    console.error("sbFetchPosInventory:", error);
+
+    return null;
+  }
+
+  return (data || []).map((r) => ({
+    ...r,
+    stock: r.stock ?? 0,
+    cost: Number(r.cost) || 0,
+    price: Number(r.price) || 0,
+  })) as PosInventoryItem[];
+}
+
+export async function sbSetInventoryStock(id: number, stock: number): Promise<boolean> {
+  const sb = getClient();
+
+  if (!sb) return false;
+  const { error } = await sb.from("inventory").update({ stock }).eq("id", id);
+
+  if (error) console.error("sbSetInventoryStock:", error);
+
+  return !error;
+}
+
+export interface StockMovement {
+  id: number;
+  itemName: string;
+  delta: number;
+  stockAfter: number;
+  reason: string;
+  ref: string | null;
+  createdAt: string;
+}
+
+export async function sbFetchStockMovements(limit = 12): Promise<StockMovement[] | null> {
+  const sb = getClient();
+
+  if (!sb) return null;
+  const { data, error } = await sb
+    .from("stock_movements")
+    .select("id,item_name,delta,stock_after,reason,ref,created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.warn("sbFetchStockMovements:", error.message);
+
+    return null;
+  }
+
+  return (data || []).map((r) => ({
+    id: r.id,
+    itemName: r.item_name,
+    delta: r.delta,
+    stockAfter: r.stock_after,
+    reason: r.reason,
+    ref: r.ref,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function sbInsertBooking(booking: Booking): Promise<BookingResult> {
+  const sb = getClient();
+  const viaRpc = await sbSubmitBookingRpc(booking);
+
+  if (viaRpc) return viaRpc;
   const { data: { session } = { session: null } } = sb?.auth
     ? await sb.auth.getSession()
     : { data: { session: null } };
@@ -690,7 +850,7 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
         throw new Error(data.error || "Unable to submit booking.");
       }
 
-      return data.ok === true;
+      return { ok: data.ok === true };
     }
 
     // Non-JSON response (e.g. SPA rewrite returned index.html) → fall through
@@ -753,10 +913,10 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
       throw new Error(error.message || "Unable to submit booking.");
     }
 
-    return true;
+    return { ok: true };
   }
 
-  return true;
+  return { ok: true };
 }
 
 export async function sbFetchBookings(): Promise<{
@@ -941,6 +1101,7 @@ function productToDb(p: Partial<Product>): Record<string, unknown> {
   if (p.active !== undefined) out.active = p.active;
   if (p.weight !== undefined) out.weight = p.weight;
   if (p.shippingDays !== undefined) out.shipping_days = p.shippingDays;
+  if (p.inventoryId !== undefined) out.inventory_id = p.inventoryId;
 
   return out;
 }
@@ -961,6 +1122,7 @@ function dbToProduct(row: any): Product {
     active: row.active,
     weight: row.weight,
     shippingDays: row.shipping_days || { min: 3, max: 7 },
+    inventoryId: row.inventory_id ?? null,
     createdAt: row.created_at,
   };
 }

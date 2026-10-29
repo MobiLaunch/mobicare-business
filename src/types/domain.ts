@@ -26,6 +26,8 @@ export interface Product {
   active: boolean;
   weight: number;
   shippingDays: ShippingDays;
+  /** POS inventory item this product shares its stock count with. */
+  inventoryId?: number | null;
   createdAt?: string;
 }
 

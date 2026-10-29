@@ -15,11 +15,12 @@ import { Stepper } from "@/components/arc/stepper/stepper";
 import { BUSINESS, getEmailJSConfig } from "@/lib/config";
 import { DEVICE_KIND_ORDER, useSiteStore } from "@/lib/siteStore";
 import { useToastStore } from "@/lib/store";
-import { isSupabaseConfigured, sbInsertBooking } from "@/lib/supabase";
+import { isSupabaseConfigured, sbFetchRepairCatalog, sbInsertBooking, type RepairCatalogItem } from "@/lib/supabase";
+import { modelsForBrand, quotesForModel } from "@/lib/repairCatalog";
 import { useAuth } from "@/lib/AuthContext";
 
-const IN_STORE_STEPS = ["Service", "Device", "Schedule", "Contact", "Confirm"];
-const HOME_STEPS = ["Service", "Device", "Schedule", "Address", "Contact", "Confirm"];
+const IN_STORE_STEPS = ["Device", "Repair", "Schedule", "Contact", "Confirm"];
+const HOME_STEPS = ["Device", "Repair", "Schedule", "Address", "Contact", "Confirm"];
 const TIMES = ["9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM"];
 
 function getNextDays(n = 14) {
@@ -43,6 +44,9 @@ interface BookingForm {
   homeAddress: string; homeCity: string; homeState: string; homeZip: string;
 }
 interface BookingWizardProps { onClose?: () => void; defaultService?: string | null; mode?: "modal" | "page"; }
+function isoDay(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 function money(n: number) {
   return n % 1 === 0 ? `$${n}` : `$${n.toFixed(2)}`;
 }
@@ -54,6 +58,12 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
   const deviceManufacturers = useSiteStore((s) => s.deviceManufacturers) || [];
   const houseCallPricing = useSiteStore((s) => s.houseCallPricing);
   const addToast = useToastStore((s) => s.add);
+  const [catalog, setCatalog] = useState<RepairCatalogItem[]>([]);
+  const [quote, setQuote] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    void sbFetchRepairCatalog().then((items) => items && setCatalog(items));
+  }, []);
   const [visitType, setVisitType] = useState<"in-store" | "home" | "">("");
   const [step, setStep] = useState(0);
   const [sending, setSending] = useState(false);
@@ -69,12 +79,6 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
     return base;
   };
   const [form, setForm] = useState<BookingForm>(buildInitialForm);
-  useEffect(() => {
-    if (defaultService) {
-      const match = repairServices.find((s) => s.name.toLowerCase() === defaultService.toLowerCase());
-      if (match) setStep(1);
-    }
-  }, []);
   const update = <K extends keyof BookingForm>(key: K, value: BookingForm[K]) => setForm((f) => ({ ...f, [key]: value }));
   const resetWizard = () => {
     setVisitType("");
@@ -103,17 +107,24 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
   // Suggestions for the model box, from the same catalogue the shop's own
   // picker reads. A native datalist keeps them one keystroke away without
   // putting thirty chips back on the page.
-  const modelSuggestions = (selectedCategory?.models || []).flatMap((m) =>
+  // Live prices from the shop's POS service list, matched on the exact model typed or picked.
+  const brandName = selectedManufacturer?.name || "";
+  const liveModels = catalog.length && brandName ? modelsForBrand(catalog, brandName) : [];
+  const shopModels = (selectedCategory?.models || []).flatMap((m) =>
     m.generations.length ? m.generations.map((g) => `${m.name} ${g}`) : [m.name],
   );
+  // Models with posted prices come first; the shop's own list fills in the rest.
+  const modelSuggestions = [...new Set([...liveModels, ...shopModels])];
+  const catalogQuotes = catalog.length && !brandIsOther && brandName && form.deviceModelText.trim() ? quotesForModel(catalog, brandName, form.deviceModelText) : [];
+  const catalogPick = catalogQuotes.find((q) => q.id === form.service) ?? null;
+  const priceLine = catalogPick ? money(catalogPick.price) : selectedService?.priceRange || "";
+  const repairLabelText = catalogPick ? `${catalogPick.repair}${catalogPick.variant ? ` (${catalogPick.variant})` : ""}` : "";
   const isHomeAddressStep = visitType === "home" && step === 3;
   const contactStepIndex = visitType === "home" ? 4 : 3;
   const confirmStepIndex = visitType === "home" ? 5 : 4;
   const canNext = () => {
-    if (step === 0) return !!form.service && (!selectedService?.variants?.length || !!form.variant);
-    if (step === 1) {
-      return !!form.deviceKind && !!form.deviceManufacturer;
-    }
+    if (step === 0) return !!form.deviceKind && !!form.deviceManufacturer;
+    if (step === 1) return !!form.service && (!!catalogPick || (!!selectedService && (!selectedService.variants?.length || !!form.variant)));
     if (step === 2) return !!form.date && !!form.time;
     if (isHomeAddressStep) return !!form.homeAddress && !!form.homeCity && !!form.homeState && !!form.homeZip;
     if (step === contactStepIndex) return !!form.name && !!form.phone && !!form.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
@@ -140,10 +151,10 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
   const handleSubmit = async () => {
     setSending(true);
     const service = repairServices.find((s) => s.id === form.service);
-    const serviceLabel = form.variant ? `${service?.name} (${form.variant})` : service?.name || form.service;
-    const bookingPayload = { ...form, service: serviceLabel, deviceType: deviceTypeLabel, deviceModel: deviceModelLabel, device_type: deviceTypeLabel, device_model: deviceModelLabel, visit_type: visitType, visit_location_type: visitType === "home" ? form.visitLocationType : undefined, home_address: visitType === "home" ? `${form.homeAddress}, ${form.homeCity}, ${form.homeState} ${form.homeZip}` : undefined };
+    const serviceLabel = catalogPick ? repairLabelText : form.variant ? `${service?.name} (${form.variant})` : service?.name || form.service;
+    const bookingPayload = { ...form, service: serviceLabel, service_id: catalogPick?.id, date_iso: pickedDay ? isoDay(pickedDay) : undefined, deviceType: deviceTypeLabel, deviceModel: deviceModelLabel, device_type: deviceTypeLabel, device_model: deviceModelLabel, visit_type: visitType, visit_location_type: visitType === "home" ? form.visitLocationType : undefined, home_address: visitType === "home" ? `${form.homeAddress}, ${form.homeCity}, ${form.homeState} ${form.homeZip}` : undefined };
     if (!import.meta.env.DEV || isSupabaseConfigured()) {
-      try { await sbInsertBooking(bookingPayload as never); }
+      try { const result = await sbInsertBooking(bookingPayload as never); if (typeof result.price === "number" && result.price > 0) setQuote(result.price); }
       catch (bookingError) { addToast(bookingError instanceof Error ? bookingError.message : "Submission blocked. Please try again.", "error"); setSending(false); return; }
     }
     try {
@@ -151,7 +162,7 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
       if (!emailjsConfig.serviceId || !emailjsConfig.bookingTemplateId || !emailjsConfig.publicKey) {
         console.warn("[EmailJS] Missing configuration. Missing keys:", { serviceId: !emailjsConfig.serviceId, bookingTemplateId: !emailjsConfig.bookingTemplateId, publicKey: !emailjsConfig.publicKey });
       } else {
-        await emailjs.send(emailjsConfig.serviceId, emailjsConfig.bookingTemplateId, { to_email: BUSINESS.email, recipient_email: BUSINESS.email, customer_name: form.name, customer_phone: form.phone, customer_email: form.email, email: form.email, reply_to: form.email, service_type: serviceLabel, device_type: deviceTypeLabel, device_model: deviceModelLabel, issue_description: form.issue || "None", appointment_date: form.date, appointment_time: form.time, special_notes: form.notes || "None", visit_type: visitType === "home" ? "Home Visit" : "In-Store", visit_location_type: visitType === "home" ? (form.visitLocationType === "commercial" ? "Commercial" : "Residential") : "N/A", home_address: visitType === "home" ? `${form.homeAddress}, ${form.homeCity}, ${form.homeState} ${form.homeZip}` : "N/A" }, emailjsConfig.publicKey);
+        await emailjs.send(emailjsConfig.serviceId, emailjsConfig.bookingTemplateId, { to_email: BUSINESS.email, recipient_email: BUSINESS.email, customer_name: form.name, customer_phone: form.phone, customer_email: form.email, email: form.email, reply_to: form.email, service_type: serviceLabel, quoted_price: priceLine || "TBD", device_type: deviceTypeLabel, device_model: deviceModelLabel, issue_description: form.issue || "None", appointment_date: form.date, appointment_time: form.time, special_notes: form.notes || "None", visit_type: visitType === "home" ? "Home Visit" : "In-Store", visit_location_type: visitType === "home" ? (form.visitLocationType === "commercial" ? "Commercial" : "Residential") : "N/A", home_address: visitType === "home" ? `${form.homeAddress}, ${form.homeCity}, ${form.homeState} ${form.homeZip}` : "N/A" }, emailjsConfig.publicKey);
       }
     } catch (e) {
       console.error("[EmailJS error]:", e);
@@ -181,8 +192,9 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
     <div className="mc-group">
       {[
         ["Visit", visitType === "home" ? `Home visit (${form.visitLocationType})` : "In-store, Fairfield shop"],
-        ["Service", `${selectedService?.name || ""}${form.variant ? ` (${form.variant})` : ""}`],
         ["Device", deviceSummary],
+        ["Repair", catalogPick ? repairLabelText : `${selectedService?.name || ""}${form.variant ? ` (${form.variant})` : ""}`],
+        ...(priceLine ? [[catalogPick ? "Quoted price" : "Estimated price", `${priceLine}${catalogPick ? ", final price confirmed after diagnosis" : ""}`]] : []),
         ...(form.issue ? [["Issue", form.issue]] : []),
         ["When", `${form.date} at ${form.time}`],
         ...(visitType === "home" ? [["Address", `${form.homeAddress}, ${form.homeCity}, ${form.homeState} ${form.homeZip}`], ["House call rate", `${activeHouseCallRate}, collected at service`]] : []),
@@ -208,6 +220,7 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
 
   const body = done ? (
     <div className="mc-stack">
+      {quote !== null && <Alert title={`Quoted ${money(quote)}`} tone="success">Your repair is saved in our shop system. The final price is confirmed after diagnosis.</Alert>}
       <p className="mc-text">We&apos;ll confirm by phone or email within 2 hours during business hours.{visitType === "home" ? " Our technician will come to your address." : ""}</p>
       {summary}
       <Alert title="Protect this device from future damage" tone="info">
@@ -259,27 +272,6 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
 
       {!needsVisit && !needsLocation && step === 0 && (
         <>
-          <RadioCards
-            aria-label="Repair service"
-            layout="list"
-            options={repairServices.map((svc) => ({ value: svc.id, label: svc.name, description: svc.duration, meta: svc.priceRange }))}
-            value={form.service || null}
-            onValueChange={(v) => { update("service", v); update("variant", ""); }}
-          />
-          {selectedService?.variants && selectedService.variants.length > 0 && (
-            <RadioCards
-              aria-label="Part option"
-              layout="list"
-              options={selectedService.variants.map((v) => ({ value: v.name, label: v.name, meta: v.price }))}
-              value={form.variant || null}
-              onValueChange={(v) => update("variant", v)}
-            />
-          )}
-        </>
-      )}
-
-      {!needsVisit && !needsLocation && step === 1 && (
-        <>
           <div className="mc-stack-sm">
             <span className="mc-gl" style={{ margin: 0 }}>Device type</span>
             <SegmentedControl
@@ -311,6 +303,42 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
           {/* Native datalist: suggestions one keystroke away, and typing something not on the list is always allowed. */}
           <datalist id="booking-model-suggestions">{modelSuggestions.map((m) => <option key={m} value={m} />)}</datalist>
           <Input label="What's wrong? (optional)" placeholder="Cracked screen, won't charge" value={form.issue} onChange={(e) => update("issue", e.target.value)} />
+        </>
+      )}
+
+      {!needsVisit && !needsLocation && step === 1 && (
+        <>
+          {catalogQuotes.length > 0 ? (
+            <RadioCards
+              aria-label="Repair"
+              layout="list"
+              options={catalogQuotes.map((q) => ({ value: q.id, label: q.repair, description: q.variant || (q.minutes ? `About ${q.minutes} min` : undefined), meta: money(q.price) }))}
+              value={form.service || null}
+              onValueChange={(v) => { update("service", v); update("variant", ""); }}
+            />
+          ) : (
+            <>
+              {catalog.length > 0 && form.deviceModelText.trim() !== "" && !brandIsOther && (
+                <Alert title="No posted price for that model yet" tone="info">Pick the closest repair and we&apos;ll confirm the exact price when you drop off.</Alert>
+              )}
+          <RadioCards
+            aria-label="Repair service"
+            layout="list"
+            options={repairServices.map((svc) => ({ value: svc.id, label: svc.name, description: svc.duration, meta: svc.priceRange }))}
+            value={form.service || null}
+            onValueChange={(v) => { update("service", v); update("variant", ""); }}
+          />
+          {selectedService?.variants && selectedService.variants.length > 0 && (
+            <RadioCards
+              aria-label="Part option"
+              layout="list"
+              options={selectedService.variants.map((v) => ({ value: v.name, label: v.name, meta: v.price }))}
+              value={form.variant || null}
+              onValueChange={(v) => update("variant", v)}
+            />
+          )}
+            </>
+          )}
         </>
       )}
 
