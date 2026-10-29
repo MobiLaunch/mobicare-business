@@ -2,37 +2,36 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
-import { Button } from "@heroui/react";
 
 interface AdminStatCardProps {
   icon: LucideIcon;
   path: string;
-  children: ReactNode;
-  className?: string;
-  iconClassName?: string;
+  /** Large figure for the tile layout. */
+  figure?: ReactNode;
+  label?: string;
+  context?: string;
+  /** Compact horizontal layout for shortcuts. */
+  row?: boolean;
+  children?: ReactNode;
 }
 
-export default function AdminStatCard({
-  icon: Icon,
-  path,
-  children,
-  className = "",
-  iconClassName = "mb-4",
-}: AdminStatCardProps) {
+/** A whole-tile link: metric tiles show a figure, row tiles show a title and subtitle. */
+export default function AdminStatCard({ icon: Icon, path, figure, label, context, row, children }: AdminStatCardProps) {
   const navigate = useNavigate();
 
   return (
-    <Button
-      className={`group h-auto w-full rounded-[22px] border border-border bg-surface p-5 text-left whitespace-normal shadow-sm outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-md focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 ${className || "flex flex-col"}`}
-      variant="ghost"
-      onPress={() => navigate(path)}
-    >
-      <span
-        className={`flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground ${iconClassName}`}
-      >
-        <Icon className="size-[18px]" />
-      </span>
+    <button className={`ad-stat${row ? " ad-stat--row" : ""}`} type="button" onClick={() => navigate(path)}>
+      <span className="ico"><Icon aria-hidden="true" size={18} strokeWidth={1.75} /></span>
+      {row ? (
+        <span className="txt"><strong>{label}</strong><small>{context}</small></span>
+      ) : (
+        <>
+          {figure !== undefined && <span className="fig">{figure}</span>}
+          {label && <span className="lbl">{label}</span>}
+          {context && <span className="ctx">{context}</span>}
+        </>
+      )}
       {children}
-    </Button>
+    </button>
   );
 }

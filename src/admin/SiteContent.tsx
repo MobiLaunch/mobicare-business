@@ -46,24 +46,13 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import {
-  Button,
-  Chip,
-  ColorField,
-  ColorSwatch,
-  Description,
-  InputGroup,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  Switch,
-  Tabs,
-  TextArea,
-  TextField,
-  ToggleButton,
-  parseColor,
-} from "@heroui/react";
+import { Button } from "@/components/arc/button/button";
+import { Dialog, DialogContent } from "@/components/arc/dialog/dialog";
+import { Input, type InputProps } from "@/components/arc/input/input";
+import { Select } from "@/components/arc/select/select";
+import { Switch } from "@/components/arc/switch/switch";
+import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
+import { Textarea, type TextareaProps } from "@/components/arc/textarea/textarea";
 
 import {
   DEFAULT_SITE_CONTENT,
@@ -74,22 +63,9 @@ import { useToastStore } from "@/lib/store";
 import AdminPageHeader from "@/admin/components/AdminPageHeader";
 import AdminConfirmDialog from "@/admin/components/AdminConfirmDialog";
 
-// NOTE (HeroUI v3 rebuild): the original file was plain HTML wired to a
-// BeerCSS-style utility stylesheet (`className="primary round"`,
-// `className="border round"`, a global `.input`, Material-Symbols ligature
-// icons via `<i>build</i>`, and browser-native `window.prompt` /
-// `window.confirm` dialogs). None of that markup talks to HeroUI v3 at all.
-// This rewrite replaces every control with a real HeroUI v3 component
-// (TextField, TextArea, Select, Switch, ColorField, Modal, AlertDialog via
-// AdminConfirmDialog) and every icon ligature with a lucide-react icon,
-// matching the pattern already established in Categories.tsx / Products.tsx.
-// Two behavioral upgrades came along for free:
-//   1. The repair-service "Icon" field was a bare <select> of raw string ids
-//      with no visual preview (same issue called out in Categories.tsx) —
-//      rebuilt as an icon grid with previews.
-//   2. Device-category add/rename/delete used window.prompt/window.confirm,
-//      which are unstyled, block the JS thread, and are hard to test —
-//      rebuilt as a small HeroUI Modal + the shared AdminConfirmDialog.
+// Each tab edits a local copy of its slice of the site store and commits it
+// with a single save, so one click is one Supabase sync. Controls are Arc
+// components styled by the shared `ad-*` admin system (see styles/admin.css).
 
 // ─── Shared tab metadata ─────────────────────────────────────────────────
 interface TabMeta {
@@ -136,83 +112,104 @@ const serviceIconFor = (id: string) =>
   SERVICE_ICONS.find((o) => o.id === id)?.icon || Wrench;
 
 // ─── Small shared building blocks ──────────────────────────────────────────
-function TabIntro({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
+const LOGO_TYPES = [
+  { value: "icon", label: "Default icon + text" },
+  { value: "image", label: "Custom image" },
+];
+
+type FieldProps = Omit<InputProps, "onChange"> & {
+  onChange: (value: string) => void;
+  span?: boolean;
+};
+
+function Field({ span, onChange, ...props }: FieldProps) {
   return (
-    <div className="mb-6">
-      <h2 className="m-0 text-xl font-extrabold text-foreground">{title}</h2>
-      <p className="m-0 mt-1 text-sm text-muted">{description}</p>
+    <div className={span ? "ad-span" : undefined}>
+      <Input {...props} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+function Area({ span, ...props }: TextareaProps & { span?: boolean }) {
+  return (
+    <div className={span ? "ad-span" : undefined}>
+      <Textarea {...props} />
+    </div>
+  );
+}
+
+const HEX = /^#[0-9a-f]{6}$/i;
+
+function ColorRow({ label, description, value, onCommit }: { label: string; description: string; value: string; onCommit: (hex: string) => void }) {
+  const [text, setText] = useState(value);
+  const [prev, setPrev] = useState(value);
+
+  // Follow outside changes (reset to defaults, swatch picks) without fighting typing.
+  if (prev !== value) {
+    setPrev(value);
+    setText(value);
+  }
+
+  return (
+    <div className="ad-colorrow">
+      <input
+        aria-label={`${label} swatch`}
+        type="color"
+        value={HEX.test(value) ? value : "#000000"}
+        onChange={(e) => onCommit(e.target.value)}
+      />
+      <Input
+        description={description}
+        label={label}
+        maxLength={7}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (HEX.test(e.target.value)) onCommit(e.target.value.toLowerCase());
+        }}
+      />
+    </div>
+  );
+}
+
+function TabIntro({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="ad-tabintro">
+      <h2>{title}</h2>
+      <p>{description}</p>
     </div>
   );
 }
 
 function SectionLabel({ children }: { children: string }) {
-  return (
-    <h3 className="mb-3 mt-8 text-caption font-bold uppercase tracking-widest text-muted first:mt-0">
-      {children}
-    </h3>
-  );
+  return <h3 className="ad-sectionlabel">{children}</h3>;
 }
 
 function Divider() {
-  return <div className="my-6 border-t border-border" />;
+  return <hr className="ad-divider" />;
 }
 
-function SaveButton({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}) {
+function SaveButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <Button className="mt-6" variant="primary" onPress={onClick}>
-      <Save className="size-4" />
-      <span>{label}</span>
-    </Button>
-  );
-}
-
-function IconPicker({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  return (
-    <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-9">
-      {SERVICE_ICONS.map(({ id, icon: OptIcon }) => (
-        <button
-          key={id}
-          aria-label={id.replace(/_/g, " ")}
-          aria-pressed={value === id}
-          className={`flex aspect-square items-center justify-center rounded-xl border transition-colors ${
-            value === id
-              ? "border-accent bg-accent-soft text-accent"
-              : "border-border bg-surface text-foreground"
-          }`}
-          type="button"
-          onClick={() => onChange(id)}
-        >
-          <OptIcon className="size-4" />
-        </button>
-      ))}
+    <div className="ad-savebar-inline">
+      <Button onClick={onClick}>
+        <Save aria-hidden="true" size={16} strokeWidth={1.75} />
+        {label}
+      </Button>
     </div>
   );
 }
 
-function safeColor(hex: string) {
-  try {
-    return hex ? parseColor(hex) : null;
-  } catch {
-    return null;
-  }
+function IconPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  return (
+    <div className="ad-iconpick ad-iconpick--compact">
+      {SERVICE_ICONS.map(({ id, icon: OptIcon }) => (
+        <button key={id} aria-label={id.replace(/_/g, " ")} aria-pressed={value === id} type="button" onClick={() => onChange(id)}>
+          <OptIcon aria-hidden="true" size={18} strokeWidth={1.75} />
+        </button>
+      ))}
+    </div>
+  );
 }
 
 // ─── Brand Tab ──────────────────────────────────────────────────────────
@@ -258,120 +255,61 @@ function BrandTab() {
         title="Brand Identity"
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={lb.name}
-          onChange={(v) => setLb((b) => ({ ...b, name: v }))}
-        >
-          <Label>Business Name</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>Shown in the header and page titles.</Description>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={lb.subLabel}
-          onChange={(v) => setLb((b) => ({ ...b, subLabel: v }))}
-        >
-          <Label>Sub Label</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>
-            Small text under the logo (e.g. &ldquo;Device Recovery&rdquo;).
-          </Description>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5 sm:col-span-2"
-          value={lb.tagline}
-          onChange={(v) => setLb((b) => ({ ...b, tagline: v }))}
-        >
-          <Label>Tagline / Slogan</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>Short slogan used in meta and SEO contexts.</Description>
-        </TextField>
+      <div className="ad-form-2">
+        <Field value={lb.name} onChange={(v) => setLb((b) => ({ ...b, name: v }))} label="Business Name" description="Shown in the header and page titles." />
+        <Field value={lb.subLabel} onChange={(v) => setLb((b) => ({ ...b, subLabel: v }))} label="Sub Label" description="Small text under the logo (e.g. “Device Recovery”)." />
+        <Field value={lb.tagline} onChange={(v) => setLb((b) => ({ ...b, tagline: v }))} span label="Tagline / Slogan" description="Short slogan used in meta and SEO contexts." />
       </div>
 
       <SectionLabel>Logo</SectionLabel>
 
-      <div className="mb-4 flex gap-2">
-        {(["icon", "image"] as const).map((t) => (
-          <ToggleButton
-            key={t}
-            isSelected={la.logoType === t}
-            variant="default"
-            onChange={() => setLa((a) => ({ ...a, logoType: t }))}
-          >
-            {t === "icon" ? "Default Icon + Text" : "Custom Image"}
-          </ToggleButton>
-        ))}
+      <div className="ad-mb">
+        <SegmentedControl
+          label="Logo type"
+          options={LOGO_TYPES}
+          value={la.logoType}
+          onValueChange={(t) => setLa((a) => ({ ...a, logoType: t as typeof a.logoType }))}
+        />
       </div>
 
       {la.logoType === "image" && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <Label>Upload Logo File</Label>
-            <div className="flex items-center gap-3">
+        <div className="ad-form-2">
+          <div className="ad-stack-sm ad-span">
+            <p className="ad-label">Upload Logo File</p>
+            <div className="ad-inline">
               <input
                 ref={fileInputRef}
                 accept="image/*"
-                className="hidden"
+                className="ad-hidden"
                 type="file"
                 onChange={handleLogoUpload}
               />
-              <Button
-                variant="outline"
-                onPress={() => fileInputRef.current?.click()}
-              >
-                <Upload className="size-4" />
+              <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                <Upload size={16} aria-hidden="true" />
                 <span>Choose File</span>
               </Button>
               {la.logoUrl && (
-                <span className="text-xs font-semibold text-success">
+                <span className="ad-ok">
                   Image loaded ✓
                 </span>
               )}
             </div>
-            <Description>
+            <p className="ad-hint">
               PNG or SVG with transparency recommended. Max 2 MB.
-            </Description>
+            </p>
           </div>
 
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={la.logoUrl}
-            onChange={(v) => setLa((a) => ({ ...a, logoUrl: v }))}
-          >
-            <Label>Or Paste Image URL</Label>
-            <InputGroup>
-              <InputGroup.Input placeholder="https://..." />
-            </InputGroup>
-            <Description>Direct URL to a hosted image.</Description>
-          </TextField>
+          <Field value={la.logoUrl} onChange={(v) => setLa((a) => ({ ...a, logoUrl: v }))} label="Or Paste Image URL" description="Direct URL to a hosted image." placeholder="https://..." />
 
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={la.logoAlt}
-            onChange={(v) => setLa((a) => ({ ...a, logoAlt: v }))}
-          >
-            <Label>Alt Text</Label>
-            <InputGroup>
-              <InputGroup.Input />
-            </InputGroup>
-            <Description>For screen readers and SEO.</Description>
-          </TextField>
+          <Field value={la.logoAlt} onChange={(v) => setLa((a) => ({ ...a, logoAlt: v }))} label="Alt Text" description="For screen readers and SEO." />
 
           {la.logoUrl && (
-            <div className="sm:col-span-2">
-              <Label>Preview</Label>
-              <div className="mt-1.5 flex size-20 items-center justify-center overflow-hidden rounded-2xl border border-border bg-surface-secondary">
+            <div className="ad-span">
+              <p className="ad-label">Preview</p>
+              <div className="ad-logoprev ad-mt-xs">
                 <img
                   alt="Logo preview"
-                  className="size-full object-contain"
+                  className="ad-contain"
                   src={la.logoUrl}
                 />
               </div>
@@ -404,75 +342,13 @@ function HeroTab() {
         description="The large banner at the top of your homepage."
         title="Hero Section"
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField
-          className="flex flex-col gap-1.5 sm:col-span-2"
-          value={l.badgeText}
-          onChange={(v) => set("badgeText", v)}
-        >
-          <Label>Badge Text</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>
-            Pill above the headline — e.g. &ldquo;Fairfield, IL · Est.
-            2019&rdquo;
-          </Description>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.headlineLine1}
-          onChange={(v) => set("headlineLine1", v)}
-        >
-          <Label>Headline Line 1</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.headlineAccent}
-          onChange={(v) => set("headlineAccent", v)}
-        >
-          <Label>Headline Accent Word</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>Shown in your accent colour.</Description>
-        </TextField>
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label htmlFor="hero-description">Description</Label>
-          <TextArea
-            id="hero-description"
-            rows={4}
-            value={l.description}
-            onChange={(e) => set("description", e.target.value)}
-          />
-        </div>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.primaryCta}
-          onChange={(v) => set("primaryCta", v)}
-        >
-          <Label>Primary CTA Label</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>Main button — links to /shop.</Description>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.secondaryCta}
-          onChange={(v) => set("secondaryCta", v)}
-        >
-          <Label>Secondary CTA Label</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>
-            Second button — e.g. &ldquo;Call 618-204-1497&rdquo;.
-          </Description>
-        </TextField>
+      <div className="ad-form-2">
+        <Field value={l.badgeText} onChange={(v) => set("badgeText", v)} span label="Badge Text" description="Pill above the headline — e.g. “Fairfield, IL · Est. 2019”" />
+        <Field value={l.headlineLine1} onChange={(v) => set("headlineLine1", v)} label="Headline Line 1" />
+        <Field value={l.headlineAccent} onChange={(v) => set("headlineAccent", v)} label="Headline Accent Word" description="Shown in your accent colour." />
+        <Area span label="Description" id="hero-description" rows={4} value={l.description} onChange={(e) => set("description", e.target.value)} />
+        <Field value={l.primaryCta} onChange={(v) => set("primaryCta", v)} label="Primary CTA Label" description="Main button — links to /shop." />
+        <Field value={l.secondaryCta} onChange={(v) => set("secondaryCta", v)} label="Secondary CTA Label" description="Second button — e.g. “Call 618-204-1497”." />
       </div>
       <SaveButton label="Save Hero" onClick={save} />
     </div>
@@ -501,36 +377,18 @@ function TrustTab() {
         description="Four highlights shown below the hero on the homepage."
         title="Trust Bar"
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="ad-form-2">
         {ls.map((item, i) => (
           <div
             key={i}
-            className="rounded-2xl border border-border bg-surface-secondary p-4"
+            className="ad-panel"
           >
-            <span className="mb-3 flex size-8 items-center justify-center rounded-full bg-accent-soft text-sm font-bold text-accent">
+            <span className="ad-numdot ad-mb-sm">
               {i + 1}
             </span>
-            <div className="flex flex-col gap-3">
-              <TextField
-                className="flex flex-col gap-1.5"
-                value={item.label}
-                onChange={(v) => set(i, "label", v)}
-              >
-                <Label>Label</Label>
-                <InputGroup>
-                  <InputGroup.Input />
-                </InputGroup>
-              </TextField>
-              <TextField
-                className="flex flex-col gap-1.5"
-                value={item.desc}
-                onChange={(v) => set(i, "desc", v)}
-              >
-                <Label>Description</Label>
-                <InputGroup>
-                  <InputGroup.Input />
-                </InputGroup>
-              </TextField>
+            <div className="ad-stack-sm">
+              <Field value={item.label} onChange={(v) => set(i, "label", v)} label="Label" />
+              <Field value={item.desc} onChange={(v) => set(i, "desc", v)} label="Description" />
             </div>
           </div>
         ))}
@@ -567,103 +425,20 @@ function CtaTab() {
       />
 
       <SectionLabel>Bottom CTA Strip</SectionLabel>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={lc.headline}
-          onChange={(v) => setLc((c) => ({ ...c, headline: v }))}
-        >
-          <Label>Headline</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={lc.subtext}
-          onChange={(v) => setLc((c) => ({ ...c, subtext: v }))}
-        >
-          <Label>Subtext</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={lc.primaryCta}
-          onChange={(v) => setLc((c) => ({ ...c, primaryCta: v }))}
-        >
-          <Label>Primary Button Label</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={lc.secondaryCta}
-          onChange={(v) => setLc((c) => ({ ...c, secondaryCta: v }))}
-        >
-          <Label>Secondary Button Label</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
+      <div className="ad-form-2">
+        <Field value={lc.headline} onChange={(v) => setLc((c) => ({ ...c, headline: v }))} label="Headline" />
+        <Field value={lc.subtext} onChange={(v) => setLc((c) => ({ ...c, subtext: v }))} label="Subtext" />
+        <Field value={lc.primaryCta} onChange={(v) => setLc((c) => ({ ...c, primaryCta: v }))} label="Primary Button Label" />
+        <Field value={lc.secondaryCta} onChange={(v) => setLc((c) => ({ ...c, secondaryCta: v }))} label="Secondary Button Label" />
       </div>
 
       <SectionLabel>Repair Banner (Homepage Mid-section)</SectionLabel>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={lr.eyebrow}
-          onChange={(v) => setLr((r) => ({ ...r, eyebrow: v }))}
-        >
-          <Label>Eyebrow</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>Small label above the headline.</Description>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={lr.headline}
-          onChange={(v) => setLr((r) => ({ ...r, headline: v }))}
-        >
-          <Label>Headline</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label htmlFor="repair-banner-description">Description</Label>
-          <TextArea
-            id="repair-banner-description"
-            rows={3}
-            value={lr.description}
-            onChange={(e) =>
-              setLr((r) => ({ ...r, description: e.target.value }))
-            }
-          />
-        </div>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={lr.primaryCta}
-          onChange={(v) => setLr((r) => ({ ...r, primaryCta: v }))}
-        >
-          <Label>Primary CTA Label</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={lr.secondaryCta}
-          onChange={(v) => setLr((r) => ({ ...r, secondaryCta: v }))}
-        >
-          <Label>Secondary CTA Label</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
+      <div className="ad-form-2">
+        <Field value={lr.eyebrow} onChange={(v) => setLr((r) => ({ ...r, eyebrow: v }))} label="Eyebrow" description="Small label above the headline." />
+        <Field value={lr.headline} onChange={(v) => setLr((r) => ({ ...r, headline: v }))} label="Headline" />
+        <Area span label="Description" id="repair-banner-description" rows={3} value={lr.description} onChange={(e) => setLr((r) => ({ ...r, description: e.target.value })) } />
+        <Field value={lr.primaryCta} onChange={(v) => setLr((r) => ({ ...r, primaryCta: v }))} label="Primary CTA Label" />
+        <Field value={lr.secondaryCta} onChange={(v) => setLr((r) => ({ ...r, secondaryCta: v }))} label="Secondary CTA Label" />
       </div>
 
       <SaveButton label="Save CTA & Banner" onClick={save} />
@@ -780,134 +555,70 @@ function ServicesTab() {
         title="Repair Services"
       />
 
-      <div className="flex flex-col gap-4">
+      <div className="ad-form">
         {ls.map((svc) => {
           const SvcIcon = serviceIconFor(svc.icon);
 
           return (
             <div
               key={svc.id}
-              className="rounded-2xl border border-border bg-surface-secondary p-5"
+              className="ad-panel ad-panel--lg"
             >
-              <div className="mb-4 flex flex-wrap items-center gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-                  <SvcIcon className="size-5" />
+              <div className="ad-actions ad-mb">
+                <span className="ad-numdot ad-numdot--lg">
+                  <SvcIcon size={20} aria-hidden="true" />
                 </span>
-                <h3 className="m-0 text-base font-bold text-foreground">
+                <h3 className="ad-h4">
                   {svc.name}
                 </h3>
-                <Chip size="sm" variant="soft">
-                  <Chip.Label>{svc.id}</Chip.Label>
-                </Chip>
-                <div className="flex-1" />
-                <Button variant="ghost" onPress={() => setDeleteId(svc.id)}>
-                  <Trash2 className="size-4 text-danger" />
-                  <span className="text-danger">Delete</span>
+                <span className="ad-pill" data-tone="neutral">{svc.id}</span>
+                <div className="ad-grow" />
+                <Button variant="ghost" onClick={() => setDeleteId(svc.id)}>
+                  <Trash2 size={16} aria-hidden="true" className="ad-text-danger" />
+                  <span className="ad-text-danger">Delete</span>
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <TextField
-                  className="flex flex-col gap-1.5"
-                  value={svc.name}
-                  onChange={(v) => set(svc.id, "name", v)}
-                >
-                  <Label>Service Name</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                </TextField>
-                <TextField
-                  className="flex flex-col gap-1.5"
-                  value={svc.priceRange}
-                  onChange={(v) => set(svc.id, "priceRange", v)}
-                >
-                  <Label>Price Range</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                  <Description>e.g. &ldquo;$49 – $249&rdquo;</Description>
-                </TextField>
-                <TextField
-                  className="flex flex-col gap-1.5"
-                  value={svc.duration}
-                  onChange={(v) => set(svc.id, "duration", v)}
-                >
-                  <Label>Duration</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                  <Description>e.g. &ldquo;1–2 hours&rdquo;</Description>
-                </TextField>
+              <div className="ad-form-2">
+                <Field value={svc.name} onChange={(v) => set(svc.id, "name", v)} label="Service Name" />
+                <Field value={svc.priceRange} onChange={(v) => set(svc.id, "priceRange", v)} label="Price Range" description="e.g. “$49 – $249”" />
+                <Field value={svc.duration} onChange={(v) => set(svc.id, "duration", v)} label="Duration" description="e.g. “1–2 hours”" />
                 <div>
-                  <Label>Icon</Label>
-                  <div className="mt-1.5">
+                  <p className="ad-label">Icon</p>
+                  <div className="ad-mt-xs">
                     <IconPicker
                       value={svc.icon}
                       onChange={(id) => set(svc.id, "icon", id)}
                     />
                   </div>
                 </div>
-                <div className="flex flex-col gap-1.5 sm:col-span-2">
-                  <Label htmlFor={`svc-desc-${svc.id}`}>Description</Label>
-                  <TextArea
-                    id={`svc-desc-${svc.id}`}
-                    rows={3}
-                    value={svc.description}
-                    onChange={(e) => set(svc.id, "description", e.target.value)}
-                  />
-                </div>
+                <Area span label="Description" id={`svc-desc-${svc.id}`} rows={3} value={svc.description} onChange={(e) => set(svc.id, "description", e.target.value)} />
               </div>
 
-              <div className="mt-4 border-t border-border pt-4">
-                <h4 className="m-0 text-sm font-bold text-foreground">
+              <div className="ad-topline">
+                <h4 className="ad-h4">
                   Price Tiers / Part Variants
                 </h4>
-                <p className="mb-3 mt-1 text-xs text-muted">
+                <p className="ad-hint ad-mb-sm">
                   Overrides the price range in the Booking Wizard if set.
                 </p>
-                <div className="flex flex-col gap-2">
+                <div className="ad-stack-sm">
                   {(svc.variants || []).map((v, vi) => (
-                    <div key={vi} className="flex items-center gap-2">
-                      <TextField
-                        className="flex-1"
-                        value={v.name}
-                        onChange={(val) =>
+                    <div key={vi} className="ad-inline">
+                      <Field value={v.name} onChange={(val) =>
                           updateVariant(svc.id, vi, "name", val)
-                        }
-                      >
-                        <InputGroup>
-                          <InputGroup.Input placeholder="e.g. OEM Premium" />
-                        </InputGroup>
-                      </TextField>
-                      <TextField
-                        className="flex-1"
-                        value={v.price}
-                        onChange={(val) =>
+                        } label="e.g. OEM Premium" placeholder="e.g. OEM Premium" />
+                      <Field value={v.price} onChange={(val) =>
                           updateVariant(svc.id, vi, "price", val)
-                        }
-                      >
-                        <InputGroup>
-                          <InputGroup.Input placeholder="e.g. $149" />
-                        </InputGroup>
-                      </TextField>
-                      <Button
-                        isIconOnly
-                        aria-label="Remove tier"
-                        variant="ghost"
-                        onPress={() => deleteVariant(svc.id, vi)}
-                      >
-                        <Trash2 className="size-4 text-danger" />
-                      </Button>
+                        } label="e.g. $149" placeholder="e.g. $149" />
+                      <button aria-label="Remove tier" className="ad-iconbtn" type="button" onClick={() => deleteVariant(svc.id, vi)}>
+                        <Trash2 size={16} aria-hidden="true" className="ad-text-danger" />
+                      </button>
                     </div>
                   ))}
                 </div>
-                <Button
-                  className="mt-3"
-                  variant="outline"
-                  onPress={() => addVariant(svc.id)}
-                >
-                  <Plus className="size-3.5" />
+                <Button variant="secondary" onClick={() => addVariant(svc.id)} style={{ marginTop: "var(--space-3)" }}>
+                  <Plus size={14} aria-hidden="true" />
                   <span>Add Tier</span>
                 </Button>
               </div>
@@ -916,64 +627,27 @@ function ServicesTab() {
         })}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-dashed border-border p-5">
-        <h3 className="mb-4 flex items-center gap-2 text-sm font-bold text-foreground">
-          <Plus className="size-4" /> Add New Service
+      <div className="ad-panel ad-panel--lg ad-panel--dashed ad-mt-lg">
+        <h3 className="ad-h4 ad-inline ad-mb">
+          <Plus size={16} aria-hidden="true" /> Add New Service
         </h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={newSvc.name}
-            onChange={(v) => setNewSvc((f) => ({ ...f, name: v }))}
-          >
-            <Label>Service Name</Label>
-            <InputGroup>
-              <InputGroup.Input placeholder="e.g. Back Glass Replacement" />
-            </InputGroup>
-          </TextField>
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={newSvc.price}
-            onChange={(v) => setNewSvc((f) => ({ ...f, price: v }))}
-          >
-            <Label>Price Range</Label>
-            <InputGroup>
-              <InputGroup.Input placeholder="e.g. $79 – $129" />
-            </InputGroup>
-          </TextField>
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={newSvc.duration}
-            onChange={(v) => setNewSvc((f) => ({ ...f, duration: v }))}
-          >
-            <Label>Duration</Label>
-            <InputGroup>
-              <InputGroup.Input placeholder="e.g. 1–2 hours" />
-            </InputGroup>
-          </TextField>
+        <div className="ad-form-2">
+          <Field value={newSvc.name} onChange={(v) => setNewSvc((f) => ({ ...f, name: v }))} label="Service Name" placeholder="e.g. Back Glass Replacement" />
+          <Field value={newSvc.price} onChange={(v) => setNewSvc((f) => ({ ...f, price: v }))} label="Price Range" placeholder="e.g. $79 – $129" />
+          <Field value={newSvc.duration} onChange={(v) => setNewSvc((f) => ({ ...f, duration: v }))} label="Duration" placeholder="e.g. 1–2 hours" />
           <div>
-            <Label>Icon</Label>
-            <div className="mt-1.5">
+            <p className="ad-label">Icon</p>
+            <div className="ad-mt-xs">
               <IconPicker
                 value={newSvc.icon}
                 onChange={(id) => setNewSvc((f) => ({ ...f, icon: id }))}
               />
             </div>
           </div>
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <Label htmlFor="new-svc-desc">Description</Label>
-            <TextArea
-              id="new-svc-desc"
-              rows={2}
-              value={newSvc.desc}
-              onChange={(e) =>
-                setNewSvc((f) => ({ ...f, desc: e.target.value }))
-              }
-            />
-          </div>
+          <Area span label="Description" id="new-svc-desc" rows={2} value={newSvc.desc} onChange={(e) => setNewSvc((f) => ({ ...f, desc: e.target.value })) } />
         </div>
-        <Button className="mt-4" variant="outline" onPress={handleAdd}>
-          <Plus className="size-4" />
+        <Button variant="secondary" onClick={handleAdd} style={{ marginTop: "var(--space-4)" }}>
+          <Plus size={16} aria-hidden="true" />
           <span>Add to List</span>
         </Button>
       </div>
@@ -1021,67 +695,27 @@ function AboutTab() {
         description="Edit headline, lead text, and story paragraphs shown on /about."
         title="About Page"
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.eyebrow}
-          onChange={(v) => set("eyebrow", v)}
-        >
-          <Label>Eyebrow</Label>
-          <InputGroup>
-            <InputGroup.Input placeholder="Describe the repair..." />
-          </InputGroup>
-          <Description>Small all-caps label above the headline.</Description>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.headline}
-          onChange={(v) => set("headline", v)}
-        >
-          <Label>Page Headline</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label htmlFor="about-lead">Lead Paragraph</Label>
-          <TextArea
-            id="about-lead"
-            rows={3}
-            value={l.lead}
-            onChange={(e) => set("lead", e.target.value)}
-          />
-        </div>
+      <div className="ad-form-2">
+        <Field value={l.eyebrow} onChange={(v) => set("eyebrow", v)} label="Eyebrow" description="Small all-caps label above the headline." placeholder="Describe the repair..." />
+        <Field value={l.headline} onChange={(v) => set("headline", v)} label="Page Headline" />
+        <Area span label="Lead Paragraph" id="about-lead" rows={3} value={l.lead} onChange={(e) => set("lead", e.target.value)} />
       </div>
 
       <SectionLabel>Story Paragraphs</SectionLabel>
-      <div className="flex flex-col gap-3">
+      <div className="ad-stack-sm">
         {l.story.map((para, i) => (
-          <div key={i} className="flex items-start gap-2">
-            <div className="flex-1">
-              <Label htmlFor={`about-para-${i}`}>Paragraph {i + 1}</Label>
-              <TextArea
-                className="mt-1.5"
-                id={`about-para-${i}`}
-                rows={4}
-                value={para}
-                onChange={(e) => setStory(i, e.target.value)}
-              />
+          <div key={i} className="ad-inline ad-start">
+            <div className="ad-grow">
+              <Area id={`about-para-${i}`} label={`Paragraph ${i + 1}`} rows={4} value={para} onChange={(e) => setStory(i, e.target.value)} />
             </div>
-            <Button
-              isIconOnly
-              aria-label="Remove paragraph"
-              className="mt-7"
-              variant="ghost"
-              onPress={() => delPara(i)}
-            >
-              <Trash2 className="size-4 text-danger" />
-            </Button>
+            <button aria-label="Remove paragraph" className="ad-iconbtn" style={{ marginTop: "var(--space-6)" }} type="button" onClick={() => delPara(i)}>
+              <Trash2 size={16} aria-hidden="true" className="ad-text-danger" />
+            </button>
           </div>
         ))}
       </div>
-      <Button className="mt-3" variant="outline" onPress={addPara}>
-        <Plus className="size-4" />
+      <Button variant="secondary" onClick={addPara} style={{ marginTop: "var(--space-3)" }}>
+        <Plus size={16} aria-hidden="true" />
         <span>Add Paragraph</span>
       </Button>
 
@@ -1137,103 +771,32 @@ function BusinessTab() {
         description="Contact details and hours shown in the header, footer, and about/repair pages."
         title="Business Information"
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.name}
-          onChange={(v) => set("name", v)}
-        >
-          <Label>Business Name</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          type="tel"
-          value={l.phone}
-          onChange={(v) => set("phone", v)}
-        >
-          <Label>Phone Number</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>Include area code, e.g. 618-204-1497</Description>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          type="email"
-          value={l.email}
-          onChange={(v) => set("email", v)}
-        >
-          <Label>Email Address</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.address}
-          onChange={(v) => set("address", v)}
-        >
-          <Label>Street Address</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5 sm:col-span-2"
-          value={l.city}
-          onChange={(v) => set("city", v)}
-        >
-          <Label>City + ZIP</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-        </TextField>
+      <div className="ad-form-2">
+        <Field value={l.name} onChange={(v) => set("name", v)} label="Business Name" />
+        <Field type="tel" value={l.phone} onChange={(v) => set("phone", v)} label="Phone Number" description="Include area code, e.g. 618-204-1497" />
+        <Field type="email" value={l.email} onChange={(v) => set("email", v)} label="Email Address" />
+        <Field value={l.address} onChange={(v) => set("address", v)} label="Street Address" />
+        <Field value={l.city} onChange={(v) => set("city", v)} span label="City + ZIP" />
       </div>
 
-      <div className="mt-6 rounded-2xl border border-border bg-surface-secondary p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="m-0 text-sm font-bold text-foreground">
+      <div className="ad-panel ad-panel--lg ad-mt-lg">
+        <div className="ad-between ad-mb">
+          <h3 className="ad-h4">
             Business Hours
           </h3>
-          <Button variant="outline" onPress={addHourRow}>
-            <Plus className="size-3.5" />
+          <Button variant="secondary" onClick={addHourRow}>
+            <Plus size={14} aria-hidden="true" />
             <span>Add Row</span>
           </Button>
         </div>
-        <div className="flex flex-col gap-3">
+        <div className="ad-stack-sm">
           {l.hours.map((h, i) => (
-            <div key={i} className="flex items-end gap-2">
-              <TextField
-                className="flex flex-1 flex-col gap-1.5"
-                value={h.days}
-                onChange={(v) => setHour(i, "days", v)}
-              >
-                <Label>Days</Label>
-                <InputGroup>
-                  <InputGroup.Input placeholder="e.g. Monday – Friday" />
-                </InputGroup>
-              </TextField>
-              <TextField
-                className="flex flex-1 flex-col gap-1.5"
-                value={h.hours}
-                onChange={(v) => setHour(i, "hours", v)}
-              >
-                <Label>Hours</Label>
-                <InputGroup>
-                  <InputGroup.Input placeholder="e.g. 9:00 AM – 6:00 PM" />
-                </InputGroup>
-              </TextField>
-              <Button
-                isIconOnly
-                aria-label="Remove row"
-                variant="ghost"
-                onPress={() => delHourRow(i)}
-              >
-                <Trash2 className="size-4 text-danger" />
-              </Button>
+            <div key={i} className="ad-rowfields">
+              <Field value={h.days} onChange={(v) => setHour(i, "days", v)} label="Days" placeholder="e.g. Monday – Friday" />
+              <Field value={h.hours} onChange={(v) => setHour(i, "hours", v)} label="Hours" placeholder="e.g. 9:00 AM – 6:00 PM" />
+              <button aria-label="Remove row" className="ad-iconbtn" type="button" onClick={() => delHourRow(i)}>
+                <Trash2 size={16} aria-hidden="true" className="ad-text-danger" />
+              </button>
             </div>
           ))}
         </div>
@@ -1241,59 +804,19 @@ function BusinessTab() {
 
       <SaveButton label="Save Business Info" onClick={save} />
 
-      <div className="mt-6 rounded-2xl border border-border bg-surface-secondary p-5">
-        <h3 className="m-0 mb-1 text-sm font-bold text-foreground">
+      <div className="ad-panel ad-panel--lg ad-mt-lg">
+        <h3 className="ad-h4">
           House Call Pricing
         </h3>
-        <p className="m-0 mb-4 text-sm text-muted">
+        <p className="ad-hint ad-mb">
           Flat rate for the first hour, then an hourly rate after — shown to
           customers in the Booking Wizard when they choose a Home Visit.
         </p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <TextField
-            className="flex flex-col gap-1.5"
-            type="number"
-            value={String(hcp.residentialFirstHour)}
-            onChange={(v) => setHcpField("residentialFirstHour", v)}
-          >
-            <Label>Residential — First Hour ($)</Label>
-            <InputGroup>
-              <InputGroup.Input min={0} step="0.01" />
-            </InputGroup>
-          </TextField>
-          <TextField
-            className="flex flex-col gap-1.5"
-            type="number"
-            value={String(hcp.residentialAdditionalHourRate)}
-            onChange={(v) => setHcpField("residentialAdditionalHourRate", v)}
-          >
-            <Label>Residential — Additional Hour ($)</Label>
-            <InputGroup>
-              <InputGroup.Input min={0} step="0.01" />
-            </InputGroup>
-          </TextField>
-          <TextField
-            className="flex flex-col gap-1.5"
-            type="number"
-            value={String(hcp.commercialFirstHour)}
-            onChange={(v) => setHcpField("commercialFirstHour", v)}
-          >
-            <Label>Commercial — First Hour ($)</Label>
-            <InputGroup>
-              <InputGroup.Input min={0} step="0.01" />
-            </InputGroup>
-          </TextField>
-          <TextField
-            className="flex flex-col gap-1.5"
-            type="number"
-            value={String(hcp.commercialAdditionalHourRate)}
-            onChange={(v) => setHcpField("commercialAdditionalHourRate", v)}
-          >
-            <Label>Commercial — Additional Hour ($)</Label>
-            <InputGroup>
-              <InputGroup.Input min={0} step="0.01" />
-            </InputGroup>
-          </TextField>
+        <div className="ad-form-2">
+          <Field type="number" value={String(hcp.residentialFirstHour)} onChange={(v) => setHcpField("residentialFirstHour", v)} label="Residential — First Hour ($)" min={0} step="0.01" />
+          <Field type="number" value={String(hcp.residentialAdditionalHourRate)} onChange={(v) => setHcpField("residentialAdditionalHourRate", v)} label="Residential — Additional Hour ($)" min={0} step="0.01" />
+          <Field type="number" value={String(hcp.commercialFirstHour)} onChange={(v) => setHcpField("commercialFirstHour", v)} label="Commercial — First Hour ($)" min={0} step="0.01" />
+          <Field type="number" value={String(hcp.commercialAdditionalHourRate)} onChange={(v) => setHcpField("commercialAdditionalHourRate", v)} label="Commercial — Additional Hour ($)" min={0} step="0.01" />
         </div>
         <SaveButton label="Save House Call Pricing" onClick={saveHouseCallPricing} />
       </div>
@@ -1338,116 +861,45 @@ function FooterTab() {
         description="Tagline, copyright name, visibility toggles, and extra links in the site footer."
         title="Footer"
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField
-          className="flex flex-col gap-1.5 sm:col-span-2"
-          value={l.tagline}
-          onChange={(v) => set("tagline", v)}
-        >
-          <Label>Footer Tagline</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>
-            Short line shown under the logo in the footer.
-          </Description>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.copyrightName}
-          onChange={(v) => set("copyrightName", v)}
-        >
-          <Label>Copyright Name</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>e.g. &ldquo;Mobicare Device Recovery&rdquo;</Description>
-        </TextField>
+      <div className="ad-form-2">
+        <Field value={l.tagline} onChange={(v) => set("tagline", v)} span label="Footer Tagline" description="Short line shown under the logo in the footer." />
+        <Field value={l.copyrightName} onChange={(v) => set("copyrightName", v)} label="Copyright Name" description="e.g. “Mobicare Device Recovery”" />
       </div>
 
-      <div className="mt-6 flex flex-col gap-4">
-        <div className="flex items-center gap-3.5">
-          <Switch
-            isSelected={l.showHours}
-            onChange={(v) => set("showHours", v)}
-          >
-            <Switch.Content>
-              <Switch.Control>
-                <Switch.Thumb />
-              </Switch.Control>
-            </Switch.Content>
-          </Switch>
+      <div className="ad-form ad-mt-lg">
+        <div className="ad-cell-main">
+          <Switch aria-label="Show Business Hours" checked={l.showHours} onCheckedChange={(v) => set("showHours", v)} />
           <div>
-            <strong className="block text-sm text-foreground">
-              Show Business Hours
-            </strong>
-            <span className="text-xs text-muted">
-              Display opening hours in the footer
-            </span>
+            <strong style={{ display: "block", fontWeight: 500 }}>Show Business Hours</strong>
+            <span className="ad-hint">Display opening hours in the footer</span>
           </div>
         </div>
-        <div className="flex items-center gap-3.5">
-          <Switch
-            isSelected={l.showSocial}
-            onChange={(v) => set("showSocial", v)}
-          >
-            <Switch.Content>
-              <Switch.Control>
-                <Switch.Thumb />
-              </Switch.Control>
-            </Switch.Content>
-          </Switch>
+        <div className="ad-cell-main">
+          <Switch aria-label="Show Social Icons" checked={l.showSocial} onCheckedChange={(v) => set("showSocial", v)} />
           <div>
-            <strong className="block text-sm text-foreground">
-              Show Social Icons
-            </strong>
-            <span className="text-xs text-muted">
-              Display social media links in the footer
-            </span>
+            <strong style={{ display: "block", fontWeight: 500 }}>Show Social Icons</strong>
+            <span className="ad-hint">Display social media links in the footer</span>
           </div>
         </div>
       </div>
 
       <SectionLabel>Footer Links</SectionLabel>
-      <p className="mb-3 text-xs text-muted">
+      <p className="ad-hint ad-mb-sm">
         Extra links shown in the bottom bar (e.g. Privacy Policy, Terms).
       </p>
-      <div className="flex flex-col gap-3">
+      <div className="ad-stack-sm">
         {l.extraLinks.map((link, i) => (
-          <div key={i} className="flex items-end gap-2">
-            <TextField
-              className="flex flex-1 flex-col gap-1.5"
-              value={link.label}
-              onChange={(v) => setLink(i, "label", v)}
-            >
-              <Label>Label</Label>
-              <InputGroup>
-                <InputGroup.Input placeholder="e.g. Privacy Policy" />
-              </InputGroup>
-            </TextField>
-            <TextField
-              className="flex flex-1 flex-col gap-1.5"
-              value={link.href}
-              onChange={(v) => setLink(i, "href", v)}
-            >
-              <Label>URL</Label>
-              <InputGroup>
-                <InputGroup.Input placeholder="/privacy" />
-              </InputGroup>
-            </TextField>
-            <Button
-              isIconOnly
-              aria-label="Remove link"
-              variant="ghost"
-              onPress={() => delLink(i)}
-            >
-              <Trash2 className="size-4 text-danger" />
-            </Button>
+          <div key={i} className="ad-rowfields">
+            <Field value={link.label} onChange={(v) => setLink(i, "label", v)} label="Label" placeholder="e.g. Privacy Policy" />
+            <Field value={link.href} onChange={(v) => setLink(i, "href", v)} label="URL" placeholder="/privacy" />
+            <button aria-label="Remove link" className="ad-iconbtn" type="button" onClick={() => delLink(i)}>
+              <Trash2 size={16} aria-hidden="true" className="ad-text-danger" />
+            </button>
           </div>
         ))}
       </div>
-      <Button className="mt-3" variant="outline" onPress={addLink}>
-        <Plus className="size-3.5" />
+      <Button variant="secondary" onClick={addLink} style={{ marginTop: "var(--space-3)" }}>
+        <Plus size={14} aria-hidden="true" />
         <span>Add Link</span>
       </Button>
 
@@ -1517,20 +969,9 @@ function SocialTab() {
         description="Links shown as icon buttons in the footer. Leave blank to hide."
         title="Social Links"
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="ad-form-2">
         {SOCIAL_PLATFORMS.map((p) => (
-          <TextField
-            key={p.key}
-            className="flex flex-col gap-1.5"
-            type="url"
-            value={l[p.key] || ""}
-            onChange={(v) => set(p.key, v)}
-          >
-            <Label>{p.label}</Label>
-            <InputGroup>
-              <InputGroup.Input placeholder={p.placeholder} />
-            </InputGroup>
-          </TextField>
+          <Field key={p.key} type="url" value={l[p.key] || ""} onChange={(v) => set(p.key, v)} label={p.label} placeholder={p.placeholder} />
         ))}
       </div>
       <SaveButton label="Save Social Links" onClick={save} />
@@ -1561,84 +1002,34 @@ function SeoTab() {
       />
 
       <SectionLabel>Page Titles & Meta</SectionLabel>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.siteTitle}
-          onChange={(v) => set("siteTitle", v)}
-        >
-          <Label>Site Title</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>Homepage title tag.</Description>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.titleSuffix}
-          onChange={(v) => set("titleSuffix", v)}
-        >
-          <Label>Title Suffix</Label>
-          <InputGroup>
-            <InputGroup.Input />
-          </InputGroup>
-          <Description>
-            Appended to all page titles — e.g. &ldquo;| Mobicare&rdquo;.
-          </Description>
-        </TextField>
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label htmlFor="seo-meta-description">Meta Description</Label>
-          <TextArea
-            id="seo-meta-description"
-            maxLength={160}
-            rows={3}
-            value={l.metaDescription}
-            onChange={(e) => set("metaDescription", e.target.value)}
-          />
-          <span
-            className={`self-end text-xs ${charCount > 150 ? "text-warning" : "text-muted"}`}
-          >
-            {charCount}/160 chars — shown in Google search results.
-          </span>
-        </div>
-        <TextField
-          className="flex flex-col gap-1.5 sm:col-span-2"
-          value={l.keywords}
-          onChange={(v) => set("keywords", v)}
-        >
-          <Label>Keywords</Label>
-          <InputGroup>
-            <InputGroup.Input placeholder="phone repair, screen repair, Fairfield IL" />
-          </InputGroup>
-          <Description>Comma-separated keywords for meta tags.</Description>
-        </TextField>
+      <div className="ad-form-2">
+        <Field value={l.siteTitle} onChange={(v) => set("siteTitle", v)} label="Site Title" description="Homepage title tag." />
+        <Field value={l.titleSuffix} onChange={(v) => set("titleSuffix", v)} label="Title Suffix" description="Appended to all page titles — e.g. “| Mobicare”." />
+        <Area
+          span
+          description={`${charCount}/160 characters. Shown in Google search results.`}
+          id="seo-meta-description"
+          label="Meta Description"
+          maxLength={160}
+          rows={3}
+          value={l.metaDescription}
+          onChange={(e) => set("metaDescription", e.target.value)}
+        />
+        <Field value={l.keywords} onChange={(v) => set("keywords", v)} span label="Keywords" description="Comma-separated keywords for meta tags." placeholder="phone repair, screen repair, Fairfield IL" />
       </div>
 
       <Divider />
       <SectionLabel>Open Graph / Social Preview</SectionLabel>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField
-          className="flex flex-col gap-1.5 sm:col-span-2"
-          type="url"
-          value={l.ogImage}
-          onChange={(v) => set("ogImage", v)}
-        >
-          <Label>OG Image URL</Label>
-          <InputGroup>
-            <InputGroup.Input placeholder="https://..." />
-          </InputGroup>
-          <Description>
-            1200×630 px image shown when shared on Facebook/Twitter.
-          </Description>
-        </TextField>
+      <div className="ad-form-2">
+        <Field type="url" value={l.ogImage} onChange={(v) => set("ogImage", v)} span label="OG Image URL" description="1200×630 px image shown when shared on Facebook/Twitter." placeholder="https://..." />
         {l.ogImage && (
-          <div className="flex items-center gap-3 sm:col-span-2">
+          <div className="ad-inline ad-span">
             <img
               alt="OG preview"
-              className="h-20 w-36 rounded-xl border border-border object-cover"
+              className="ad-ogprev"
               src={l.ogImage}
             />
-            <span className="text-xs text-muted">
+            <span className="ad-hint">
               Social share preview image
             </span>
           </div>
@@ -1647,33 +1038,13 @@ function SeoTab() {
 
       <Divider />
       <SectionLabel>Analytics & Tracking</SectionLabel>
-      <p className="mb-3 text-xs text-muted">
+      <p className="ad-hint ad-mb-sm">
         Paste your IDs below. Tracking only activates when the ID is set — no
         code changes needed.
       </p>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.googleAnalyticsId}
-          onChange={(v) => set("googleAnalyticsId", v)}
-        >
-          <Label>Google Analytics ID</Label>
-          <InputGroup>
-            <InputGroup.Input placeholder="G-XXXXXXXXXX" />
-          </InputGroup>
-          <Description>e.g. G-XXXXXXXXXX or UA-XXXXXXXX-X</Description>
-        </TextField>
-        <TextField
-          className="flex flex-col gap-1.5"
-          value={l.facebookPixelId}
-          onChange={(v) => set("facebookPixelId", v)}
-        >
-          <Label>Facebook Pixel ID</Label>
-          <InputGroup>
-            <InputGroup.Input placeholder="1234567890123456" />
-          </InputGroup>
-          <Description>e.g. 1234567890123456</Description>
-        </TextField>
+      <div className="ad-form-2">
+        <Field value={l.googleAnalyticsId} onChange={(v) => set("googleAnalyticsId", v)} label="Google Analytics ID" description="e.g. G-XXXXXXXXXX or UA-XXXXXXXX-X" placeholder="G-XXXXXXXXXX" />
+        <Field value={l.facebookPixelId} onChange={(v) => set("facebookPixelId", v)} label="Facebook Pixel ID" description="e.g. 1234567890123456" placeholder="1234567890123456" />
       </div>
 
       <SaveButton label="Save SEO Settings" onClick={save} />
@@ -1754,161 +1125,91 @@ function AppearanceTab() {
       />
 
       <SectionLabel>Color Scheme</SectionLabel>
-      <div className="flex gap-2">
-        {(["dark", "light"] as const).map((s) => (
-          <ToggleButton
-            key={s}
-            isSelected={l.colorScheme === s}
-            variant="default"
-            onChange={() => set("colorScheme", s)}
-          >
-            {s === "dark" ? "🌙 Dark Mode" : "☀️ Light Mode"}
-          </ToggleButton>
-        ))}
-      </div>
+      <SegmentedControl
+        label="Color scheme"
+        options={[{ value: "dark", label: "Dark mode" }, { value: "light", label: "Light mode" }]}
+        value={l.colorScheme}
+        onValueChange={(v) => set("colorScheme", v as typeof l.colorScheme)}
+      />
 
       <Divider />
       <SectionLabel>Accent Colors</SectionLabel>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="ad-form-2">
         {COLOR_FIELDS.map((cf) => {
           const hex = l[cf.key] || "#000000";
 
           return (
-            <ColorField
-              key={cf.key}
-              value={safeColor(hex)}
-              onChange={(c) => c && set(cf.key, c.toString("hex"))}
-            >
-              <Label>{cf.label}</Label>
-              <ColorField.Group>
-                <ColorField.Prefix>
-                  <ColorSwatch color={hex} />
-                </ColorField.Prefix>
-                <ColorField.Input />
-              </ColorField.Group>
-              <Description>{cf.hint}</Description>
-            </ColorField>
+            <ColorRow key={cf.key} description={cf.hint} label={cf.label} value={hex} onCommit={(v) => set(cf.key, v)} />
           );
         })}
       </div>
 
       <Divider />
       <SectionLabel>Typography</SectionLabel>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="ad-form-2">
         <Select
-          selectedKey={l.fontFamily}
-          onSelectionChange={(key) => set("fontFamily", String(key))}
-        >
-          <Label>Font Family</Label>
-          <Select.Trigger>
-            <Select.Value />
-          </Select.Trigger>
-          <Select.Popover>
-            <ListBox>
-              {FONT_PRESETS.map((p) => (
-                <ListBox.Item key={p.id} id={p.id}>
-                  {p.label}
-                </ListBox.Item>
-              ))}
-            </ListBox>
-          </Select.Popover>
-        </Select>
+          label="Font family"
+          options={FONT_PRESETS.map((p) => ({ value: p.id, label: p.label }))}
+          value={l.fontFamily}
+          onValueChange={(v) => set("fontFamily", v)}
+        />
         {l.fontFamily === "custom" && (
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={l.fontUrl || ""}
-            onChange={(v) => set("fontUrl", v)}
-          >
-            <Label>Custom Font URL</Label>
-            <InputGroup>
-              <InputGroup.Input placeholder="https://fonts.googleapis.com/..." />
-            </InputGroup>
-            <Description>
-              e.g. https://fonts.googleapis.com/css2?family=Sora...
-            </Description>
-          </TextField>
+          <Field value={l.fontUrl || ""} onChange={(v) => set("fontUrl", v)} label="Custom Font URL" description="e.g. https://fonts.googleapis.com/css2?family=Sora..." placeholder="https://fonts.googleapis.com/..." />
         )}
       </div>
       <div
-        className="mt-4 rounded-2xl border border-border p-5"
+        className="ad-panel ad-panel--lg ad-mt"
         style={{ fontFamily: currentFont?.css || "inherit" }}
       >
-        <span className="block text-lg font-semibold text-foreground">
+        <span className="ad-sample">
           The quick brown fox
         </span>
-        <span className="text-xs text-muted">
+        <span className="ad-hint">
           ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789
         </span>
       </div>
 
       <Divider />
       <SectionLabel>Custom Logo</SectionLabel>
-      <div className="flex gap-2">
-        {(["icon", "image"] as const).map((t) => (
-          <ToggleButton
-            key={t}
-            isSelected={l.logoType === t}
-            variant="default"
-            onChange={() => set("logoType", t)}
-          >
-            {t === "icon" ? "Default Icon + Text" : "Custom Image"}
-          </ToggleButton>
-        ))}
-      </div>
+      <SegmentedControl
+        label="Logo type"
+        options={LOGO_TYPES}
+        value={l.logoType}
+        onValueChange={(t) => set("logoType", t as typeof l.logoType)}
+      />
       {l.logoType === "image" && (
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label>Upload File</Label>
-            <div className="flex items-center gap-3">
+        <div className="ad-form-2 ad-mt">
+          <div className="ad-stack-sm">
+            <p className="ad-label">Upload File</p>
+            <div className="ad-inline">
               <input
                 ref={fileInputRef}
                 accept="image/*"
-                className="hidden"
+                className="ad-hidden"
                 type="file"
                 onChange={handleLogoUpload}
               />
-              <Button
-                variant="outline"
-                onPress={() => fileInputRef.current?.click()}
-              >
-                <Upload className="size-4" />
+              <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                <Upload size={16} aria-hidden="true" />
                 <span>Choose File</span>
               </Button>
               {l.logoUrl && (
-                <span className="text-xs font-semibold text-success">
+                <span className="ad-ok">
                   Loaded ✓
                 </span>
               )}
             </div>
-            <Description>PNG/SVG, max 2MB</Description>
+            <p className="ad-hint">PNG/SVG, max 2MB</p>
           </div>
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={l.logoUrl}
-            onChange={(v) => set("logoUrl", v)}
-          >
-            <Label>Or Image URL</Label>
-            <InputGroup>
-              <InputGroup.Input placeholder="https://..." />
-            </InputGroup>
-          </TextField>
-          <TextField
-            className="flex flex-col gap-1.5"
-            value={l.logoAlt}
-            onChange={(v) => set("logoAlt", v)}
-          >
-            <Label>Alt Text</Label>
-            <InputGroup>
-              <InputGroup.Input />
-            </InputGroup>
-          </TextField>
+          <Field value={l.logoUrl} onChange={(v) => set("logoUrl", v)} label="Or Image URL" placeholder="https://..." />
+          <Field value={l.logoAlt} onChange={(v) => set("logoAlt", v)} label="Alt Text" />
           {l.logoUrl && (
             <div>
-              <Label>Preview</Label>
-              <div className="mt-1.5 flex size-20 items-center justify-center overflow-hidden rounded-2xl border border-border bg-surface-secondary">
+              <p className="ad-label">Preview</p>
+              <div className="ad-logoprev ad-mt-xs">
                 <img
                   alt="preview"
-                  className="size-full object-contain"
+                  className="ad-contain"
                   src={l.logoUrl}
                 />
               </div>
@@ -2270,44 +1571,34 @@ function DevicesTab() {
     onDelete: (id: string) => void;
     emptyMessage: string;
   }) => (
-    <div className="flex flex-col gap-1">
+    <div className="ad-stack-xs">
       {opts.items.length === 0 ? (
-        <p className="text-sm italic text-muted">{opts.emptyMessage}</p>
+        <p className="ad-hint">{opts.emptyMessage}</p>
       ) : (
         opts.items.map((item) => (
           <div
             key={item.id}
-            className="flex items-center gap-1 rounded-xl text-foreground hover:bg-surface-tertiary"
+            className="ad-noderow"
           >
             <button
-              className="flex-1 truncate px-3 py-2.5 text-left text-sm font-medium"
+              className="ad-nodebtn"
               type="button"
               onClick={() => opts.onSelect(item.id)}
             >
               {item.name}
-              <span className="ml-2 text-xs font-normal text-muted">
+              <span className="ad-hint ad-count-inline">
                 {item.count} {item.countLabel}
                 {item.count !== 1 ? "s" : ""}
               </span>
             </button>
-            <div className="flex shrink-0 items-center gap-0.5 pr-1">
-              <Button
-                isIconOnly
-                aria-label={`Rename ${item.name}`}
-                variant="ghost"
-                onPress={() => opts.onRename(item.id, item.name)}
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-              <Button
-                isIconOnly
-                aria-label={`Delete ${item.name}`}
-                variant="ghost"
-                onPress={() => opts.onDelete(item.id)}
-              >
-                <Trash2 className="size-3.5 text-danger" />
-              </Button>
-              <ChevronRight className="size-4 text-muted" />
+            <div className="ad-nodeacts">
+              <button aria-label={`Rename ${item.name}`} className="ad-iconbtn" type="button" onClick={() => opts.onRename(item.id, item.name)}>
+                <Pencil size={14} aria-hidden="true" />
+              </button>
+              <button aria-label={`Delete ${item.name}`} className="ad-iconbtn" type="button" onClick={() => opts.onDelete(item.id)}>
+                <Trash2 size={14} aria-hidden="true" className="ad-text-danger" />
+              </button>
+              <ChevronRight size={16} aria-hidden="true" className="ad-text-muted" />
             </div>
           </div>
         ))
@@ -2322,22 +1613,22 @@ function DevicesTab() {
         title="Devices & Models"
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="ad-actions ad-mb">
         {curManu && (
-          <Button variant="outline" onPress={goBack}>
-            <ChevronLeft className="size-3.5" />
+          <Button variant="secondary" onClick={goBack}>
+            <ChevronLeft size={14} aria-hidden="true" />
             <span>Back</span>
           </Button>
         )}
-        <nav aria-label="Device hierarchy" className="flex flex-wrap items-center gap-1 text-sm">
+        <nav aria-label="Device hierarchy" className="ad-crumbs">
           {breadcrumbs.map((crumb, i) => (
-            <span key={`${crumb.label}-${i}`} className="flex items-center gap-1">
-              {i > 0 && <ChevronRight className="size-3.5 text-muted" />}
+            <span key={`${crumb.label}-${i}`} className="ad-inline ad-inline--xs">
+              {i > 0 && <ChevronRight size={14} aria-hidden="true" className="ad-text-muted" />}
               {i === breadcrumbs.length - 1 ? (
-                <span className="font-bold text-foreground">{crumb.label}</span>
+                <span className="ad-strong">{crumb.label}</span>
               ) : (
                 <button
-                  className="font-medium text-muted hover:text-foreground hover:underline"
+                  className="ad-crumblink"
                   type="button"
                   onClick={crumb.onClick}
                 >
@@ -2349,13 +1640,13 @@ function DevicesTab() {
         </nav>
       </div>
 
-      <div className="rounded-2xl border border-border bg-surface-secondary p-4">
+      <div className="ad-panel">
         {!curManu ? (
           <>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="m-0 text-sm font-bold text-foreground">Manufacturers</h3>
-              <Button variant="outline" onPress={() => openAdd("manufacturer")}>
-                <Plus className="size-3.5" />
+            <div className="ad-between ad-mb-sm">
+              <h3 className="ad-h4">Manufacturers</h3>
+              <Button variant="secondary" onClick={() => openAdd("manufacturer")}>
+                <Plus size={14} aria-hidden="true" />
                 <span>Add Manufacturer</span>
               </Button>
             </div>
@@ -2374,12 +1665,12 @@ function DevicesTab() {
           </>
         ) : !curCat ? (
           <>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="m-0 text-sm font-bold text-foreground">
+            <div className="ad-between ad-mb-sm">
+              <h3 className="ad-h4">
                 Device Types in {curManu.name}
               </h3>
-              <Button variant="outline" onPress={() => openAdd("category")}>
-                <Plus className="size-3.5" />
+              <Button variant="secondary" onClick={() => openAdd("category")}>
+                <Plus size={14} aria-hidden="true" />
                 <span>Add Device Type</span>
               </Button>
             </div>
@@ -2398,12 +1689,12 @@ function DevicesTab() {
           </>
         ) : !curModel ? (
           <>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="m-0 text-sm font-bold text-foreground">
+            <div className="ad-between ad-mb-sm">
+              <h3 className="ad-h4">
                 Models in {curManu.name} {curCat.name}
               </h3>
-              <Button variant="outline" onPress={() => openAdd("model")}>
-                <Plus className="size-3.5" />
+              <Button variant="secondary" onClick={() => openAdd("model")}>
+                <Plus size={14} aria-hidden="true" />
                 <span>Add Model</span>
               </Button>
             </div>
@@ -2422,44 +1713,40 @@ function DevicesTab() {
           </>
         ) : (
           <>
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="m-0 text-sm font-bold text-foreground">
+            <div className="ad-between ad-mb">
+              <h3 className="ad-h4">
                 Generations for {curModel.name}
               </h3>
-              <span className="text-xs text-muted">
+              <span className="ad-hint">
                 {curModel.generations.length} generation
                 {curModel.generations.length !== 1 ? "s" : ""}
               </span>
             </div>
-            <form className="mb-4 flex gap-2" onSubmit={addGeneration}>
-              <TextField className="flex-1" value={newGen} onChange={setNewGen}>
-                <InputGroup>
-                  <InputGroup.Input placeholder="e.g. 15 Pro Max" />
-                </InputGroup>
-              </TextField>
-              <Button type="submit" variant="primary">
+            <form className="ad-rowfields ad-mb" onSubmit={addGeneration}>
+              <Field label="New generation" placeholder="e.g. 15 Pro Max" value={newGen} onChange={setNewGen} />
+              <Button type="submit">
                 Add
               </Button>
             </form>
-            <div className="flex flex-wrap gap-2">
+            <div className="ad-actions">
               {curModel.generations.length === 0 ? (
-                <p className="text-sm italic text-muted">
+                <p className="ad-hint">
                   No generations yet — this model is bookable on its own.
                 </p>
               ) : (
                 curModel.generations.map((g) => (
                   <div
                     key={g}
-                    className="flex items-center gap-1.5 rounded-full bg-surface-tertiary py-1 pl-3 pr-1.5 text-xs font-semibold"
+                    className="ad-gen"
                   >
                     <span>{g}</span>
                     <button
                       aria-label={`Remove ${g}`}
-                      className="flex size-5 items-center justify-center rounded-full text-muted hover:bg-danger/15 hover:text-danger"
+                      className="ad-gen-x"
                       type="button"
                       onClick={() => removeGeneration(g)}
                     >
-                      <X className="size-3" />
+                      <X size={12} aria-hidden="true" />
                     </button>
                   </div>
                 ))
@@ -2472,44 +1759,17 @@ function DevicesTab() {
       <Divider />
       <SaveButton label="Save Devices" onClick={save} />
 
-      <Modal>
-        <Modal.Backdrop isOpen={modalOpen} onOpenChange={setModalOpen}>
-          <Modal.Container size="sm">
-            <Modal.Dialog>
-              <Modal.Header>
-                <Modal.Heading>
-                  {modalMode === "add"
-                    ? `New ${modalLevelLabel[modalLevel]}`
-                    : `Rename ${modalLevelLabel[modalLevel]}`}
-                </Modal.Heading>
-                <Modal.CloseTrigger />
-              </Modal.Header>
-              <Modal.Body>
-                <TextField
-                  className="flex flex-col gap-1.5"
-                  value={modalValue}
-                  onChange={setModalValue}
-                >
-                  <Label>{modalLevelLabel[modalLevel]} Name</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                </TextField>
-              </Modal.Body>
-              <Modal.Footer className="justify-end gap-2">
-                <Button variant="outline" onPress={() => setModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onPress={submitModal}>
-                  {modalMode === "add"
-                    ? `Create ${modalLevelLabel[modalLevel]}`
-                    : "Save Name"}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent title={modalMode === "add" ? `New ${modalLevelLabel[modalLevel]}` : `Rename ${modalLevelLabel[modalLevel]}`}>
+          <div className="ad-form">
+            <Field label={`${modalLevelLabel[modalLevel]} name`} value={modalValue} onChange={setModalValue} />
+            <div className="ad-actions ad-actions--end">
+              <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button onClick={submitModal}>{modalMode === "add" ? `Create ${modalLevelLabel[modalLevel]}` : "Save name"}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AdminConfirmDialog
         description={
@@ -2537,84 +1797,45 @@ export default function SiteContent() {
   };
 
   return (
-    <div>
+    <div className="ad-stack">
       <AdminPageHeader
         action={
-          <Button variant="outline" onPress={() => setResetConfirmOpen(true)}>
-            <RotateCcw className="size-4" />
-            <span>Reset to Defaults</span>
+          <Button variant="secondary" onClick={() => setResetConfirmOpen(true)}>
+            <RotateCcw size={16} aria-hidden="true" />
+            <span>Reset to defaults</span>
           </Button>
         }
-        description="Customize hero banners, services, trust badges, business hours, SEO tags, and color palettes."
-        eyebrow="Storefront Customizer"
-        title="Live Site Content & Branding"
+        description="Edit the hero, services, trust bar, business info, SEO, and colors shown on the public site."
+        title="Site editor"
       />
 
-      {/* Mobile section picker — the sidebar tab rail below only works at
-          lg+ width (see Tabs.ListContainer's lg:flex below); on narrow
-          screens it would squeeze the actual editing panel down to almost
-          nothing, so mobile gets a compact dropdown instead and the panel
-          keeps the full screen width. Both drive the same controlled
-          Tabs selection. */}
-      <Select
-        aria-label="Site content section"
-        className="mb-3 lg:hidden"
-        selectedKey={activeTab}
-        onSelectionChange={(key) => setActiveTab(String(key))}
-      >
-        <Select.Trigger className="w-full rounded-2xl">
-          <Select.Value />
-        </Select.Trigger>
-        <Select.Popover>
-          <ListBox>
-            {TABS.map((tab) => (
-              <ListBox.Item key={tab.id} id={tab.id} textValue={tab.label}>
-                <tab.icon className="size-4 shrink-0" />
-                <span>{tab.label}</span>
-              </ListBox.Item>
-            ))}
-          </ListBox>
-        </Select.Popover>
-      </Select>
-
-      <Tabs
-        className="w-full overflow-hidden rounded-[28px] border border-border bg-surface-secondary"
-        orientation="vertical"
-        selectedKey={activeTab}
-        onSelectionChange={(key) => setActiveTab(String(key))}
-      >
-        <Tabs.ListContainer className="hidden shrink-0 border-border p-3 sm:border-r lg:flex">
-          <Tabs.List aria-label="Site content sections" className="gap-1">
-            {TABS.map((tab) => (
-              <Tabs.Tab
-                key={tab.id}
-                className="flex items-center gap-2.5 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold"
-                id={tab.id}
-              >
-                <tab.icon className="size-4 shrink-0" />
-                <span>{tab.label}</span>
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-        </Tabs.ListContainer>
-
-        {TABS.map((tab) => (
-          <Tabs.Panel key={tab.id} className="flex-1 p-4 sm:p-6 lg:p-8" id={tab.id}>
-            {tab.id === "brand" && <BrandTab />}
-            {tab.id === "hero" && <HeroTab />}
-            {tab.id === "trust" && <TrustTab />}
-            {tab.id === "cta" && <CtaTab />}
-            {tab.id === "services" && <ServicesTab />}
-            {tab.id === "devices" && <DevicesTab />}
-            {tab.id === "about" && <AboutTab />}
-            {tab.id === "business" && <BusinessTab />}
-            {tab.id === "footer" && <FooterTab />}
-            {tab.id === "social" && <SocialTab />}
-            {tab.id === "seo" && <SeoTab />}
-            {tab.id === "appearance" && <AppearanceTab />}
-          </Tabs.Panel>
-        ))}
-      </Tabs>
+      <div className="ad-sc">
+        <nav aria-label="Site content sections" className="ad-sc-nav ad-only-wide">
+          {TABS.map((tab) => (
+            <button key={tab.id} aria-current={activeTab === tab.id ? "page" : undefined} type="button" onClick={() => setActiveTab(tab.id)}>
+              <tab.icon aria-hidden="true" size={16} strokeWidth={1.75} />
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+        <div className="ad-only-narrow ad-sc-select">
+          <Select label="Section" options={TABS.map((t) => ({ value: t.id, label: t.label }))} value={activeTab} onValueChange={setActiveTab} />
+        </div>
+        <div className="ad-sc-panel">
+          {activeTab === "brand" && <BrandTab />}
+          {activeTab === "hero" && <HeroTab />}
+          {activeTab === "trust" && <TrustTab />}
+          {activeTab === "cta" && <CtaTab />}
+          {activeTab === "services" && <ServicesTab />}
+          {activeTab === "devices" && <DevicesTab />}
+          {activeTab === "about" && <AboutTab />}
+          {activeTab === "business" && <BusinessTab />}
+          {activeTab === "footer" && <FooterTab />}
+          {activeTab === "social" && <SocialTab />}
+          {activeTab === "seo" && <SeoTab />}
+          {activeTab === "appearance" && <AppearanceTab />}
+        </div>
+      </div>
 
       <AdminConfirmDialog
         confirmLabel="Reset Everything"

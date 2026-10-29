@@ -1,30 +1,20 @@
 import type { Category } from "@/types/domain";
 
 import { useState } from "react";
-import { FolderPlus, Pencil, Plus, Search, Trash2 } from "lucide-react";
-import {
-  Button,
-  FieldError,
-  InputGroup,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  TextField,
-} from "@heroui/react";
+import { FolderPlus, Pencil, Plus, Tag, Trash2 } from "lucide-react";
 
+import { Button } from "@/components/arc/button/button";
+import { Dialog, DialogContent } from "@/components/arc/dialog/dialog";
+import { EmptyState } from "@/components/arc/empty-state/empty-state";
+import { Input } from "@/components/arc/input/input";
+import { SearchField } from "@/components/arc/search-field/search-field";
+import { Select } from "@/components/arc/select/select";
 import { useProductStore, useToastStore } from "@/lib/store";
 import { allIconNames, iconFor, readableIconName, searchIcons } from "@/lib/icons";
 import AdminPageHeader from "@/admin/components/AdminPageHeader";
 import AdminConfirmDialog from "@/admin/components/AdminConfirmDialog";
 
-interface CategoryForm {
-  id?: string;
-  name: string;
-  description: string;
-  icon: string;
-  parentId: string | null;
-}
+interface CategoryForm { id?: string; name: string; description: string; icon: string; parentId: string | null }
 
 const NONE_PARENT = "__none__";
 const EMPTY: CategoryForm = { name: "", description: "", icon: "category", parentId: null };
@@ -46,40 +36,22 @@ export default function Categories() {
   const topLevel = categories.filter((c) => !c.parentId);
   const subcategoriesOf = (id: string) => categories.filter((c) => c.parentId === id);
   const iconResults = searchIcons(iconQuery);
+  const subCount = categories.length - topLevel.length;
 
-  const openAdd = (parentId: string | null = null) => {
-    setEditingId(null);
-    setForm({ ...EMPTY, parentId });
-    setIconQuery("");
-    setModalOpen(true);
-  };
-  const openEdit = (cat: Category) => {
-    setEditingId(cat.id);
-    setForm({ ...cat });
-    setIconQuery("");
-    setModalOpen(true);
-  };
+  const openAdd = (parentId: string | null = null) => { setEditingId(null); setForm({ ...EMPTY, parentId }); setIconQuery(""); setModalOpen(true); };
+  const openEdit = (cat: Category) => { setEditingId(cat.id); setForm({ ...cat }); setIconQuery(""); setModalOpen(true); };
 
   const handleSave = () => {
-    if (!form.name) {
-      addToast("Category name is required", "error");
-
-      return;
-    }
+    if (!form.name) return void addToast("Category name is required", "error");
     if (editingId) {
       updateCategory(editingId, form);
-      addToast("Category updated successfully", "success");
+      addToast("Category updated", "success");
     } else {
-      const newId =
-        form.id || form.name.toLowerCase().replace(/\s+/g, "-");
+      const newId = form.id || form.name.toLowerCase().replace(/\s+/g, "-");
 
-      if (categories.some((c) => c.id === newId)) {
-        addToast(`A category with id "${newId}" already exists`, "error");
-
-        return;
-      }
+      if (categories.some((c) => c.id === newId)) return void addToast(`A category with id "${newId}" already exists`, "error");
       addCategory(form);
-      addToast(form.parentId ? "New subcategory created" : "New category created", "success");
+      addToast(form.parentId ? "Subcategory created" : "Category created", "success");
     }
     setModalOpen(false);
   };
@@ -87,289 +59,107 @@ export default function Categories() {
   const handleDelete = (id: string) => {
     const count = products.filter((p) => p.category === id).length;
 
-    if (count > 0) {
-      addToast(
-        `Cannot delete — ${count} products rely on this category`,
-        "error",
-      );
-
-      return;
-    }
+    if (count > 0) return void addToast(`Cannot delete: ${count} products use this category`, "error");
     deleteCategory(id);
     addToast("Category removed", "info");
   };
 
   return (
-    <div>
+    <div className="ad-stack">
       <AdminPageHeader
-        action={
-          <Button variant="primary" onPress={() => openAdd()}>
-            <Plus className="size-4" />
-            <span>Add New Category</span>
-          </Button>
-        }
-        description={`${topLevel.length} top-level categor${topLevel.length !== 1 ? "ies" : "y"} · ${categories.length - topLevel.length} subcategor${categories.length - topLevel.length !== 1 ? "ies" : "y"}`}
-        eyebrow="Taxonomy Structure"
-        title="Category Management"
+        action={<Button onClick={() => openAdd()}><Plus aria-hidden="true" size={16} strokeWidth={1.75} />Add category</Button>}
+        description={`${topLevel.length} categor${topLevel.length === 1 ? "y" : "ies"} and ${subCount} subcategor${subCount === 1 ? "y" : "ies"}.`}
+        title="Categories"
       />
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {topLevel.map((cat) => {
-          const count = products.filter(
-            (p) => p.category === cat.id && p.active,
-          ).length;
-          const CatIcon = iconFor(cat.icon);
-          const subs = subcategoriesOf(cat.id);
+      {topLevel.length === 0 ? (
+        <div className="ad-card"><EmptyState action={<Button onClick={() => openAdd()}>Add category</Button>} description="Categories organize the shop and power the filters on the Shop page." icon={<Tag aria-hidden="true" size={22} />} title="No categories yet" /></div>
+      ) : (
+        <div className="ad-grid ad-grid-3">
+          {topLevel.map((cat) => {
+            const count = products.filter((p) => p.category === cat.id && p.active).length;
+            const CatIcon = iconFor(cat.icon);
+            const subs = subcategoriesOf(cat.id);
 
-          return (
-            <div
-              key={cat.id}
-              className="flex h-full flex-col justify-between rounded-[28px] bg-surface-secondary p-6"
-            >
-              <div>
-                <div className="mb-4 flex items-center gap-2">
-                  <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-                    <CatIcon className="size-6" />
-                  </span>
-                  <div className="flex-1" />
-                  <Button
-                    isIconOnly
-                    aria-label="Edit category"
-                    variant="ghost"
-                    onPress={() => openEdit(cat)}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button
-                    isIconOnly
-                    aria-label="Delete category"
-                    variant="ghost"
-                    onPress={() => setDeleteConfirm(cat.id)}
-                  >
-                    <Trash2 className="size-4 text-danger" />
-                  </Button>
+            return (
+              <article key={cat.id} className="ad-catcard">
+                <div className="ad-catcard-top">
+                  <span className="ico"><CatIcon aria-hidden="true" size={22} strokeWidth={1.75} /></span>
+                  <button aria-label={`Edit ${cat.name}`} className="ad-iconbtn" type="button" onClick={() => openEdit(cat)}><Pencil aria-hidden="true" size={16} /></button>
+                  <button aria-label={`Delete ${cat.name}`} className="ad-iconbtn ad-iconbtn--danger" type="button" onClick={() => setDeleteConfirm(cat.id)}><Trash2 aria-hidden="true" size={16} /></button>
                 </div>
-
-                <h5 className="m-0 mb-1.5 text-lg font-extrabold text-foreground">
-                  {cat.name}
-                </h5>
-                <p className="m-0 mb-4 text-label leading-relaxed text-muted">
-                  {cat.description ||
-                    "No description specified for this category."}
-                </p>
-
+                <div>
+                  <h3>{cat.name}</h3>
+                  <p>{cat.description || "No description yet."}</p>
+                </div>
                 {subs.length > 0 && (
-                  <div className="mb-4 flex flex-col gap-1.5 border-t border-border pt-3">
+                  <div className="ad-sublist">
                     {subs.map((sub) => {
                       const SubIcon = iconFor(sub.icon);
 
                       return (
-                        <div key={sub.id} className="flex items-center gap-2 rounded-xl px-1 py-1">
-                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-accent">
-                            <SubIcon className="size-3.5" />
-                          </span>
-                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{sub.name}</span>
-                          <Button
-                            isIconOnly
-                            aria-label={`Edit ${sub.name}`}
-                            className="size-7 min-h-0"
-                            variant="ghost"
-                            onPress={() => openEdit(sub)}
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                          <Button
-                            isIconOnly
-                            aria-label={`Delete ${sub.name}`}
-                            className="size-7 min-h-0"
-                            variant="ghost"
-                            onPress={() => setDeleteConfirm(sub.id)}
-                          >
-                            <Trash2 className="size-3.5 text-danger" />
-                          </Button>
+                        <div key={sub.id} className="ad-sub">
+                          <span className="ico"><SubIcon aria-hidden="true" size={14} /></span>
+                          <span className="name">{sub.name}</span>
+                          <button aria-label={`Edit ${sub.name}`} className="ad-iconbtn" type="button" onClick={() => openEdit(sub)}><Pencil aria-hidden="true" size={14} /></button>
+                          <button aria-label={`Delete ${sub.name}`} className="ad-iconbtn ad-iconbtn--danger" type="button" onClick={() => setDeleteConfirm(sub.id)}><Trash2 aria-hidden="true" size={14} /></button>
                         </div>
                       );
                     })}
                   </div>
                 )}
+                <Button variant="secondary" onClick={() => openAdd(cat.id)}><FolderPlus aria-hidden="true" size={16} strokeWidth={1.75} />Add subcategory</Button>
+                <div className="ad-catcard-foot">
+                  <span className="ad-pill" data-tone={count ? "success" : "neutral"}>{count} active product{count === 1 ? "" : "s"}</span>
+                  <code className="ad-code">{cat.id}</code>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
 
-                <Button
-                  className="mb-4 w-full justify-center"
-                  variant="outline"
-                  onPress={() => openAdd(cat.id)}
-                >
-                  <FolderPlus className="size-4" />
-                  <span>Add Subcategory</span>
-                </Button>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="ad-dialog-wide" description="Categories nest one level deep." title={editingId ? "Edit category" : form.parentId ? "New subcategory" : "New category"}>
+          <div className="ad-form">
+            <Input label="Name" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+            <Input label="Description" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+            {!editingId && <Input description="Optional. Generated from the name when blank." label="Unique ID" value={form.id || ""} onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))} />}
+            <Select
+              description="A subcategory can't have its own subcategories."
+              label="Parent category"
+              options={[{ value: NONE_PARENT, label: "None (top-level category)" }, ...topLevel.filter((c) => c.id !== editingId).map((c) => ({ value: c.id, label: c.name }))]}
+              value={form.parentId || NONE_PARENT}
+              onValueChange={(v) => setForm((f) => ({ ...f, parentId: v === NONE_PARENT ? null : v }))}
+            />
+            <div className="ad-stack-sm">
+              <div className="ad-actions" style={{ justifyContent: "space-between" }}>
+                <p className="ad-label" style={{ margin: 0 }}>Display icon</p>
+                <span className="ad-hint">{allIconNames.length.toLocaleString()} icons</span>
               </div>
+              <SearchField label="Search icons" placeholder="Search the full icon library" value={iconQuery} onValueChange={setIconQuery} />
+              <div className="ad-iconpick">
+                {iconResults.length === 0 && <p className="ad-hint" style={{ gridColumn: "1 / -1", textAlign: "center", padding: "var(--space-4)" }}>No icons match &ldquo;{iconQuery}&rdquo;.</p>}
+                {iconResults.map((name) => {
+                  const OptIcon = iconFor(name);
 
-              <div className="flex items-center gap-2 border-t border-border pt-3">
-                <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-bold text-accent">
-                  {count} active product{count !== 1 ? "s" : ""}
-                </span>
-                <div className="flex-1" />
-                <code className="rounded-md bg-surface-tertiary px-1.5 py-0.5 text-caption font-bold">
-                  {cat.id}
-                </code>
+                  return <button key={name} aria-label={readableIconName(name)} aria-pressed={form.icon === name} title={readableIconName(name)} type="button" onClick={() => setForm((f) => ({ ...f, icon: name }))}><OptIcon aria-hidden="true" size={20} strokeWidth={1.75} /></button>;
+                })}
               </div>
+              {!iconQuery.trim() && <p className="ad-hint">Showing quick picks. Search to see the rest.</p>}
             </div>
-          );
-        })}
-      </div>
-
-      {/* Editor modal */}
-      <Modal>
-        <Modal.Backdrop isOpen={modalOpen} onOpenChange={setModalOpen}>
-          <Modal.Container size="md">
-            <Modal.Dialog>
-              <Modal.Header>
-                <Modal.Heading>
-                  {editingId ? "Edit Category" : form.parentId ? "Create New Subcategory" : "Create New Category"}
-                </Modal.Heading>
-                <Modal.CloseTrigger />
-              </Modal.Header>
-              <Modal.Body className="flex flex-col gap-4">
-                <TextField
-                  isRequired
-                  className="flex flex-col gap-1.5"
-                  value={form.name}
-                  onChange={(v) => setForm((f) => ({ ...f, name: v }))}
-                >
-                  <Label>Category Name *</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                  <FieldError />
-                </TextField>
-
-                <TextField
-                  className="flex flex-col gap-1.5"
-                  value={form.description}
-                  onChange={(v) => setForm((f) => ({ ...f, description: v }))}
-                >
-                  <Label>Description</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                </TextField>
-
-                {!editingId && (
-                  <TextField
-                    className="flex flex-col gap-1.5"
-                    value={form.id || ""}
-                    onChange={(v) => setForm((f) => ({ ...f, id: v }))}
-                  >
-                    <Label>
-                      Unique ID (optional, auto-slugified if left blank)
-                    </Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                  </TextField>
-                )}
-
-                <div className="flex flex-col gap-1.5">
-                  <Label>Parent Category</Label>
-                  <Select
-                    selectedKey={form.parentId || NONE_PARENT}
-                    onSelectionChange={(key) =>
-                      setForm((f) => ({
-                        ...f,
-                        parentId: String(key) === NONE_PARENT ? null : String(key),
-                      }))
-                    }
-                  >
-                    <Select.Trigger>
-                      <Select.Value />
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        <ListBox.Item id={NONE_PARENT}>None (top-level category)</ListBox.Item>
-                        {topLevel
-                          .filter((c) => c.id !== editingId)
-                          .map((c) => (
-                            <ListBox.Item key={c.id} id={c.id}>{c.name}</ListBox.Item>
-                          ))}
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
-                  <p className="m-0 text-caption text-muted">
-                    Categories only nest one level deep — a subcategory can&rsquo;t have its own subcategories.
-                  </p>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between gap-3">
-                    <Label>Display Icon</Label>
-                    <span className="text-caption text-muted">
-                      {allIconNames.length.toLocaleString()} icons available
-                    </span>
-                  </div>
-                  <TextField
-                    aria-label="Search icons"
-                    className="mb-2 mt-1.5 flex flex-col gap-1.5"
-                    value={iconQuery}
-                    onChange={setIconQuery}
-                  >
-                    <InputGroup>
-                      <InputGroup.Prefix>
-                        <Search className="size-4 text-muted" />
-                      </InputGroup.Prefix>
-                      <InputGroup.Input placeholder="Search the full icon library…" />
-                    </InputGroup>
-                  </TextField>
-                  <div className="grid max-h-56 grid-cols-7 gap-2 overflow-y-auto rounded-2xl border border-border p-2 sm:grid-cols-9">
-                    {iconResults.length === 0 && (
-                      <p className="col-span-full m-0 py-4 text-center text-label text-muted">
-                        No icons match &ldquo;{iconQuery}&rdquo;.
-                      </p>
-                    )}
-                    {iconResults.map((name) => {
-                      const OptIcon = iconFor(name);
-
-                      return (
-                        <button
-                          key={name}
-                          aria-label={readableIconName(name)}
-                          aria-pressed={form.icon === name}
-                          title={readableIconName(name)}
-                          className={`flex aspect-square items-center justify-center rounded-2xl border transition-colors ${
-                            form.icon === name
-                              ? "border-accent bg-accent-soft text-accent"
-                              : "border-border bg-surface-secondary text-foreground hover:bg-surface-tertiary"
-                          }`}
-                          type="button"
-                          onClick={() => setForm((f) => ({ ...f, icon: name }))}
-                        >
-                          <OptIcon className="size-5" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {!iconQuery.trim() && (
-                    <p className="m-0 mt-1.5 text-caption text-muted">
-                      Showing quick picks — search above for the rest of the library.
-                    </p>
-                  )}
-                </div>
-              </Modal.Body>
-              <Modal.Footer className="justify-end gap-2">
-                <Button variant="outline" onPress={() => setModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onPress={handleSave}>
-                  {editingId ? "Save Changes" : "Create Category"}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+            <div className="ad-actions ad-actions--end">
+              <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button onClick={handleSave}>{editingId ? "Save changes" : "Create category"}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AdminConfirmDialog
-        description="Products currently linked to this category will lose their category association. If this is a top-level category, any of its subcategories will be promoted to top-level rather than deleted."
+        description="Products in this category will lose their category. If it has subcategories, they are promoted to top-level instead of deleted."
         isOpen={!!deleteConfirm}
-        title="Delete Category?"
+        title="Delete category?"
         onClose={() => setDeleteConfirm(null)}
         onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
       />

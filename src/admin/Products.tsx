@@ -2,33 +2,18 @@ import type { Product } from "@/types/domain";
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  ImageOff,
-  PackageOpen,
-  Pencil,
-  Plus,
-  Search,
-  Star,
-  Trash2,
-} from "lucide-react";
-import {
-  Button,
-  FieldError,
-  InputGroup,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  Switch,
-  TextField,
-  ToggleButton,
-} from "@heroui/react";
+import { ImageOff, PackageOpen, Pencil, Plus, Star, Trash2 } from "lucide-react";
 
+import { Button } from "@/components/arc/button/button";
+import { Dialog, DialogContent } from "@/components/arc/dialog/dialog";
+import { Input } from "@/components/arc/input/input";
+import { SearchField } from "@/components/arc/search-field/search-field";
+import { Select } from "@/components/arc/select/select";
+import { Switch } from "@/components/arc/switch/switch";
+import { Textarea } from "@/components/arc/textarea/textarea";
 import { useProductStore, useToastStore } from "@/lib/store";
 import AdminPageHeader from "@/admin/components/AdminPageHeader";
-import AdminDataTable, {
-  type AdminDataTableColumn,
-} from "@/admin/components/AdminDataTable";
+import AdminDataTable, { type AdminDataTableColumn } from "@/admin/components/AdminDataTable";
 import AdminConfirmDialog from "@/admin/components/AdminConfirmDialog";
 
 interface ProductFormState {
@@ -62,24 +47,10 @@ const EMPTY_PRODUCT: ProductFormState = {
 };
 
 function StockBadge({ stock }: { stock: number }) {
-  if (stock === 0)
-    return (
-      <span className="rounded-full bg-danger/15 px-2.5 py-1 text-xs font-bold text-danger">
-        Out of Stock
-      </span>
-    );
-  if (stock <= 5)
-    return (
-      <span className="rounded-full bg-warning/15 px-2.5 py-1 text-xs font-bold text-warning">
-        Low ({stock})
-      </span>
-    );
+  if (stock === 0) return <span className="ad-pill" data-tone="danger">Out of stock</span>;
+  if (stock <= 5) return <span className="ad-pill" data-tone="warning">Low ({stock})</span>;
 
-  return (
-    <span className="rounded-full bg-success/15 px-2.5 py-1 text-xs font-bold text-success">
-      {stock} in stock
-    </span>
-  );
+  return <span className="ad-pill" data-tone="success">{stock} in stock</span>;
 }
 
 export default function Products() {
@@ -87,18 +58,11 @@ export default function Products() {
   const products = useProductStore((s) => s.products);
   const categories = useProductStore((s) => s.categories);
   const topLevelCategories = categories.filter((c) => !c.parentId);
-  const categoryName = (id: string) =>
-    categories.find((c) => c.id === id)?.name || id;
-  // Flat list, not react-aria's ListBox.Section+Header: that combination
-  // reproducibly crashed the popover on open in this HeroUI/react-aria
-  // version (a "recovered from concurrent render error" + hang on click) —
-  // this is the fallback the implementation plan called out in advance for
-  // exactly that possibility. Subcategories are visually indented instead.
-  const categoryListItems = topLevelCategories.flatMap((top) => [
-    { id: top.id, label: top.name, indent: false },
-    ...categories
-      .filter((c) => c.parentId === top.id)
-      .map((sub) => ({ id: sub.id, label: sub.name, indent: true })),
+  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name || id;
+  // Flat list with subcategories visually indented under their parent.
+  const categoryOptions = topLevelCategories.flatMap((top) => [
+    { value: top.id, label: top.name },
+    ...categories.filter((c) => c.parentId === top.id).map((sub) => ({ value: sub.id, label: `— ${sub.name}` })),
   ]);
   const addProduct = useProductStore((s) => s.addProduct);
   const updateProduct = useProductStore((s) => s.updateProduct);
@@ -128,10 +92,7 @@ export default function Products() {
 
   const filtered = products.filter((p) => {
     const matchesCat = catFilter === "all" || p.category === catFilter;
-    const matchesSearch =
-      !search ||
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku?.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase());
 
     return matchesCat && matchesSearch;
   });
@@ -149,10 +110,7 @@ export default function Products() {
     setModalOpen(true);
   };
 
-  const updateForm = <K extends keyof ProductFormState>(
-    k: K,
-    v: ProductFormState[K],
-  ) => setForm((f) => ({ ...f, [k]: v }));
+  const updateForm = <K extends keyof ProductFormState>(k: K, v: ProductFormState[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = () => {
     const { name, category, price, stock, sku, description } = form;
@@ -176,10 +134,7 @@ export default function Products() {
 
       return;
     }
-    if (
-      compareNum != null &&
-      (!Number.isFinite(compareNum) || compareNum < 0)
-    ) {
+    if (compareNum != null && (!Number.isFinite(compareNum) || compareNum < 0)) {
       addToast("Please enter a valid compare-at price", "error");
 
       return;
@@ -195,10 +150,7 @@ export default function Products() {
       price: priceNum,
       comparePrice: compareNum,
       stock: stockNum,
-      tags: form.tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
+      tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
       images: form.images.filter(Boolean),
     };
 
@@ -219,438 +171,139 @@ export default function Products() {
 
   const handleToggleActive = (product: Product) => {
     updateProduct(product.id, { active: !product.active });
-    addToast(
-      `Product ${product.active ? "hidden from" : "published on"} live store`,
-      "info",
-    );
+    addToast(`Product ${product.active ? "hidden from" : "published on"} live store`, "info");
   };
 
   const handleToggleFeatured = (product: Product) => {
     updateProduct(product.id, { featured: !product.featured });
   };
 
+  const thumb = (p: Product) => (
+    <span className="ad-thumb">{p.images?.[0] ? <img alt="" src={p.images[0]} /> : <ImageOff aria-hidden="true" size={16} />}</span>
+  );
+
+  const priceCell = (p: Product) => (
+    <div>
+      <strong className="ad-num" style={{ fontWeight: 500 }}>${p.price.toFixed(2)}</strong>
+      {p.comparePrice && <div className="ad-hint" style={{ textDecoration: "line-through" }}>${p.comparePrice.toFixed(2)}</div>}
+    </div>
+  );
+
+  const featuredBtn = (p: Product) => (
+    <button aria-label={p.featured ? `Remove ${p.name} from featured` : `Mark ${p.name} as featured`} aria-pressed={p.featured} className="ad-iconbtn" type="button" onClick={() => handleToggleFeatured(p)}>
+      <Star aria-hidden="true" fill={p.featured ? "var(--warning)" : "none"} size={16} style={{ color: p.featured ? "var(--warning)" : undefined }} />
+    </button>
+  );
+
+  const visibility = (p: Product) => <Switch aria-label={`${p.name} visible on store`} checked={p.active} onCheckedChange={() => handleToggleActive(p)} />;
+
+  const rowActions = (p: Product) => (
+    <div className="ad-row-actions">
+      {featuredBtn(p)}
+      <button aria-label={`Edit ${p.name}`} className="ad-iconbtn" type="button" onClick={() => openEdit(p)}><Pencil aria-hidden="true" size={16} /></button>
+      <button aria-label={`Delete ${p.name}`} className="ad-iconbtn ad-iconbtn--danger" type="button" onClick={() => setDeleteConfirm(p.id)}><Trash2 aria-hidden="true" size={16} /></button>
+    </div>
+  );
+
   const columns: AdminDataTableColumn<Product>[] = [
-    {
-      key: "details",
-      header: "Product Details",
-      render: (p) => (
-        <div className="flex min-w-[200px] items-center gap-3">
-          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-tertiary">
-            {p.images?.[0] ? (
-              <img
-                alt={p.name}
-                className="size-full object-cover"
-                src={p.images[0]}
-              />
-            ) : (
-              <ImageOff className="size-4 text-muted" />
-            )}
-          </div>
-          <strong className="text-sm text-foreground">{p.name}</strong>
-        </div>
-      ),
-    },
-    {
-      key: "sku",
-      header: "SKU",
-      render: (p) => (
-        <code className="rounded-md bg-surface-tertiary px-1.5 py-0.5 text-xs font-bold">
-          {p.sku}
-        </code>
-      ),
-    },
-    {
-      key: "category",
-      header: "Category",
-      render: (p) => (
-        <span className="rounded-full bg-surface-tertiary px-2.5 py-1 text-xs font-semibold">
-          {categoryName(p.category)}
-        </span>
-      ),
-    },
-    {
-      key: "price",
-      header: "Price",
-      render: (p) => (
-        <div>
-          <strong className="text-sm text-accent">${p.price.toFixed(2)}</strong>
-          {p.comparePrice && (
-            <div className="text-caption text-muted line-through">
-              ${p.comparePrice.toFixed(2)}
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: "stock",
-      header: "Stock",
-      render: (p) => <StockBadge stock={p.stock} />,
-    },
-    {
-      key: "active",
-      header: "Visibility",
-      render: (p) => (
-        <Switch isSelected={p.active} onChange={() => handleToggleActive(p)}>
-          <Switch.Content>
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
-          </Switch.Content>
-        </Switch>
-      ),
-    },
-    {
-      key: "featured",
-      header: "Featured",
-      render: (p) => (
-        <ToggleButton
-          isIconOnly
-          aria-label={p.featured ? "Remove from featured" : "Mark as featured"}
-          isSelected={p.featured}
-          variant="ghost"
-          onChange={() => handleToggleFeatured(p)}
-        >
-          <Star
-            className={`size-4 ${p.featured ? "fill-warning text-warning" : "text-muted"}`}
-          />
-        </ToggleButton>
-      ),
-    },
-    {
-      key: "actions",
-      header: "Actions",
-      render: (p) => (
-        <div className="flex items-center gap-1">
-          <Button
-            isIconOnly
-            aria-label="Edit product"
-            variant="ghost"
-            onPress={() => openEdit(p)}
-          >
-            <Pencil className="size-4" />
-          </Button>
-          <Button
-            isIconOnly
-            aria-label="Delete product"
-            variant="ghost"
-            onPress={() => setDeleteConfirm(p.id)}
-          >
-            <Trash2 className="size-4 text-danger" />
-          </Button>
-        </div>
-      ),
-    },
+    { key: "details", header: "Product", render: (p) => <div className="ad-cell-main">{thumb(p)}<strong style={{ fontWeight: 500 }}>{p.name}</strong></div> },
+    { key: "sku", header: "SKU", render: (p) => <code className="ad-code">{p.sku}</code> },
+    { key: "category", header: "Category", render: (p) => <span className="ad-pill" data-tone="neutral">{categoryName(p.category)}</span> },
+    { key: "price", header: "Price", render: priceCell },
+    { key: "stock", header: "Stock", render: (p) => <StockBadge stock={p.stock} /> },
+    { key: "active", header: "Visible", render: visibility },
+    { key: "actions", header: "", render: rowActions },
   ];
 
+  const empty = { icon: PackageOpen, title: "No matching products found", description: "Try adjusting your search criteria or category filter." };
+
   return (
-    <div>
+    <div className="ad-stack">
       <AdminPageHeader
-        action={
-          <Button variant="primary" onPress={openAdd}>
-            <Plus className="size-4" />
-            <span>Add New Product</span>
-          </Button>
-        }
-        description={`${products.length} total items · ${products.filter((p) => p.active).length} currently active on store`}
-        eyebrow="Inventory Catalog"
-        title="Products Management"
+        action={<Button onClick={openAdd}><Plus aria-hidden="true" size={16} strokeWidth={1.75} />Add product</Button>}
+        description={`${products.length} total items · ${products.filter((p) => p.active).length} active on the store.`}
+        title="Products"
       />
 
-      <div className="mb-6 flex flex-wrap gap-4">
-        <TextField
-          className="min-w-[240px] flex-1"
-          value={search}
-          onChange={setSearch}
-        >
-          <InputGroup>
-            <InputGroup.Prefix>
-              <Search className="size-4" />
-            </InputGroup.Prefix>
-            <InputGroup.Input placeholder="Search by product name or SKU code…" />
-          </InputGroup>
-        </TextField>
-
-        <Select
-          className="w-full sm:w-56"
-          selectedKey={catFilter}
-          onSelectionChange={(key) => setCatFilter(String(key))}
-        >
-          <Select.Trigger>
-            <Select.Value />
-          </Select.Trigger>
-          <Select.Popover>
-            <ListBox>
-              <ListBox.Item id="all">All Categories</ListBox.Item>
-              {categoryListItems.map((item) => (
-                <ListBox.Item key={item.id} className={item.indent ? "pl-7 text-muted" : ""} id={item.id}>
-                  {item.indent ? `— ${item.label}` : item.label}
-                </ListBox.Item>
-              ))}
-            </ListBox>
-          </Select.Popover>
-        </Select>
+      <div className="ad-toolbar">
+        <div className="grow"><SearchField label="Search products" placeholder="Search by name or SKU" value={search} onValueChange={setSearch} /></div>
+        <div style={{ minWidth: "12rem" }}>
+          <Select label="Category" options={[{ value: "all", label: "All categories" }, ...categoryOptions]} value={catFilter} onValueChange={setCatFilter} />
+        </div>
       </div>
 
-      <AdminDataTable
-        columns={columns}
-        data={filtered}
-        emptyState={{
-          icon: PackageOpen,
-          title: "No matching products found",
-          description: "Try adjusting your search criteria or category filter.",
-        }}
-        rowKey={(p) => p.id}
-      />
-
-      {/* Edit / Create modal */}
-      <Modal>
-        <Modal.Backdrop isOpen={modalOpen} onOpenChange={setModalOpen}>
-          <Modal.Container scroll="inside" size="lg">
-            <Modal.Dialog>
-              <Modal.Header>
-                <Modal.Heading>
-                  {editingId
-                    ? "Edit Product Details"
-                    : "Create New Catalog Product"}
-                </Modal.Heading>
-                <Modal.CloseTrigger />
-              </Modal.Header>
-              <Modal.Body className="flex flex-col gap-4">
-                <TextField
-                  isRequired
-                  className="flex flex-col gap-1.5"
-                  value={form.name}
-                  onChange={(v) => updateForm("name", v)}
-                >
-                  <Label>Product Name *</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                  <FieldError />
-                </TextField>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Select
-                    placeholder="Select category"
-                    selectedKey={form.category || null}
-                    onSelectionChange={(key) =>
-                      updateForm("category", String(key))
-                    }
-                  >
-                    <Label>Category *</Label>
-                    <Select.Trigger>
-                      <Select.Value />
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        {categoryListItems.map((item) => (
-                          <ListBox.Item key={item.id} className={item.indent ? "pl-7 text-muted" : ""} id={item.id}>
-                            {item.indent ? `— ${item.label}` : item.label}
-                          </ListBox.Item>
-                        ))}
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
-
-                  <TextField
-                    isRequired
-                    className="flex flex-col gap-1.5"
-                    value={form.sku}
-                    onChange={(v) => updateForm("sku", v)}
-                  >
-                    <Label>SKU Code *</Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                    <FieldError />
-                  </TextField>
+      <div className="ad-only-narrow">
+        {filtered.length === 0 ? <AdminDataTable columns={[]} data={[]} emptyState={empty} rowKey={() => ""} /> : (
+          <div className="ad-cards">
+            {filtered.map((p) => (
+              <article key={p.id} className="ad-mcard">
+                <div className="ad-mcard-top">
+                  <div className="ad-cell-main">{thumb(p)}<div style={{ minWidth: 0 }}><strong style={{ fontWeight: 500, display: "block" }}>{p.name}</strong><code className="ad-code">{p.sku}</code></div></div>
                 </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <TextField
-                    isRequired
-                    className="flex flex-col gap-1.5"
-                    type="number"
-                    value={form.price}
-                    onChange={(v) => updateForm("price", v)}
-                  >
-                    <Label>Selling Price ($) *</Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                    <FieldError />
-                  </TextField>
-                  <TextField
-                    className="flex flex-col gap-1.5"
-                    type="number"
-                    value={form.comparePrice}
-                    onChange={(v) => updateForm("comparePrice", v)}
-                  >
-                    <Label>Compare Price ($)</Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                  </TextField>
-                  <TextField
-                    isRequired
-                    className="flex flex-col gap-1.5"
-                    type="number"
-                    value={form.stock}
-                    onChange={(v) => updateForm("stock", v)}
-                  >
-                    <Label>Stock Units *</Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                    <FieldError />
-                  </TextField>
+                <div className="ad-mcard-grid">
+                  <div><small>Price</small>{priceCell(p)}</div>
+                  <div><small>Stock</small><StockBadge stock={p.stock} /></div>
+                  <div><small>Category</small>{categoryName(p.category)}</div>
+                  <div><small>Visible</small>{visibility(p)}</div>
                 </div>
+                {rowActions(p)}
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="ad-only-wide">
+        <AdminDataTable caption="Products" columns={columns} data={filtered} emptyState={empty} rowKey={(p) => p.id} />
+      </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <TextField
-                    className="flex flex-col gap-1.5"
-                    type="number"
-                    value={String(form.shippingDays.min)}
-                    onChange={(v) =>
-                      updateForm("shippingDays", {
-                        ...form.shippingDays,
-                        min: parseInt(v, 10) || 1,
-                      })
-                    }
-                  >
-                    <Label>Est. Min Days</Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                  </TextField>
-                  <TextField
-                    className="flex flex-col gap-1.5"
-                    type="number"
-                    value={String(form.shippingDays.max)}
-                    onChange={(v) =>
-                      updateForm("shippingDays", {
-                        ...form.shippingDays,
-                        max: parseInt(v, 10) || 7,
-                      })
-                    }
-                  >
-                    <Label>Est. Max Days</Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                  </TextField>
-                </div>
-
-                <TextField
-                  isRequired
-                  className="flex flex-col gap-1.5"
-                  value={form.description}
-                  onChange={(v) => updateForm("description", v)}
-                >
-                  <Label>Product Description *</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                  <FieldError />
-                </TextField>
-
-                <TextField
-                  className="flex flex-col gap-1.5"
-                  value={form.images[0] || ""}
-                  onChange={(v) => updateForm("images", [v])}
-                >
-                  <Label>Image URL</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                </TextField>
-
-                {form.images[0] && (
-                  <div>
-                    <span className="mb-1 block text-xs text-muted">
-                      Image Preview:
-                    </span>
-                    <img
-                      alt="Preview"
-                      className="max-h-[110px] rounded-xl border border-border"
-                      src={form.images[0]}
-                    />
-                  </div>
-                )}
-
-                <TextField
-                  className="flex flex-col gap-1.5"
-                  value={form.tags}
-                  onChange={(v) => updateForm("tags", v)}
-                >
-                  <Label>Tags (comma separated)</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                </TextField>
-
-                <div className="flex flex-wrap gap-8 pt-2">
-                  <div className="flex items-center gap-3.5">
-                    <Switch
-                      isSelected={form.active}
-                      onChange={(v) => updateForm("active", v)}
-                    >
-                      <Switch.Content>
-                        <Switch.Control>
-                          <Switch.Thumb />
-                        </Switch.Control>
-                      </Switch.Content>
-                    </Switch>
-                    <div>
-                      <strong className="block text-sm text-foreground">
-                        Active Listing
-                      </strong>
-                      <span className="text-xs text-muted">
-                        Visible to shoppers
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3.5">
-                    <Switch
-                      isSelected={form.featured}
-                      onChange={(v) => updateForm("featured", v)}
-                    >
-                      <Switch.Content>
-                        <Switch.Control>
-                          <Switch.Thumb />
-                        </Switch.Control>
-                      </Switch.Content>
-                    </Switch>
-                    <div>
-                      <strong className="block text-sm text-foreground">
-                        Featured Product
-                      </strong>
-                      <span className="text-xs text-muted">
-                        Highlight on storefront
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Modal.Body>
-              <Modal.Footer className="justify-end gap-2">
-                <Button variant="outline" onPress={() => setModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onPress={handleSave}>
-                  {editingId ? "Save Changes" : "Publish Product"}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="ad-dialog-wide" description="Fields marked * are required." title={editingId ? "Edit product" : "New product"}>
+          <div className="ad-form">
+            <Input label="Product name *" required value={form.name} onChange={(e) => updateForm("name", e.target.value)} />
+            <div className="ad-form-2">
+              <Select label="Category *" options={categoryOptions} placeholder="Select category" value={form.category} onValueChange={(v) => updateForm("category", v)} />
+              <Input label="SKU code *" required value={form.sku} onChange={(e) => updateForm("sku", e.target.value)} />
+            </div>
+            <div className="ad-form-3">
+              <Input inputMode="decimal" label="Selling price ($) *" required type="number" value={form.price} onChange={(e) => updateForm("price", e.target.value)} />
+              <Input inputMode="decimal" label="Compare price ($)" type="number" value={form.comparePrice} onChange={(e) => updateForm("comparePrice", e.target.value)} />
+              <Input inputMode="numeric" label="Stock units *" required type="number" value={form.stock} onChange={(e) => updateForm("stock", e.target.value)} />
+            </div>
+            <div className="ad-form-2">
+              <Input label="Est. min shipping days" type="number" value={String(form.shippingDays.min)} onChange={(e) => updateForm("shippingDays", { ...form.shippingDays, min: parseInt(e.target.value, 10) || 1 })} />
+              <Input label="Est. max shipping days" type="number" value={String(form.shippingDays.max)} onChange={(e) => updateForm("shippingDays", { ...form.shippingDays, max: parseInt(e.target.value, 10) || 7 })} />
+            </div>
+            <Textarea label="Product description *" required value={form.description} onChange={(e) => updateForm("description", e.target.value)} />
+            <Input label="Image URL" value={form.images[0] || ""} onChange={(e) => updateForm("images", [e.target.value])} />
+            {form.images[0] && (
+              <div>
+                <p className="ad-hint">Image preview</p>
+                <img alt="Preview" src={form.images[0]} style={{ maxHeight: 110, borderRadius: "var(--radius-panel)", border: "1px solid var(--border)" }} />
+              </div>
+            )}
+            <Input label="Tags (comma separated)" value={form.tags} onChange={(e) => updateForm("tags", e.target.value)} />
+            <div className="ad-form-2">
+              <div className="ad-cell-main">
+                <Switch aria-label="Active listing" checked={form.active} onCheckedChange={(v) => updateForm("active", v)} />
+                <div><strong style={{ display: "block", fontWeight: 500 }}>Active listing</strong><span className="ad-hint">Visible to shoppers</span></div>
+              </div>
+              <div className="ad-cell-main">
+                <Switch aria-label="Featured product" checked={form.featured} onCheckedChange={(v) => updateForm("featured", v)} />
+                <div><strong style={{ display: "block", fontWeight: 500 }}>Featured product</strong><span className="ad-hint">Highlight on storefront</span></div>
+              </div>
+            </div>
+            <div className="ad-actions ad-actions--end">
+              <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button onClick={handleSave}>{editingId ? "Save changes" : "Publish product"}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AdminConfirmDialog
-        description="This product will be permanently removed from your catalog store inventory."
+        description="This product will be permanently removed from your catalog."
         isOpen={!!deleteConfirm}
-        title="Confirm Deletion"
+        title="Delete product?"
         onClose={() => setDeleteConfirm(null)}
         onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
       />

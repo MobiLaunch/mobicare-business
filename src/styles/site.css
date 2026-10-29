@@ -6,11 +6,34 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 
+/* ─── Base reset ───────────────────────────────────────────────────────────
+   The minimal normalisation the site used to inherit from Tailwind's preflight.
+   Layered so any component rule overrides it regardless of specificity. */
+
+@layer base {
+  *, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; border: 0 solid; }
+  html { line-height: 1.5; -webkit-text-size-adjust: 100%; tab-size: 4; -webkit-tap-highlight-color: transparent; }
+  h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit; }
+  a { color: inherit; text-decoration: inherit; }
+  b, strong { font-weight: bolder; }
+  code, kbd, pre, samp { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1em; }
+  table { border-collapse: collapse; border-color: inherit; text-indent: 0; }
+  button, input, select, textarea { font: inherit; letter-spacing: inherit; color: inherit; background: transparent; border-radius: 0; }
+  button, [role="button"] { cursor: pointer; }
+  button:disabled { cursor: default; }
+  ol, ul, menu { list-style: none; }
+  img, svg, video, canvas, audio, iframe, embed, object { display: block; vertical-align: middle; }
+  img, video { max-width: 100%; height: auto; }
+  textarea { resize: vertical; }
+  hr { height: 0; border-top-width: 1px; color: inherit; }
+  [hidden]:where(:not([hidden="until-found"])) { display: none !important; }
+}
+
 /* ─── Brand tokens ─────────────────────────────────────────────────────────
    Ink and green. A warm-green neutral ramp replaces Arc's pure greys, so
    every surface carries the brand without any decorative effects. */
 
-html:not(.admin-mode) {
+html {
   --background: #f6f8f4;
   --surface: #ffffff;
   --surface-raised: #ffffff;
@@ -26,12 +49,13 @@ html:not(.admin-mode) {
   --mc-ink-text: #f1f6f2;
   --mc-ink-muted: #a4b5a9;
   --mc-tint: #e9f3eb;
-  --mc-brand: #12c887;
-  --mc-brand-hover: #0fb97c;
-  --mc-brand-ink: #062414;
+  /* The brand colour follows the accent chosen in the admin Site Editor (falls back to Arc green). */
+  --mc-brand: var(--accent, #12c887);
+  --mc-brand-hover: color-mix(in oklab, var(--mc-brand) 88%, black);
+  --mc-brand-ink: var(--accent-foreground, #062414);
 }
 
-html:not(.admin-mode)[data-theme="dark"] {
+html[data-theme="dark"] {
   --background: #0a110d;
   --surface: #101a14;
   --surface-raised: #142019;
@@ -47,7 +71,9 @@ html:not(.admin-mode)[data-theme="dark"] {
   --mc-tint: #0f1c15;
 }
 
-html:not(.admin-mode) body {
+html body {
+  margin: 0;
+  min-height: 100dvh;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-body);
@@ -568,3 +594,13 @@ html[data-theme="dark"] .mc-icon { color: var(--mc-brand); }
 .mc-band--ink .mc-section-head h2::before { background: var(--mc-brand); }
 
 @media (max-width: 560px) { .mc-hero .mc-actions > *, .mc-promo .mc-cta { flex: 1 1 100%; } .mc-cta--lg, .mc-ghost--lg { padding-inline: var(--space-5); } }
+
+/* Product image states */
+.mc-img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 300ms var(--ease-standard, ease); }
+.mc-img[data-ready="true"] { opacity: 1; }
+.mc-img-skel { position: absolute; inset: 0; background: var(--border-subtle, var(--surface-muted)); animation: mc-pulse 1.6s ease-in-out infinite; }
+.mc-img-failed { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 100%; background: var(--surface-muted); color: var(--text-muted); font-size: 11px; text-align: center; }
+.mc-img-failed svg { opacity: 0.5; }
+.mc-img-failed span { padding: 0 12px; opacity: 0.8; }
+@keyframes mc-pulse { 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .mc-img-skel { animation: none; } .mc-img { transition: none; } }

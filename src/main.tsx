@@ -7,8 +7,8 @@ import { Provider } from "./provider.tsx";
 import "@fontsource-variable/geist";
 import "@fontsource-variable/inter";
 import "@/components/arc/foundation.css";
-import "@/styles/globals.css";
 import "@/styles/site.css";
+import "@/styles/admin.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

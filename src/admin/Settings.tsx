@@ -8,21 +8,14 @@ import {
   Copy,
   CreditCard,
   Database,
-  Eye,
-  EyeOff,
   KeyRound,
   Mail,
   Save,
-  TriangleAlert,
 } from "lucide-react";
-import {
-  Alert,
-  Button,
-  FieldError,
-  InputGroup,
-  Label,
-  TextField,
-} from "@heroui/react";
+import { Alert } from "@/components/arc/alert/alert";
+import { Button } from "@/components/arc/button/button";
+import { Input } from "@/components/arc/input/input";
+import { PasswordField } from "@/components/arc/password-field/password-field";
 
 import { useAdminStore, useProductStore, useToastStore } from "@/lib/store";
 import { getStripePublishableKey, isStripeConfigured } from "@/lib/config";
@@ -75,7 +68,6 @@ export default function Settings() {
   // Password
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
-  const [showPw, setShowPw] = useState(false);
 
   useEffect(() => {
     if (usingSupabase) {
@@ -205,362 +197,156 @@ export default function Settings() {
     }
   };
 
+  const ok = (label: string) => <span className="ad-pill" data-tone="success"><CheckCircle2 aria-hidden="true" size={14} />{label}</span>;
+
   return (
-    <div>
+    <div className="ad-stack">
       <AdminPageHeader
-        description="Manage your cloud database credentials, payment webhooks, notification engines, and admin credentials."
-        eyebrow="System Configuration"
-        title="Store & Integration Settings"
+        description="Database, payments, notifications and admin credentials."
+        title="Settings"
       />
 
-      {/* Supabase */}
       <AdminSettingsCard
-        description="Persist products, categories, orders, and repair bookings in real-time."
+        description="Persist products, categories, orders, and repair bookings in real time."
         icon={Database}
         statusChip={
-          connStatus === "ok" || (!connStatus && usingSupabase) ? (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-success/15 px-3 py-1.5 text-xs font-bold text-success">
-              <CheckCircle2 className="size-4" />{" "}
-              {connStatus === "ok" ? "Connected" : "Supabase Live"}
-            </span>
-          ) : connStatus === "error" ? (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-danger/15 px-3 py-1.5 text-xs font-bold text-danger">
-              <CircleX className="size-4" /> Connection Error
-            </span>
-          ) : null
+          connStatus === "ok" || (!connStatus && usingSupabase)
+            ? ok(connStatus === "ok" ? "Connected" : "Supabase live")
+            : connStatus === "error"
+              ? <span className="ad-pill" data-tone="danger"><CircleX aria-hidden="true" size={14} />Connection error</span>
+              : null
         }
-        title="Supabase Cloud Database"
+        title="Supabase database"
       >
         <SettingsStepItem
-          description={
-            <>
-              Copy the SQL migration script below, navigate to your Supabase{" "}
-              <strong>SQL Editor</strong>, paste, and click <strong>Run</strong>
-              .
-            </>
-          }
+          description={<>Copy the SQL migration script below, open your Supabase <strong>SQL Editor</strong>, paste, and click <strong>Run</strong>.</>}
           number={1}
-          title="Execute Database Schema SQL"
+          title="Run the database schema"
         >
-          <div className="mb-3 flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setSqlOpen((o) => !o)}>
-              {sqlOpen ? (
-                <ChevronUp className="size-4" />
-              ) : (
-                <ChevronDown className="size-4" />
-              )}
-              <span>{sqlOpen ? "Collapse SQL Schema" : "View SQL Schema"}</span>
+          <div className="ad-actions">
+            <Button variant="secondary" onClick={() => setSqlOpen((o) => !o)}>
+              {sqlOpen ? <ChevronUp aria-hidden="true" size={16} /> : <ChevronDown aria-hidden="true" size={16} />}
+              {sqlOpen ? "Hide SQL schema" : "View SQL schema"}
             </Button>
-            <Button variant="primary" onClick={handleCopySQL}>
-              <Copy className="size-4" />
-              <span>
-                {sqlCopied ? "Copied to Clipboard!" : "Copy SQL Script"}
-              </span>
+            <Button onClick={handleCopySQL}>
+              <Copy aria-hidden="true" size={16} />
+              {sqlCopied ? "Copied" : "Copy SQL script"}
             </Button>
           </div>
-          {sqlOpen && (
-            <pre className="max-h-80 overflow-y-auto rounded-2xl bg-surface-tertiary p-4 text-xs">
-              {SCHEMA_SQL}
-            </pre>
-          )}
+          {sqlOpen && <pre className="ad-pre">{SCHEMA_SQL}</pre>}
         </SettingsStepItem>
 
         <SettingsStepItem
-          description={
-            <>
-              Located in your Supabase project under{" "}
-              <strong>Project Settings → API</strong>.
-            </>
-          }
+          description={<>Located in your Supabase project under <strong>Project Settings → API</strong>.</>}
           number={2}
-          title="Project API Credentials"
+          title="Project API credentials"
         >
-          <div className="mb-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            <TextField
-              className="flex flex-col gap-1.5"
-              value={sbUrl}
-              onChange={setSbUrl}
-            >
-              <Label>Project URL (https://your-project.supabase.co)</Label>
-              <InputGroup>
-                <InputGroup.Input />
-              </InputGroup>
-            </TextField>
-            <TextField
-              className="flex flex-col gap-1.5"
-              value={sbAnonKey}
-              onChange={setSbAnonKey}
-            >
-              <Label>Anon / Public API Key</Label>
-              <InputGroup>
-                <InputGroup.Input />
-              </InputGroup>
-            </TextField>
+          <div className="ad-stack-sm">
+            <div className="ad-form-2">
+              <Input autoComplete="off" label="Project URL" placeholder="https://your-project.supabase.co" value={sbUrl} onChange={(e) => setSbUrl(e.target.value)} />
+              <Input autoComplete="off" label="Anon / public API key" value={sbAnonKey} onChange={(e) => setSbAnonKey(e.target.value)} />
+            </div>
+            <div className="ad-actions">
+              <Button variant="secondary" onClick={handleSaveSupabase}>
+                <Save aria-hidden="true" size={16} />Save credentials
+              </Button>
+              <Button loading={testing} onClick={handleTestConnection}>
+                <Database aria-hidden="true" size={16} />{testing ? "Testing…" : "Test connection"}
+              </Button>
+            </div>
+            {connStatus === "error" && <Alert role="alert" title="Connection failed" tone="danger">{connMsg}</Alert>}
+            {connStatus === "ok" && <Alert title={connMsg} tone="success" />}
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Button variant="outline" onClick={handleSaveSupabase}>
-              <Save className="size-4" />
-              <span>Save API Credentials</span>
-            </Button>
-            <Button
-              isDisabled={testing}
-              variant="primary"
-              onClick={handleTestConnection}
-            >
-              <Database className="size-4" />
-              <span>{testing ? "Testing Connection…" : "Test Connection"}</span>
-            </Button>
-          </div>
-          {connStatus === "error" && (
-            <Alert className="mt-3" role="alert" status="danger">
-              <Alert.Indicator>
-                <TriangleAlert className="size-4" />
-              </Alert.Indicator>
-              <Alert.Content>
-                <Alert.Description>{connMsg}</Alert.Description>
-              </Alert.Content>
-            </Alert>
-          )}
-          {connStatus === "ok" && (
-            <Alert className="mt-3" status="success">
-              <Alert.Indicator>
-                <CheckCircle2 className="size-4" />
-              </Alert.Indicator>
-              <Alert.Content>
-                <Alert.Description>{connMsg}</Alert.Description>
-              </Alert.Content>
-            </Alert>
-          )}
         </SettingsStepItem>
 
         <SettingsStepItem
-          description="Push your local products and categories up to Supabase database tables."
+          description="Push your local products and categories up to the Supabase tables."
           number={3}
-          title="Seed Initial Catalog Data"
+          title="Seed the catalog"
         >
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              isDisabled={seeding || !isSupabaseConfigured()}
-              variant="primary"
-              onClick={handleSeedData}
-            >
-              <CloudUpload className="size-4" />
-              <span>
-                {seeding
-                  ? "Seeding Catalog…"
-                  : `Seed ${storeProducts.length} Products & ${storeCategories.length} Categories`}
-              </span>
+          <div className="ad-actions">
+            <Button disabled={seeding || !isSupabaseConfigured()} loading={seeding} onClick={handleSeedData}>
+              <CloudUpload aria-hidden="true" size={16} />
+              {seeding ? "Seeding…" : `Seed ${storeProducts.length} products & ${storeCategories.length} categories`}
             </Button>
-            {!isSupabaseConfigured() && (
-              <span className="text-label text-muted">
-                Connect Supabase first
-              </span>
-            )}
+            {!isSupabaseConfigured() && <span className="ad-hint">Connect Supabase first</span>}
           </div>
         </SettingsStepItem>
       </AdminSettingsCard>
 
-      {/* EmailJS */}
       <AdminSettingsCard
-        description="Send automated confirmation emails for new repair bookings and store checkout orders."
+        description="Send automated confirmation emails for new repair bookings and store orders."
         icon={Mail}
-        title="EmailJS Notifications"
+        title="EmailJS notifications"
       >
         <SettingsStepItem
-          description={
-            <>
-              From <strong>dashboard.emailjs.com</strong> — your service,
-              public key, and the two template IDs for booking and order
-              confirmations.
-            </>
-          }
+          description={<>From <strong>dashboard.emailjs.com</strong>: your service, public key, and the two template IDs.</>}
           number={1}
-          title="EmailJS Credentials"
+          title="EmailJS credentials"
         >
-          <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            <TextField
-              className="flex flex-col gap-1.5"
-              value={emailjs.serviceId}
-              onChange={(v) => setEmailjs((s) => ({ ...s, serviceId: v }))}
-            >
-              <Label>EmailJS Service ID</Label>
-              <InputGroup>
-                <InputGroup.Input />
-              </InputGroup>
-            </TextField>
-            <TextField
-              className="flex flex-col gap-1.5"
-              value={emailjs.publicKey}
-              onChange={(v) => setEmailjs((s) => ({ ...s, publicKey: v }))}
-            >
-              <Label>Public Key</Label>
-              <InputGroup>
-                <InputGroup.Input />
-              </InputGroup>
-            </TextField>
-            <TextField
-              className="flex flex-col gap-1.5"
-              value={emailjs.bookingTemplate}
-              onChange={(v) => setEmailjs((s) => ({ ...s, bookingTemplate: v }))}
-            >
-              <Label>Booking Template ID</Label>
-              <InputGroup>
-                <InputGroup.Input />
-              </InputGroup>
-            </TextField>
-            <TextField
-              className="flex flex-col gap-1.5"
-              value={emailjs.orderTemplate}
-              onChange={(v) => setEmailjs((s) => ({ ...s, orderTemplate: v }))}
-            >
-              <Label>Order Template ID</Label>
-              <InputGroup>
-                <InputGroup.Input />
-              </InputGroup>
-            </TextField>
+          <div className="ad-stack-sm">
+            <div className="ad-form-2">
+              <Input autoComplete="off" label="Service ID" value={emailjs.serviceId} onChange={(e) => setEmailjs((s) => ({ ...s, serviceId: e.target.value }))} />
+              <Input autoComplete="off" label="Public key" value={emailjs.publicKey} onChange={(e) => setEmailjs((s) => ({ ...s, publicKey: e.target.value }))} />
+              <Input autoComplete="off" label="Booking template ID" value={emailjs.bookingTemplate} onChange={(e) => setEmailjs((s) => ({ ...s, bookingTemplate: e.target.value }))} />
+              <Input autoComplete="off" label="Order template ID" value={emailjs.orderTemplate} onChange={(e) => setEmailjs((s) => ({ ...s, orderTemplate: e.target.value }))} />
+            </div>
+            <div className="ad-actions">
+              <Button onClick={handleSaveEmailjs}><Save aria-hidden="true" size={16} />Save EmailJS settings</Button>
+            </div>
           </div>
-          <Button variant="primary" onClick={handleSaveEmailjs}>
-            <Save className="size-4" />
-            <span>Save EmailJS Settings</span>
-          </Button>
         </SettingsStepItem>
       </AdminSettingsCard>
 
-      {/* Stripe */}
       <AdminSettingsCard
         description="Publishable key for embedded card checkout, Apple Pay, and Google Pay. Secret keys stay server-side only."
         icon={CreditCard}
-        statusChip={
-          stripeSaved ? (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-success/15 px-3 py-1.5 text-xs font-bold text-success">
-              <CheckCircle2 className="size-4" /> Configured
-            </span>
-          ) : (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-surface-tertiary px-3 py-1.5 text-xs font-bold text-muted">
-              Not Configured
-            </span>
-          )
-        }
-        title="Stripe Payment Integration"
+        statusChip={stripeSaved ? ok("Configured") : <span className="ad-pill" data-tone="neutral">Not configured</span>}
+        title="Stripe payments"
       >
         <SettingsStepItem
-          description={
-            <>
-              From <strong>dashboard.stripe.com/apikeys</strong> — the key
-              starting with <code>pk_</code>. Safe to store here; it&rsquo;s
-              designed to be public.
-            </>
-          }
+          description={<>From <strong>dashboard.stripe.com/apikeys</strong>, the key starting with <code>pk_</code>. Safe to store here; it&rsquo;s designed to be public.</>}
           number={1}
-          title="Publishable Key"
+          title="Publishable key"
         >
-          <TextField
-            className="mb-3 flex flex-col gap-1.5 sm:max-w-md"
-            value={stripePubKey}
-            onChange={setStripePubKey}
-          >
-            <Label>Publishable Key (pk_live_… or pk_test_…)</Label>
-            <InputGroup>
-              <InputGroup.Input />
-            </InputGroup>
-          </TextField>
-          <Button variant="primary" onClick={handleSaveStripeKey}>
-            <Save className="size-4" />
-            <span>Save Publishable Key</span>
-          </Button>
+          <div className="ad-stack-sm" style={{ maxWidth: "28rem" }}>
+            <Input autoComplete="off" label="Publishable key" placeholder="pk_live_… or pk_test_…" value={stripePubKey} onChange={(e) => setStripePubKey(e.target.value)} />
+            <div className="ad-actions">
+              <Button onClick={handleSaveStripeKey}><Save aria-hidden="true" size={16} />Save publishable key</Button>
+            </div>
+          </div>
         </SettingsStepItem>
 
         <SettingsStepItem
-          description="These two never go in this form, and never should — they grant full account access and must live only in your hosting provider's environment variables, never in a browser-reachable database or bundle."
+          description="These never go in this form. They grant full account access and must live only in your hosting provider's environment variables."
           number={2}
-          title="Secret Key & Webhook Secret (server-side only)"
+          title="Secret key & webhook secret (server-side only)"
         >
-          <div className="rounded-2xl bg-surface-tertiary p-5">
-            <p className="m-0 mb-1.5 text-label text-muted">
-              1. Set <code>STRIPE_SECRET_KEY</code> (starts with{" "}
-              <code>sk_</code>) as an environment variable in your hosting
-              platform.
-            </p>
-            <p className="m-0 text-label text-muted">
-              2. Point your Stripe Webhook to <code>/api/stripe-webhook</code>,
-              listening for <code>payment_intent.succeeded</code>,{" "}
-              <code>payment_intent.payment_failed</code>,{" "}
-              <code>payment_intent.canceled</code>, and{" "}
-              <code>charge.refunded</code>, and set{" "}
-              <code>STRIPE_WEBHOOK_SECRET</code> the same way.
-            </p>
+          <div className="ad-note">
+            <p>1. Set <code>STRIPE_SECRET_KEY</code> (starts with <code>sk_</code>) as an environment variable in your hosting platform.</p>
+            <p>2. Point your Stripe webhook to <code>/api/stripe-webhook</code>, listening for <code>payment_intent.succeeded</code>, <code>payment_intent.payment_failed</code>, <code>payment_intent.canceled</code>, and <code>charge.refunded</code>, and set <code>STRIPE_WEBHOOK_SECRET</code> the same way.</p>
           </div>
         </SettingsStepItem>
       </AdminSettingsCard>
 
-      {/* Password */}
       <AdminSettingsCard
-        description={
-          isSupabaseConfigured()
-            ? "Update your administrator account password via Supabase Auth."
-            : "Local fallback access mode active."
-        }
+        description={isSupabaseConfigured() ? "Update your administrator password via Supabase Auth." : "Local fallback access mode active."}
         icon={KeyRound}
-        title="Admin Account Security"
+        title="Admin account security"
       >
         {isSupabaseConfigured() ? (
-          <div>
-            <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-              <TextField
-                className="flex flex-col gap-1.5"
-                type={showPw ? "text" : "password"}
-                value={newPw}
-                onChange={setNewPw}
-              >
-                <Label>New Password (min 12 chars)</Label>
-                <InputGroup>
-                  <InputGroup.Input />
-                  <InputGroup.Suffix>
-                    <button
-                      aria-label={showPw ? "Hide password" : "Show password"}
-                      tabIndex={-1}
-                      type="button"
-                      onClick={() => setShowPw((v) => !v)}
-                    >
-                      {showPw ? (
-                        <EyeOff className="size-4" />
-                      ) : (
-                        <Eye className="size-4" />
-                      )}
-                    </button>
-                  </InputGroup.Suffix>
-                </InputGroup>
-                <FieldError />
-              </TextField>
-              <TextField
-                className="flex flex-col gap-1.5"
-                type="password"
-                value={confirmPw}
-                onChange={setConfirmPw}
-              >
-                <Label>Confirm New Password</Label>
-                <InputGroup>
-                  <InputGroup.Input />
-                </InputGroup>
-                <FieldError />
-              </TextField>
+          <div className="ad-stack-sm">
+            <div className="ad-form-2">
+              <PasswordField autoComplete="new-password" description="At least 12 characters." label="New password" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
+              <PasswordField autoComplete="new-password" label="Confirm new password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
             </div>
-            <Button variant="primary" onClick={handleChangePw}>
-              <KeyRound className="size-4" />
-              <span>Update Password</span>
-            </Button>
+            <div className="ad-actions">
+              <Button onClick={handleChangePw}><KeyRound aria-hidden="true" size={16} />Update password</Button>
+            </div>
           </div>
         ) : (
-          <Alert status="warning">
-            <Alert.Indicator>
-              <TriangleAlert className="size-4" />
-            </Alert.Indicator>
-            <Alert.Content>
-              <Alert.Description>
-                Local development mode active. Set{" "}
-                <code>VITE_LOCAL_ADMIN_PW</code> in your <code>.env</code> file.
-              </Alert.Description>
-            </Alert.Content>
+          <Alert title="Local development mode" tone="warning">
+            Set <code>VITE_LOCAL_ADMIN_PW</code> in your <code>.env</code> file.
           </Alert>
         )}
       </AdminSettingsCard>
