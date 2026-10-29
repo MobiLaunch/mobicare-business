@@ -17,19 +17,10 @@ begin
   return new;
 end $$;
 
-drop trigger if exists stamp_profile on public.bookings;
-create trigger stamp_profile before insert on public.bookings for each row execute function public.stamp_shop_profile();
-drop trigger if exists stamp_profile on public.orders;
-create trigger stamp_profile before insert on public.orders for each row execute function public.stamp_shop_profile();
-drop trigger if exists stamp_profile on public.products;
-create trigger stamp_profile before insert on public.products for each row execute function public.stamp_shop_profile();
-drop trigger if exists stamp_profile on public.categories;
-create trigger stamp_profile before insert on public.categories for each row execute function public.stamp_shop_profile();
-
--- order_items.id had no default, so every line-item insert from the site failed.
-create sequence if not exists public.order_items_id_seq owned by public.order_items.id;
-select setval('public.order_items_id_seq', coalesce((select max(id) from public.order_items), 0) + 1, false);
-alter table public.order_items alter column id set default nextval('public.order_items_id_seq');
+create or replace trigger stamp_profile before insert on public.bookings for each row execute function public.stamp_shop_profile();
+create or replace trigger stamp_profile before insert on public.orders for each row execute function public.stamp_shop_profile();
+create or replace trigger stamp_profile before insert on public.products for each row execute function public.stamp_shop_profile();
+create or replace trigger stamp_profile before insert on public.categories for each row execute function public.stamp_shop_profile();
 
 -- One stock count: a shop product can point at a POS inventory item.
 alter table public.products add column if not exists inventory_id bigint references public.inventory(id) on delete set null;
@@ -50,7 +41,6 @@ create table if not exists public.stock_movements (
 );
 create index if not exists stock_movements_item_idx on public.stock_movements(inventory_id, created_at desc);
 alter table public.stock_movements enable row level security;
-drop policy if exists stock_movements_owner on public.stock_movements;
 create policy stock_movements_owner on public.stock_movements for select to authenticated using (profile_id = auth.uid());
 
 -- Every change to a POS stock count is logged, then mirrored onto its shop product.
@@ -66,8 +56,7 @@ begin
   end if;
   return new;
 end $$;
-drop trigger if exists inventory_stock_changed on public.inventory;
-create trigger inventory_stock_changed after update of stock on public.inventory for each row execute function public.inventory_stock_changed();
+create or replace trigger inventory_stock_changed after update of stock on public.inventory for each row execute function public.inventory_stock_changed();
 
 -- Linking a product pulls its stock (and SKU if blank) from the POS item.
 create or replace function public.product_link_sync()
@@ -83,8 +72,7 @@ begin
   end if;
   return new;
 end $$;
-drop trigger if exists product_link_sync on public.products;
-create trigger product_link_sync before insert or update of inventory_id on public.products for each row execute function public.product_link_sync();
+create or replace trigger product_link_sync before insert or update of inventory_id on public.products for each row execute function public.product_link_sync();
 
 -- A web order takes stock from the shared count; cancelling or a failed payment puts it back.
 create or replace function public.order_item_take_stock()
@@ -107,8 +95,7 @@ begin
   perform set_config('app.stock_ref', '', true);
   return new;
 end $$;
-drop trigger if exists order_item_take_stock on public.order_items;
-create trigger order_item_take_stock after insert on public.order_items for each row execute function public.order_item_take_stock();
+create or replace trigger order_item_take_stock after insert on public.order_items for each row execute function public.order_item_take_stock();
 
 create or replace function public.order_restock()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -133,5 +120,11 @@ begin
   end if;
   return new;
 end $$;
-drop trigger if exists order_restock on public.orders;
-create trigger order_restock after update of status on public.orders for each row execute function public.order_restock();
+create or replace trigger order_restock after update of status on public.orders for each row execute function public.order_restock();
+
+-- Trigger functions are internal; they must not be callable over the REST API.
+revoke execute on function public.inventory_stock_changed() from public, anon, authenticated;
+revoke execute on function public.order_item_take_stock() from public, anon, authenticated;
+revoke execute on function public.order_restock() from public, anon, authenticated;
+revoke execute on function public.product_link_sync() from public, anon, authenticated;
+revoke execute on function public.stamp_shop_profile() from public, anon, authenticated;
