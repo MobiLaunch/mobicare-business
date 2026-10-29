@@ -23,6 +23,10 @@ export interface Hero {
   primaryCta: string;
   secondaryCta: string;
 }
+export interface HowStep {
+  title: string;
+  body: string;
+}
 export interface TrustItem {
   icon: string;
   label: string;
@@ -153,6 +157,8 @@ export interface SiteContent {
   brand: Brand;
   hero: Hero;
   trustItems: TrustItem[];
+  heroPoints: string[];
+  howItWorks: HowStep[];
   repairBanner: RepairBanner;
   repairServices: SiteRepairService[];
   about: About;
@@ -182,6 +188,25 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     primaryCta: "Shop Accessories",
     secondaryCta: "Call 618-204-1497",
   },
+  heroPoints: [
+    "90-day parts warranty",
+    "Same-day on most repairs",
+    "iPhone, Android and iPad",
+  ],
+  howItWorks: [
+    {
+      title: "Tell us what's wrong",
+      body: "Book online in about a minute, or walk in. The $35 bench fee covers a full diagnostic.",
+    },
+    {
+      title: "Fixed fast",
+      body: "Most screens and batteries are done the same day, often in one to two hours.",
+    },
+    {
+      title: "Backed for 90 days",
+      body: "Every part we install carries a 90-day warranty. We quote before we start.",
+    },
+  ],
   trustItems: [
     {
       icon: "bolt",
@@ -1604,6 +1629,8 @@ const syncToSupabase = (state: SiteContent) => {
       brand: state.brand,
       hero: state.hero,
       trustItems: state.trustItems,
+      heroPoints: state.heroPoints,
+      howItWorks: state.howItWorks,
       repairBanner: state.repairBanner,
       repairServices: state.repairServices,
       about: state.about,
@@ -1648,6 +1675,7 @@ interface SiteContentState extends SiteContent {
   setColorScheme: (scheme: ColorScheme) => void;
   setViewerColorScheme: (scheme: ColorScheme | null) => void;
   updateTrustItem: (index: number, data: Partial<TrustItem>) => void;
+  setHomeCopy: (data: { heroPoints?: string[]; howItWorks?: HowStep[] }) => void;
   updateRepairService: (id: string, data: Partial<SiteRepairService>) => void;
   addRepairService: (service: SiteRepairService) => void;
   deleteRepairService: (id: string) => void;
@@ -1711,6 +1739,10 @@ export const useSiteStore = create<SiteContentState>()(
           ...get().appearance,
           colorScheme: scheme ?? get().appearance.colorScheme,
         });
+      },
+      setHomeCopy: (data) => {
+        set(data);
+        syncToSupabase(get());
       },
       updateTrustItem: (index, data) => {
         const items = [...get().trustItems];

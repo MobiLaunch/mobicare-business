@@ -8,7 +8,7 @@ import PageMeta from "@/components/PageMeta";
 import ProductCard from "@/components/ProductCard";
 import LocationCard from "@/components/home/LocationCard";
 import { AKKO_CONFIG } from "@/lib/config";
-import { useSiteStore } from "@/lib/siteStore";
+import { DEFAULT_SITE_CONTENT, useSiteStore } from "@/lib/siteStore";
 import { useProductStore } from "@/lib/store";
 
 const BookingWizard = lazy(() => import("@/components/BookingWizard"));
@@ -23,11 +23,7 @@ const ICONS: Record<string, LucideIcon> = {
   storage: HardDrive,
 };
 
-const STEPS = [
-  { icon: CalendarCheck, title: "Tell us what's wrong", body: "Book online in about a minute, or walk in. The $35 bench fee covers a full diagnostic." },
-  { icon: Zap, title: "Fixed fast", body: "Most screens and batteries are done the same day, often in one to two hours." },
-  { icon: ShieldCheck, title: "Backed for 90 days", body: "Every part we install carries a 90-day warranty. We quote before we start." },
-];
+const POINT_ICONS: LucideIcon[] = [ShieldCheck, Zap, Smartphone];
 
 export default function Home() {
   const navigate = useNavigate();
@@ -35,6 +31,8 @@ export default function Home() {
   const services = useSiteStore((s) => s.repairServices);
   const ctaStrip = useSiteStore((s) => s.ctaStrip);
   const trustItems = useSiteStore((s) => s.trustItems) || [];
+  const heroPoints = useSiteStore((s) => s.heroPoints) || DEFAULT_SITE_CONTENT.heroPoints;
+  const howItWorks = useSiteStore((s) => s.howItWorks) || DEFAULT_SITE_CONTENT.howItWorks;
   const featured = useProductStore(useShallow((s) => s.products.filter((p) => p.featured && p.active).slice(0, 4)));
   // `null` closed; `{ service: null }` open with no preselection; a name opens on that service.
   const [booking, setBooking] = useState<{ service: string | null } | null>(null);
@@ -62,9 +60,11 @@ export default function Home() {
                 <button className="mc-ghost mc-ghost--lg" type="button" onClick={() => navigate("/shop")}>Shop accessories</button>
               </div>
               <div className="mc-hero-meta">
-                <span><ShieldCheck aria-hidden="true" size={16} strokeWidth={1.75} />90-day parts warranty</span>
-                <span><Zap aria-hidden="true" size={16} strokeWidth={1.75} />Same-day on most repairs</span>
-                <span><Smartphone aria-hidden="true" size={16} strokeWidth={1.75} />iPhone, Android and iPad</span>
+                {heroPoints.filter(Boolean).map((point, i) => {
+                  const PointIcon = POINT_ICONS[i % POINT_ICONS.length];
+
+                  return <span key={i}><PointIcon aria-hidden="true" size={16} strokeWidth={1.75} />{point}</span>;
+                })}
               </div>
             </div>
             <LocationCard />
@@ -112,8 +112,8 @@ export default function Home() {
               <p className="mc-lead">Three steps from broken to back in your pocket.</p>
             </div>
             <ol className="mc-steps">
-              {STEPS.map((s) => (
-                <li key={s.title}>
+              {howItWorks.map((s, i) => (
+                <li key={i}>
                   <h3 className="mc-h3">{s.title}</h3>
                   <p className="mc-text">{s.body}</p>
                 </li>

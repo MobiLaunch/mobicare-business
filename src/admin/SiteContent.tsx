@@ -328,11 +328,14 @@ function HeroTab() {
   const hero = useSiteStore((s) => s.hero);
   const updateHero = useSiteStore((s) => s.updateHero);
   const addToast = useToastStore((s) => s.add);
+  const heroPoints = useSiteStore((s) => s.heroPoints) || DEFAULT_SITE_CONTENT.heroPoints;
   const [l, setL] = useState({ ...hero });
+  const [points, setPoints] = useState([...heroPoints, "", "", ""].slice(0, 3));
   const set = <K extends keyof typeof l>(k: K, v: (typeof l)[K]) =>
     setL((p) => ({ ...p, [k]: v }));
   const save = () => {
     updateHero(l);
+    useSiteStore.getState().setHomeCopy({ heroPoints: points.map((p) => p.trim()).filter(Boolean) });
     addToast("Hero section saved", "success");
   };
 
@@ -350,6 +353,12 @@ function HeroTab() {
         <Field value={l.primaryCta} onChange={(v) => set("primaryCta", v)} label="Primary CTA Label" description="Main button — links to /shop." />
         <Field value={l.secondaryCta} onChange={(v) => set("secondaryCta", v)} label="Secondary CTA Label" description="Second button — e.g. “Call 618-204-1497”." />
       </div>
+      <SectionLabel>Highlights under the buttons</SectionLabel>
+      <div className="ad-form-2">
+        {points.map((pt, i) => (
+          <Field key={i} label={`Highlight ${i + 1}`} value={pt} onChange={(v) => setPoints((a) => a.map((x, j) => (j === i ? v : x)))} />
+        ))}
+      </div>
       <SaveButton label="Save Hero" onClick={save} />
     </div>
   );
@@ -359,7 +368,11 @@ function HeroTab() {
 function TrustTab() {
   const trustItems = useSiteStore((s) => s.trustItems);
   const addToast = useToastStore((s) => s.add);
+  const howItWorks = useSiteStore((s) => s.howItWorks) || DEFAULT_SITE_CONTENT.howItWorks;
   const [ls, setLs] = useState(trustItems.map((t) => ({ ...t })));
+  const [steps, setSteps] = useState(howItWorks.map((t) => ({ ...t })));
+  const setStep = (i: number, k: "title" | "body", v: string) =>
+    setSteps((a) => a.map((x, idx) => (idx === i ? { ...x, [k]: v } : x)));
   const set = (i: number, k: "label" | "desc", v: string) =>
     setLs((a) => a.map((l, idx) => (idx === i ? { ...l, [k]: v } : l)));
   const save = () => {
@@ -368,13 +381,14 @@ function TrustTab() {
     // item 0 afterwards just reuses the granular updater's Supabase sync.
     useSiteStore.setState({ trustItems: ls.map((t) => ({ ...t })) });
     useSiteStore.getState().updateTrustItem(0, {});
+    useSiteStore.getState().setHomeCopy({ howItWorks: steps.map((t) => ({ ...t })) });
     addToast("Trust bar saved", "success");
   };
 
   return (
     <div>
       <TabIntro
-        description="Four highlights shown below the hero on the homepage."
+        description="The highlights strip below the hero, plus the how-it-works steps on the homepage."
         title="Trust Bar"
       />
       <div className="ad-form-2">
@@ -389,6 +403,19 @@ function TrustTab() {
             <div className="ad-stack-sm">
               <Field value={item.label} onChange={(v) => set(i, "label", v)} label="Label" />
               <Field value={item.desc} onChange={(v) => set(i, "desc", v)} label="Description" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <SectionLabel>How it works</SectionLabel>
+      <p className="ad-hint ad-mb-sm">Three steps shown further down the homepage.</p>
+      <div className="ad-form-2">
+        {steps.map((st, i) => (
+          <div key={i} className="ad-panel">
+            <span className="ad-numdot ad-mb-sm">{i + 1}</span>
+            <div className="ad-stack-sm">
+              <Field value={st.title} onChange={(v) => setStep(i, "title", v)} label="Title" />
+              <Area label="Text" rows={3} value={st.body} onChange={(e) => setStep(i, "body", e.target.value)} />
             </div>
           </div>
         ))}
