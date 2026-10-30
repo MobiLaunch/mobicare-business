@@ -1,0 +1,146 @@
+diff --git a/novaops-customer-portal.html b/novaops-customer-portal.html
+index 293765b..c58c1e5 100644
+--- a/novaops-customer-portal.html
++++ b/novaops-customer-portal.html
+@@ -687,8 +687,8 @@ function escHtml(str) {
+ // ══════════════════════════════════════════════════
+ async function loadLiveStats() {
+   try {
+-    const { count } = await db.from('tickets').select('*', { count: 'exact', head: true })
+-    if (count !== null && !siteSettings.stat_repairs) {
++    const { data: count } = await db.rpc('portal_ticket_count')
++    if (count !== null && count !== undefined && !siteSettings.stat_repairs) {
+       document.getElementById('statRepairs').textContent = count.toLocaleString() + '+'
+     }
+   } catch(e) {}
+@@ -708,8 +708,8 @@ async function lookupTicket() {
+   resultEl.innerHTML = ''
+   nfEl.classList.remove('visible')
+ 
+-  if (!idRaw && !contact) {
+-    alert('Please enter a ticket number or your contact info.')
++  if (!idRaw || !contact) {
++    alert('Please enter your ticket number and the email or phone number on the ticket.')
+     return
+   }
+ 
+@@ -717,35 +717,15 @@ async function lookupTicket() {
+   btn.disabled = true
+ 
+   try {
+-    // Strip non-numeric prefix (e.g. "TK-2847" → 2847)
+-    const ticketId = idRaw ? parseInt(idRaw.replace(/\D/g,''), 10) : null
+-
+-    // We need to join customer for contact lookup — fetch tickets then filter
+-    let query = db.from('tickets').select(`
+-      id, device, device_model, issue, status, priority, price, serial_number,
+-      created_at, updated_at, notes, customer_id,
+-      customers (id, name, email, phone)
+-    `)
+-
+-    if (ticketId) {
+-      query = query.eq('id', ticketId)
+-    }
++    // Strip non-numeric prefix (e.g. "TK-2847" -> 2847)
++    const ticketId = parseInt(idRaw.replace(/\D/g,''), 10)
++    if (!ticketId) throw new Error('That ticket number does not look right.')
+ 
+-    const { data: tickets, error } = await query.order('id', { ascending: false }).limit(50)
++    // The database only answers when the ticket number and contact details match.
++    const { data, error } = await db.rpc('portal_ticket_lookup', { p_ticket: ticketId, p_contact: contact })
+     if (error) throw error
+ 
+-    let found = null
+-
+-    if (ticketId && !contact) {
+-      found = (tickets || [])[0] || null
+-    } else if (contact && tickets) {
+-      found = tickets.find(t => {
+-        const c = t.customers
+-        if (!c) return false
+-        return (c.email || '').toLowerCase().includes(contact) ||
+-               (c.phone || '').replace(/\D/g,'').includes(contact.replace(/\D/g,''))
+-      }) || null
+-    }
++    const found = data ? { ...data, notes: [], customers: { name: data.customer_name } } : null
+ 
+     if (!found) {
+       nfEl.classList.add('visible')
+@@ -901,55 +881,12 @@ async function submitBooking() {
+   btn.disabled = true
+ 
+   try {
+-    // 1. Upsert customer by email
+-    let customerId = null
+-    const { data: existingCustomers } = await db
+-      .from('customers')
+-      .select('id')
+-      .eq('email', email)
+-      .limit(1)
+-
+-    if (existingCustomers && existingCustomers.length > 0) {
+-      customerId = existingCustomers[0].id
+-      // Update phone if provided
+-      if (phone) await db.from('customers').update({ phone }).eq('id', customerId)
+-    } else {
+-      const { data: newCust, error: custErr } = await db
+-        .from('customers')
+-        .insert({ name: `${first} ${last}`, email, phone: phone || null, tags: [], notes: '' })
+-        .select('id')
+-        .single()
+-      if (custErr) throw custErr
+-      customerId = newCust.id
+-    }
+-
+-    // 2. Insert booking request as a ticket
+-    const { data: ticket, error: ticketErr } = await db
+-      .from('tickets')
+-      .insert({
+-        customer_id: customerId,
+-        device: brand,
+-        device_model: model || null,
+-        issue: `[Online Booking${svc ? ' - ' + svc : ''}] ${issue}`,
+-        status: 'Open',
+-        priority: 'normal',
+-        price: 0,
+-        serial_number: '',
+-        notes: JSON.stringify([{
+-          id: Date.now().toString(),
+-          text: `Online booking request. Service: ${svc || 'Not specified'}. Preferred date: ${date || 'Flexible'}.`,
+-          timestamp: new Date().toISOString(),
+-          author: 'Portal'
+-        }]),
+-        photos: JSON.stringify([]),
+-        parts: JSON.stringify([]),
+-        payments: JSON.stringify([]),
+-        time_log: JSON.stringify([]),
+-      })
+-      .select('id')
+-      .single()
+-
+-    if (ticketErr) throw ticketErr
++    // The database matches or creates the customer and opens the ticket in one step.
++    const { data: result, error: reqErr } = await db.rpc('portal_submit_request', {
++      payload: { name: `${first} ${last}`, email, phone: phone || '', device: brand, device_model: model || '', service: svc || '', issue, date: date || '' }
++    })
++    if (reqErr) throw reqErr
++    const ticket = { id: result.ticket_id }
+ 
+     // 3. Show success
+     document.getElementById('bookingRef').textContent = `#${ticket.id} — ${first} ${last}`
+@@ -971,12 +908,12 @@ async function submitBooking() {
+ const botResponses = {
+   screen:   'Screen repair starts at $49 and most are done same-day within 1–2 hours! ✨',
+   cost:     'Pricing depends on device & repair type. Screens from $49, batteries from $39, ports from $45. Book online for an exact quote!',
+-  long:     'Most screen & battery repairs take 1–2 hours. Water damage / logic board repairs may take 24–48 hrs. We'll text you when it's ready!',
++  long:     'Most screen & battery repairs take 1–2 hours. Water damage / logic board repairs may take 24–48 hrs. We\'ll text you when it\'s ready!',
+   warranty: 'Yes! All repairs include a 90-day warranty on parts AND labor. If it fails, we fix it free. 🛡️',
+   house:    'We do offer house calls for select repairs in our area! Book online and mention it in your notes, or give us a call.',
+   battery:  'Battery replacements start at $39 and usually take under an hour. Quality cells with full warranty coverage. 🔋',
+-  book:     'Scroll up and use the booking form! Pick your service, fill out your info, and we'll confirm within 30 minutes.',
+-  track:    'Enter your ticket number (or your email/phone) in the Track My Repair section at the top of this page!',
++  book:     'Scroll up and use the booking form! Pick your service, fill out your info, and we\'ll confirm within 30 minutes.',
++  track:    'Enter your ticket number and the email or phone on the ticket in the Track My Repair section at the top of this page!',
+   water:    'Water damage starts at $79. The sooner you bring it in the better! We do ultrasonic cleaning & board-level repair.',
+   hello:    'Hey there! 👋 What can I help you with today?',
+   default:  'Great question! For the most accurate answer, book online and include your question in the notes — our team will reply ASAP. 😊',
