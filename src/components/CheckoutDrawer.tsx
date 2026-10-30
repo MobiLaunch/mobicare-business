@@ -21,6 +21,9 @@ import { getStripePublishableKey } from "@/lib/config";
 
 type Step = "cart" | "shipping" | "payment" | "success";
 type ShippingInfo = { name: string; email: string; phone: string; address: string; city: string; state: string; zip: string };
+// Matches the standard-shipping rule in lib/shipping.ts and the server-side pricing.
+const FREE_SHIPPING_AT = 35;
+
 type Pricing = { subtotal: number; shipping: number; tax: number; total: number };
 type PaymentSession = Pricing & { id: string; clientSecret: string; idempotencyKey: string };
 
@@ -224,6 +227,12 @@ export default function CheckoutDrawer() {
                     </div>
                   );
                 })}
+              </div>
+              <div className="mc-freeship" data-done={subtotal >= FREE_SHIPPING_AT ? "true" : "false"}>
+                <p className="mc-small">
+                  {subtotal >= FREE_SHIPPING_AT ? <strong>You&apos;ve unlocked free standard shipping.</strong> : <>Add <strong>${(FREE_SHIPPING_AT - subtotal).toFixed(2)}</strong> more for free standard shipping.</>}
+                </p>
+                <div aria-hidden="true" className="mc-freeship-bar"><span style={{ width: `${Math.min(100, Math.round((subtotal / FREE_SHIPPING_AT) * 100))}%` }} /></div>
               </div>
               <div className="mc-group">
                 <div className="mc-item mc-item--between"><span className="mc-item-label">Subtotal</span><span className="mc-price">${subtotal.toFixed(2)}</span></div>

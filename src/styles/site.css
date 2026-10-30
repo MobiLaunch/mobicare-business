@@ -607,3 +607,25 @@ html[data-theme="dark"] .mc-icon { color: var(--mc-brand); }
 @media (prefers-reduced-motion: reduce) { .mc-img-skel { animation: none; } .mc-img { transition: none; } }
 
 .mc-chat-compose { display: grid; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); border-top: 1px solid var(--border-subtle); max-height: 60%; overflow-y: auto; }
+
+/* Free-shipping progress in the cart */
+.mc-freeship { display: grid; gap: 8px; padding: var(--space-3) var(--space-4); border-radius: var(--radius-panel); background: var(--mc-tint); }
+.mc-freeship p { margin: 0; }
+.mc-freeship-bar { height: 6px; border-radius: 999px; background: color-mix(in oklab, var(--mc-brand) 18%, var(--surface)); overflow: hidden; }
+.mc-freeship-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--mc-brand); transition: width .5s cubic-bezier(.22, 1, .36, 1); }
+.mc-freeship[data-done="true"] .mc-freeship-bar > span { background: var(--success); }
+@media (prefers-reduced-motion: reduce) { .mc-freeship-bar > span { transition: none; } }
+
+/* Product cards: a gentle lift and image zoom, and a springy add button. */
+.mc-product { transition: border-color var(--duration-fast, .15s), box-shadow var(--duration-fast, .15s), transform .25s cubic-bezier(.22, 1, .36, 1); }
+.mc-media { overflow: hidden; }
+.mc-media img { transition: transform .5s cubic-bezier(.22, 1, .36, 1); }
+@media (hover: hover) {
+  .mc-product:hover { transform: translateY(-3px); }
+  .mc-product:hover .mc-media img { transform: scale(1.05); }
+}
+.mc-add { transition: transform .2s cubic-bezier(.34, 1.56, .64, 1), background-color .15s, color .15s; }
+.mc-add:active { transform: scale(.86); }
+.mc-add.is-added { animation: mc-added .45s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes mc-added { 0% { transform: scale(.7); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .mc-product, .mc-media img, .mc-add { transition: none; } .mc-add.is-added { animation: none; } .mc-product:hover { transform: none; } .mc-product:hover .mc-media img { transform: none; } }
