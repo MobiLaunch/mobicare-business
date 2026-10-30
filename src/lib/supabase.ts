@@ -759,6 +759,24 @@ export async function sbFetchRepairCatalog(): Promise<RepairCatalogItem[] | null
   return (data || []).map((r) => ({ ...r, price: Number(r.price) })) as RepairCatalogItem[];
 }
 
+export interface CatalogDevice { brand: string; category: string; name: string }
+
+/** The POS device list (about 1,900 models), used to suggest exact models in the booking form. */
+export async function sbFetchDeviceCatalog(): Promise<CatalogDevice[] | null> {
+  const sb = getClient();
+
+  if (!sb) return null;
+  const { data, error } = await sb.from("public_device_catalog").select("brand,category,name").limit(5000);
+
+  if (error) {
+    console.warn("sbFetchDeviceCatalog:", error.message);
+
+    return null;
+  }
+
+  return (data || []) as CatalogDevice[];
+}
+
 export interface PosInventoryItem {
   id: number;
   name: string;

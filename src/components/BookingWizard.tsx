@@ -15,7 +15,7 @@ import { Stepper } from "@/components/arc/stepper/stepper";
 import { BUSINESS, getEmailJSConfig } from "@/lib/config";
 import { DEVICE_KIND_ORDER, useSiteStore } from "@/lib/siteStore";
 import { useToastStore } from "@/lib/store";
-import { isSupabaseConfigured, sbFetchRepairCatalog, sbInsertBooking, type RepairCatalogItem } from "@/lib/supabase";
+import { isSupabaseConfigured, sbFetchDeviceCatalog, sbFetchRepairCatalog, sbInsertBooking, type CatalogDevice, type RepairCatalogItem } from "@/lib/supabase";
 import { modelsForBrand, quotesForModel } from "@/lib/repairCatalog";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -59,10 +59,12 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
   const houseCallPricing = useSiteStore((s) => s.houseCallPricing);
   const addToast = useToastStore((s) => s.add);
   const [catalog, setCatalog] = useState<RepairCatalogItem[]>([]);
+  const [devices, setDevices] = useState<CatalogDevice[]>([]);
   const [quote, setQuote] = useState<number | null>(null);
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
     void sbFetchRepairCatalog().then((items) => items && setCatalog(items));
+    void sbFetchDeviceCatalog().then((items) => items && setDevices(items));
   }, []);
   const [visitType, setVisitType] = useState<"in-store" | "home" | "">("");
   const [step, setStep] = useState(0);
@@ -114,7 +116,12 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
     m.generations.length ? m.generations.map((g) => `${m.name} ${g}`) : [m.name],
   );
   // Models with posted prices come first; the shop's own list fills in the rest.
-  const modelSuggestions = [...new Set([...liveModels, ...shopModels])];
+  // The wizard's device types map onto the POS catalogue's broader category names.
+  const KIND_CATEGORIES: Record<string, string[]> = { Phone: ["Smartphone"], Tablet: ["Tablet"], Laptop: ["Laptop"], Desktop: ["Desktop"], Watch: ["Smartwatch"], Audio: ["Audio", "Headphones"] };
+  const posModels = brandName && form.deviceKind
+    ? devices.filter((d) => d.brand.toLowerCase() === brandName.toLowerCase() && (KIND_CATEGORIES[form.deviceKind] || []).some((k) => d.category.startsWith(k))).map((d) => d.name)
+    : [];
+  const modelSuggestions = [...new Set([...liveModels, ...posModels, ...shopModels])];
   const catalogQuotes = catalog.length && !brandIsOther && brandName && form.deviceModelText.trim() ? quotesForModel(catalog, brandName, form.deviceModelText) : [];
   const catalogPick = catalogQuotes.find((q) => q.id === form.service) ?? null;
   const priceLine = catalogPick ? money(catalogPick.price) : selectedService?.priceRange || "";

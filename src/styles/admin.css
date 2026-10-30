@@ -351,3 +351,5 @@ html[data-theme="dark"] .ad-sc-nav button[aria-current="page"] svg { color: var(
 .ad-gen-x:hover { background: color-mix(in oklab, var(--danger) 14%, transparent); color: var(--danger); }
 @media (max-width: 767px) { .ad-sc-nav.ad-only-wide { display: none; } }
 @media (min-width: 768px) { .ad-sc-select { display: none; } }
+.ad-warn.ad-moved { border-color: color-mix(in oklab, var(--accent) 35%, transparent); background: color-mix(in oklab, var(--accent) 8%, var(--surface)); }
+.ad-warn.ad-moved svg { color: var(--accent-strong); }

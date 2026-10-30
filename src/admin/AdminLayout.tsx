@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { ArrowUpRight, Menu, TriangleAlert } from "lucide-react";
 
@@ -7,10 +7,17 @@ import { useProductStore } from "@/lib/store";
 import AdminBottomNav from "@/admin/components/AdminBottomNav";
 import AdminSidebarContent, { ADMIN_NAV } from "@/admin/components/AdminSidebarContent";
 
+// The shop is managed from the POS now. Set VITE_REDIRECT_ADMIN=1 to send /admin there automatically.
+const POS_URL = ((import.meta.env.VITE_POS_URL as string | undefined) || "https://novaops-updated.vercel.app").replace(/\/$/, "");
+const REDIRECT = import.meta.env.VITE_REDIRECT_ADMIN === "1";
+
 export default function AdminLayout() {
   const location = useLocation();
   const loadError = useProductStore((s) => s.loadError);
   const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => {
+    if (REDIRECT) window.location.replace(`${POS_URL}/website`);
+  }, []);
   const current = ADMIN_NAV.find((n) => location.pathname.startsWith(n.path))?.label ?? "Console";
 
   return (
@@ -38,6 +45,12 @@ export default function AdminLayout() {
             <span className="ad-user"><i aria-hidden="true">A</i><span className="ad-hide-mobile">Administrator</span></span>
           </div>
         </header>
+
+        <div className="ad-warn ad-moved" role="status">
+          <ArrowUpRight aria-hidden="true" size={18} />
+          <span><strong>The shop now runs from NovaOps.</strong> Orders, bookings, inventory and site content live in the Website section there. This admin still works until you switch it off.</span>
+          <a href={`${POS_URL}/website`} rel="noreferrer" target="_blank">Open NovaOps</a>
+        </div>
 
         {loadError && (
           <div className="ad-warn" role="alert">
