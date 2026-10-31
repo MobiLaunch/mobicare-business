@@ -12,12 +12,13 @@ export function installPreviewBridge() {
   if (typeof window === "undefined" || window.parent === window) return;
   const onMessage = (e: MessageEvent) => {
     if (!ALLOWED.some((re) => re.test(e.origin))) return;
-    const d = e.data as { source?: string; appearance?: Record<string, unknown>; hero?: Record<string, unknown>; copy?: Record<string, string>; policies?: unknown; textMap?: Record<string, string>; sections?: Record<string, unknown> } | null;
+    const d = e.data as { source?: string; appearance?: Record<string, unknown>; hero?: Record<string, unknown>; copy?: Record<string, string>; policies?: unknown; layout?: unknown; textMap?: Record<string, string>; sections?: Record<string, unknown> } | null;
 
     if (!d || d.source !== "novaops-design") return;
     const state = useSiteStore.getState();
 
     if (d.copy) useSiteStore.setState({ copy: d.copy } as never);
+    if (d.layout) useSiteStore.setState({ layout: d.layout } as never);
     if (d.textMap) useSiteStore.setState({ textMap: d.textMap } as never);
     if (d.policies) useSiteStore.setState({ policies: d.policies } as never);
     if (d.sections) useSiteStore.setState(d.sections as never);

@@ -182,6 +182,8 @@ export interface SiteContent {
   policies?: Record<string, { title?: string; lead?: string; sections?: Array<{ title: string; body: string }> }>;
   /** Replacement wording for any text on the site, matched by its exact original text. */
   textMap?: Record<string, string>;
+  /** Which homepage blocks show, and in what order. */
+  layout?: { home?: { order?: string[]; hidden?: string[] } };
 }
 
 // ─── Default site content ──────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { Fragment, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, BatteryFull, Camera, CalendarCheck, Droplets, HardDrive, PlugZap, ShieldCheck, Smartphone, Wrench, Zap, type LucideIcon } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
@@ -26,6 +26,9 @@ const ICONS: Record<string, LucideIcon> = {
 
 const POINT_ICONS: LucideIcon[] = [ShieldCheck, Zap, Smartphone];
 
+/** Homepage blocks in their default order; the admin can reorder or hide them from the design studio. */
+export const HOME_BLOCKS = ["hero", "services", "how", "featured", "protect", "cta"];
+
 export default function Home() {
   const navigate = useNavigate();
   const c = useCopy();
@@ -39,13 +42,11 @@ export default function Home() {
   // `null` closed; `{ service: null }` open with no preselection; a name opens on that service.
   const [booking, setBooking] = useState<{ service: string | null } | null>(null);
 
-  return (
-    <div id="homepage-main-container">
-      <PageMeta
-        description="Southern Illinois' preferred device repair shop. Next-day repairs for almost everything. Four years of helping you love your device, longer."
-        title="Mobicare Device Recovery: iPhone and phone repair in Fairfield, IL"
-      />
-
+  const layout = useSiteStore((s) => s.layout)?.home;
+  const hidden = new Set(layout?.hidden || []);
+  const order = [...(layout?.order || []).filter((id) => HOME_BLOCKS.includes(id)), ...HOME_BLOCKS.filter((id) => !(layout?.order || []).includes(id))];
+  const blocks: Record<string, ReactNode> = {
+    hero: (
       <div className="mc-band mc-band--tint" style={hero.mediaUrl && hero.mediaType && hero.mediaType !== "none" ? ({ "--mc-hero-dim": hero.mediaDim ?? 55 } as CSSProperties) : undefined}>
         {hero.mediaUrl && hero.mediaType === "image" && <div aria-hidden="true" className="mc-hero-media"><img alt="" decoding="async" fetchPriority="high" src={hero.mediaUrl} /></div>}
         {hero.mediaUrl && hero.mediaType === "video" && <div aria-hidden="true" className="mc-hero-media"><video autoPlay loop muted playsInline poster={hero.mediaPoster || undefined} preload="metadata" src={hero.mediaUrl} /></div>}
@@ -82,7 +83,8 @@ export default function Home() {
           )}
         </div>
       </div>
-
+    ),
+    services: (
       <div className="mc-page">
         {services.length > 0 && (
           <section aria-labelledby="services-title" className="mc-section" id="services-section">
@@ -107,7 +109,8 @@ export default function Home() {
           </section>
         )}
       </div>
-
+    ),
+    how: (
       <div className="mc-band mc-band--ink">
         <div className="mc-page">
           <section aria-labelledby="how-title" className="mc-section" id="how-it-works-section">
@@ -126,7 +129,8 @@ export default function Home() {
           </section>
         </div>
       </div>
-
+    ),
+    featured: (
       <div className="mc-page">
         {featured.length > 0 && (
           <section aria-labelledby="featured-title" className="mc-section" id="featured-products-section">
@@ -143,7 +147,10 @@ export default function Home() {
             </div>
           </section>
         )}
-
+      </div>
+    ),
+    protect: (
+      <div className="mc-page">
         <section aria-labelledby="protect-title" className="mc-section" id="protection-teaser-section" style={{ paddingTop: 0 }}>
           <div className="mc-promo">
             <div className="mc-stack-sm" style={{ flex: "1 1 22rem" }}>
@@ -153,7 +160,10 @@ export default function Home() {
             <Link className="mc-cta mc-cta--lg mc-cta--ink" to="/protection"><span {...c.p("home.protect.button")}>{c("home.protect.button")}</span><ArrowRight aria-hidden="true" size={18} strokeWidth={1.75} /></Link>
           </div>
         </section>
-
+      </div>
+    ),
+    cta: (
+      <div className="mc-page">
         <section aria-labelledby="cta-title" className="mc-section" id="cta-banner-section" style={{ paddingTop: 0 }}>
           <div className="mc-card mc-card--muted" style={{ display: "grid", justifyItems: "center", textAlign: "center", gap: "var(--space-5)", padding: "clamp(32px, 6vw, 72px)", background: "var(--surface)" }}>
             <h2 className="mc-h2" id="cta-title" style={{ maxWidth: "20ch" }} {...c.p("ctaStrip.headline")}>{ctaStrip.headline}</h2>
@@ -165,6 +175,21 @@ export default function Home() {
           </div>
         </section>
       </div>
+    ),
+  };
+
+  return (
+    <div id="homepage-main-container">
+      <PageMeta
+        description="Southern Illinois' preferred device repair shop. Next-day repairs for almost everything. Four years of helping you love your device, longer."
+        title="Mobicare Device Recovery: iPhone and phone repair in Fairfield, IL"
+      />
+
+      {order.map((id) => {
+        if (hidden.has(id)) return null;
+
+        return <Fragment key={id}>{blocks[id]}</Fragment>;
+      })}
 
       {booking && (
         <Suspense fallback={null}>
