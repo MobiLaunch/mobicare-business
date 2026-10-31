@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Menu, ShoppingBag } from "lucide-react";
 
+import { useCopy } from "@/lib/copy";
 import MenuPanel, { type MenuLink } from "@/components/MenuPanel";
 import { ThemeSwitch } from "@/components/arc/theme-switch/theme-switch";
 import { useAuth } from "@/lib/AuthContext";
@@ -20,7 +21,10 @@ const LINKS: MenuLink[] = [
   { to: "/about", label: "About", hint: "Our story and shop" },
 ];
 
+const NAV_KEYS: Record<string, string> = { "/": "home", "/shop": "shop", "/repairs": "repairs", "/protection": "protection", "/about": "about" };
+
 export default function Header() {
+  const c = useCopy();
   const brand = useSiteStore((s) => s.brand);
   const appearance = useSiteStore((s) => s.appearance);
   const viewerColorScheme = useSiteStore((s) => s.viewerColorScheme);
@@ -63,7 +67,7 @@ export default function Header() {
         </div>
       </div>
 
-      <MenuPanel accountTo={user ? "/account" : "/login"} links={LINKS} open={menuOpen} signedIn={!!user} onBook={() => setBooking(true)} onOpenChange={setMenuOpen} />
+      <MenuPanel accountTo={user ? "/account" : "/login"} links={LINKS.map((l) => { const k = NAV_KEYS[l.to]; return { ...l, label: c(`nav.${k}`), hint: c(`nav.${k}.hint`) }; })} open={menuOpen} signedIn={!!user} onBook={() => setBooking(true)} onOpenChange={setMenuOpen} />
 
       {booking && (
         <Suspense fallback={null}>

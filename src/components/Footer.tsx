@@ -28,6 +28,8 @@ const POLICIES = [
   { label: "Privacy", to: "/privacy" },
 ];
 
+const FOOTER_KEYS: Record<string, string> = {"All products": "shop.all", "Chargers": "shop.chargers", "Cases": "shop.cases", "Screen protectors": "shop.screen", "Cables": "shop.cables", "All services": "rep.all", "Screen repair": "rep.screen", "Battery replacement": "rep.battery", "Water damage": "rep.water", "Device protection": "rep.protect", "Shipping": "pol.shipping", "Returns and exchanges": "pol.returns", "Refunds": "pol.refunds", "Privacy": "pol.privacy"};
+
 function Column({ title, links, copyKey }: { title: string; links: Array<{ label: string; to: string }>; copyKey?: string }) {
   const c = useCopy();
 
@@ -36,7 +38,7 @@ function Column({ title, links, copyKey }: { title: string; links: Array<{ label
       <h2 className="mc-gl" {...(copyKey ? c.p(copyKey) : {})}>{title}</h2>
       <ul className="mc-stack-sm" style={{ listStyle: "none", margin: 0, padding: 0 }}>
         {links.map((l) => (
-          <li key={l.to}><Link className="mc-footer-link" to={l.to}>{l.label}</Link></li>
+          <li key={l.to}><Link className="mc-footer-link" to={l.to}>{FOOTER_KEYS[l.label] ? c(`footer.link.${FOOTER_KEYS[l.label]}`) : l.label}</Link></li>
         ))}
       </ul>
     </nav>

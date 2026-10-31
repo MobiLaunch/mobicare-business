@@ -1,3 +1,4 @@
+import { useCopy } from "@/lib/copy";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import emailjs from "@emailjs/browser";
@@ -52,6 +53,7 @@ function money(n: number) {
 }
 
 export default function BookingWizard({ onClose = () => {}, defaultService = null, mode = "modal" }: BookingWizardProps) {
+  const c = useCopy();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const repairServices = useSiteStore((s) => s.repairServices);
@@ -224,7 +226,7 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
     </div>
   );
 
-  let title = "Book a repair";
+  let title = c("wizard.title");
   let description = "How would you like your device serviced?";
 
   if (done) { title = "You're all set"; description = "Your appointment request has been submitted."; }
@@ -234,19 +236,19 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
   const body = done ? (
     <div className="mc-stack">
       {quote !== null && <Alert title={`Quoted ${money(quote)}`} tone="success">Your repair is saved in our shop system. The final price is confirmed after diagnosis.</Alert>}
-      <p className="mc-text">We&apos;ll confirm by phone or email within 2 hours during business hours.{visitType === "home" ? " Our technician will come to your address." : ""}</p>
+      <p className="mc-text"><span {...c.p("wizard.after")}>{c("wizard.after")}</span>{visitType === "home" ? " Our technician will come to your address." : ""}</p>
       {summary}
       <Alert title="Protect this device from future damage" tone="info">
         AKKO device insurance starts at $5 a month with $29 deductibles.{" "}
         <a className="mc-link" href="/protection" onClick={(e) => { e.preventDefault(); onClose(); navigate("/protection"); }}>View plans</a>
       </Alert>
       <div className="mc-actions" style={{ justifyContent: "flex-end" }}>
-        <Button onClick={isPage ? resetWizard : onClose}>{isPage ? "Book another repair" : "Done"}</Button>
+        <Button onClick={isPage ? resetWizard : onClose}><span {...c.p(isPage ? "wizard.another" : "wizard.done")}>{c(isPage ? "wizard.another" : "wizard.done")}</span></Button>
       </div>
     </div>
   ) : (
     <div className="mc-stack">
-      {!needsVisit && !needsLocation && <Stepper compact current={step} label="Booking progress" steps={STEPS.map((label) => ({ id: label, label }))} />}
+      {!needsVisit && !needsLocation && <Stepper compact current={step} label="Booking progress" steps={STEPS.map((label) => ({ id: label, label: c(`wizard.step.${label.toLowerCase()}`) }))} />}
 
       {needsVisit && (
         <>
@@ -416,11 +418,11 @@ export default function BookingWizard({ onClose = () => {}, defaultService = nul
 
       {!needsVisit && !needsLocation && (
         <div className="mc-actions" style={{ justifyContent: "space-between" }}>
-          <Button variant="secondary" onClick={goBack}>Back</Button>
+          <Button variant="secondary" onClick={goBack}><span {...c.p("wizard.back")}>{c("wizard.back")}</span></Button>
           {lastStep ? (
-            <Button loading={sending} onClick={handleSubmit}>Confirm booking</Button>
+            <Button loading={sending} onClick={handleSubmit}><span {...c.p("wizard.confirm")}>{c("wizard.confirm")}</span></Button>
           ) : (
-            <Button disabled={!canNext()} onClick={() => setStep((s) => s + 1)}>Continue</Button>
+            <Button disabled={!canNext()} onClick={() => setStep((s) => s + 1)}><span {...c.p("wizard.continue")}>{c("wizard.continue")}</span></Button>
           )}
         </div>
       )}

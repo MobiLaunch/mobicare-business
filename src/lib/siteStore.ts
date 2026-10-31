@@ -178,6 +178,8 @@ export interface SiteContent {
   houseCallPricing: HouseCallPricing;
   /** Admin overrides for page text, keyed as in lib/copy.ts. */
   copy?: Record<string, string>;
+  /** Admin-written replacements for the policy pages, keyed by path (for example "/returns"). */
+  policies?: Record<string, { title?: string; lead?: string; sections?: Array<{ title: string; body: string }> }>;
 }
 
 // ─── Default site content ──────────────────────────────────────────────────
