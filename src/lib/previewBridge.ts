@@ -1,4 +1,5 @@
 import { applyAppearance, useSiteStore } from "@/lib/siteStore";
+import { originalOf } from "@/lib/textOverrides";
 
 /**
  * Live preview for the admin's design studio. When the storefront is embedded in the POS, the POS can post
@@ -11,12 +12,13 @@ export function installPreviewBridge() {
   if (typeof window === "undefined" || window.parent === window) return;
   const onMessage = (e: MessageEvent) => {
     if (!ALLOWED.some((re) => re.test(e.origin))) return;
-    const d = e.data as { source?: string; appearance?: Record<string, unknown>; hero?: Record<string, unknown>; copy?: Record<string, string>; policies?: unknown; sections?: Record<string, unknown> } | null;
+    const d = e.data as { source?: string; appearance?: Record<string, unknown>; hero?: Record<string, unknown>; copy?: Record<string, string>; policies?: unknown; textMap?: Record<string, string>; sections?: Record<string, unknown> } | null;
 
     if (!d || d.source !== "novaops-design") return;
     const state = useSiteStore.getState();
 
     if (d.copy) useSiteStore.setState({ copy: d.copy } as never);
+    if (d.textMap) useSiteStore.setState({ textMap: d.textMap } as never);
     if (d.policies) useSiteStore.setState({ policies: d.policies } as never);
     if (d.sections) useSiteStore.setState(d.sections as never);
     if (d.hero) useSiteStore.setState({ hero: { ...state.hero, ...d.hero } as typeof state.hero });
@@ -34,10 +36,24 @@ export function installPreviewBridge() {
   document.addEventListener("click", (e) => {
     const el = (e.target as HTMLElement | null)?.closest?.("[data-edit]") as HTMLElement | null;
 
-    if (!el) return;
+    if (el) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.parent.postMessage({ source: "mobicare-site", type: "edit", path: el.getAttribute("data-edit"), text: el.textContent }, "*");
+
+      return;
+    }
+    // Any other text: find the exact words under the pointer and offer to replace them everywhere they appear.
+    const doc = document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node } | null; caretRangeFromPoint?: (x: number, y: number) => Range | null };
+    const node = doc.caretPositionFromPoint?.(e.clientX, e.clientY)?.offsetNode ?? doc.caretRangeFromPoint?.(e.clientX, e.clientY)?.startContainer;
+
+    if (!node || node.nodeType !== Node.TEXT_NODE) return;
+    const original = originalOf(node);
+
+    if (!original || original.length > 400 || /^[\d\s$.,:%/+-]+$/.test(original)) return;
     e.preventDefault();
     e.stopPropagation();
-    window.parent.postMessage({ source: "mobicare-site", type: "edit", path: el.getAttribute("data-edit"), text: el.textContent }, "*");
+    window.parent.postMessage({ source: "mobicare-site", type: "edit", path: `text:${original}`, text: node.textContent }, "*");
   }, true);
   window.parent.postMessage({ source: "mobicare-site", type: "ready" }, "*");
 }

@@ -180,6 +180,8 @@ export interface SiteContent {
   copy?: Record<string, string>;
   /** Admin-written replacements for the policy pages, keyed by path (for example "/returns"). */
   policies?: Record<string, { title?: string; lead?: string; sections?: Array<{ title: string; body: string }> }>;
+  /** Replacement wording for any text on the site, matched by its exact original text. */
+  textMap?: Record<string, string>;
 }
 
 // ─── Default site content ──────────────────────────────────────────────────
