@@ -70,11 +70,11 @@ export default function Footer() {
           <div>
             <h2 className="mc-gl" {...c.p("footer.visit")}>{c("footer.visit")}</h2>
             <div className="mc-footer-hours">
-              <a className="mc-footer-link" href={`tel:${phone.replace(/[^0-9+]/g, "")}`} style={{ color: "var(--foreground)", fontSize: "var(--text-lg)" }}>{phone}</a>
-              <a className="mc-footer-link" href={`mailto:${email}`}>{email}</a>
-              <span>{business?.city || BUSINESS.city}</span>
-              {hours.map((h) => (
-                <span key={h.days}>{h.days}: {h.hours}</span>
+              <a className="mc-footer-link" href={`tel:${phone.replace(/[^0-9+]/g, "")}`} style={{ color: "var(--foreground)", fontSize: "var(--text-lg)" }} {...c.p("business.phone")}>{phone}</a>
+              <a className="mc-footer-link" href={`mailto:${email}`} {...c.p("business.email")}>{email}</a>
+              <span {...c.p("business.city")}>{business?.city || BUSINESS.city}</span>
+              {hours.map((h, i) => (
+                <span key={h.days}><span {...c.p(`business.hours.${i}.days`)}>{h.days}</span>: <span {...c.p(`business.hours.${i}.hours`)}>{h.hours}</span></span>
               ))}
             </div>
           </div>

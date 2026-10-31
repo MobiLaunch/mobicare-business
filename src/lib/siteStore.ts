@@ -185,6 +185,10 @@ export interface SiteContent {
   /** Which homepage blocks show, and in what order. */
   layout?: { home?: { order?: string[]; hidden?: string[] } };
   /** The banner above the header. */
+  /** Per-page tab titles and search descriptions, keyed by path. */
+  meta?: Record<string, { title?: string; description?: string }>;
+  /** Site menu: hide or reorder the built-in links (by path). */
+  menu?: { order?: string[]; hidden?: string[] };
   announcement?: { enabled: boolean; text: string; link?: string; linkLabel?: string; tone?: "brand" | "dark" | "warning" };
   /** Pages built in the design studio, served at /p/<slug>. */
   pages?: Array<{ slug: string; title: string; description?: string; published?: boolean; inMenu?: boolean; blocks: Array<Record<string, string | undefined>> }>;

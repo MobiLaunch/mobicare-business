@@ -84,6 +84,7 @@ export const COPY: CopyEntry[] = [
   { key: "wizard.step.address", group: "Booking form", label: "Step: Address", text: "Address" },
   { key: "wizard.step.contact", group: "Booking form", label: "Step: Contact", text: "Contact" },
   { key: "wizard.step.confirm", group: "Booking form", label: "Step: Confirm", text: "Confirm" },
+  { key: "home.location.title", group: "Homepage", label: "Visit card heading", text: "Visit the shop" },
   { key: "protection.kicker", group: "Protection page", label: "Top badge", text: "Official AKKO protection partner" },
 ];
 

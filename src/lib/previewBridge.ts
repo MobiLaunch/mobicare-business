@@ -8,17 +8,22 @@ import { originalOf } from "@/lib/textOverrides";
  */
 const ALLOWED = [/^https:\/\/novaops-updated[a-z0-9-]*\.vercel\.app$/, /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/];
 
+let editMode = true;
+
 export function installPreviewBridge() {
   if (typeof window === "undefined" || window.parent === window) return;
   const onMessage = (e: MessageEvent) => {
     if (!ALLOWED.some((re) => re.test(e.origin))) return;
-    const d = e.data as { source?: string; appearance?: Record<string, unknown>; hero?: Record<string, unknown>; copy?: Record<string, string>; policies?: unknown; layout?: unknown; announcement?: unknown; pages?: unknown; textMap?: Record<string, string>; sections?: Record<string, unknown> } | null;
+    const d = e.data as { source?: string; mode?: string; appearance?: Record<string, unknown>; hero?: Record<string, unknown>; copy?: Record<string, string>; policies?: unknown; layout?: unknown; announcement?: unknown; meta?: unknown; menu?: unknown; pages?: unknown; textMap?: Record<string, string>; sections?: Record<string, unknown> } | null;
 
     if (!d || d.source !== "novaops-design") return;
     const state = useSiteStore.getState();
 
     if (d.copy) useSiteStore.setState({ copy: d.copy } as never);
+    if (d.mode) { editMode = d.mode !== "browse"; document.documentElement.setAttribute("data-preview-mode", editMode ? "edit" : "browse"); }
     if (d.layout) useSiteStore.setState({ layout: d.layout } as never);
+    if (d.meta) useSiteStore.setState({ meta: d.meta } as never);
+    if (d.menu) useSiteStore.setState({ menu: d.menu } as never);
     if (d.announcement) useSiteStore.setState({ announcement: d.announcement } as never);
     if (d.pages) useSiteStore.setState({ pages: d.pages } as never);
     if (d.textMap) useSiteStore.setState({ textMap: d.textMap } as never);
@@ -37,6 +42,7 @@ export function installPreviewBridge() {
   document.documentElement.setAttribute("data-preview", "1");
   // Clicking any marked text asks the POS to edit it, instead of following the link or button underneath.
   document.addEventListener("click", (e) => {
+    if (!editMode) return;
     const el = (e.target as HTMLElement | null)?.closest?.("[data-edit]") as HTMLElement | null;
 
     if (el) {
