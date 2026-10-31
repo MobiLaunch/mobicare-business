@@ -1,3 +1,4 @@
+import PageBlock from "@/components/PageBlock";
 import { useCopy } from "@/lib/copy";
 import { useNavigate } from "react-router-dom";
 import { Mail, MapPin, Phone, Smartphone, Shield, Star, Zap, type LucideIcon } from "lucide-react";
@@ -37,6 +38,7 @@ export default function About() {
       <PageIntro editKicker="about.eyebrow" editLead="about.lead" editTitle="about.headline" kicker={about?.eyebrow || "About Mobicare"} lead={about?.lead} title={about?.headline} />
       <div className="mc-page mc-pagebody">
 
+      <PageBlock id="values" page="/about">
       <section aria-label="Why customers choose us" className="mc-section" style={{ paddingTop: 0 }}>
         <div className="mc-grid mc-grid-cards">
           {VALUE_PROPS.map((v, i) => (
@@ -48,7 +50,9 @@ export default function About() {
           ))}
         </div>
       </section>
+      </PageBlock>
 
+      <PageBlock id="story" page="/about">
       <section className="mc-section mc-grid mc-grid-2" style={{ paddingTop: 0, gap: "clamp(24px, 5vw, 64px)", alignItems: "start" }}>
         <div className="mc-stack">
           <h2 className="mc-h2" {...c.p("about.story.title")}>{c("about.story.title")}</h2>
@@ -87,8 +91,10 @@ export default function About() {
           </div>
         </div>
       </section>
+      </PageBlock>
 
       {repairServices.length > 0 && (
+        <PageBlock id="popular" page="/about">
         <section aria-labelledby="popular-title" className="mc-section" style={{ paddingTop: 0 }}>
           <div className="mc-section-head mc-section-head--row">
             <h2 className="mc-h2" id="popular-title" {...c.p("about.popular.title")}>{c("about.popular.title")}</h2>
@@ -103,6 +109,7 @@ export default function About() {
             ))}
           </div>
         </section>
+        </PageBlock>
       )}
       </div>
     </>

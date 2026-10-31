@@ -1,3 +1,4 @@
+import PageBlock from "@/components/PageBlock";
 import { useSiteStore } from "@/lib/siteStore";
 import PageMeta from "@/components/PageMeta";
 import PageIntro from "@/components/PageIntro";
@@ -42,6 +43,7 @@ const BADGES = [
 export default function Repairs() {
   const c = useCopy();
   const banner = useSiteStore((s) => s.repairBanner);
+  const faqs = useSiteStore((s) => s.faqs);
   const trustItems = useSiteStore((s) => s.trustItems) || [];
   const badges = trustItems.length ? trustItems.map((t) => t.label) : BADGES;
 
@@ -65,10 +67,12 @@ export default function Repairs() {
         <BookingWizard mode="page" />
       </section>
 
+      <PageBlock id="faq" page="/repairs">
       <section aria-labelledby="faq-title" className="mc-faq">
         <div className="mc-section-head"><h2 className="mc-h2" id="faq-title" {...c.p("repairs.faq.title")}>{c("repairs.faq.title")}</h2></div>
-        <Accordion items={FAQS.map((f) => ({ title: f.q, content: f.a }))} />
+        <Accordion items={(faqs?.repairs ?? FAQS).map((f) => ({ title: f.q, content: f.a }))} />
       </section>
+      </PageBlock>
       </div>
     </>
   );

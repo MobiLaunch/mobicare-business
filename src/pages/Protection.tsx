@@ -1,3 +1,5 @@
+import PageBlock from "@/components/PageBlock";
+import { useSiteStore } from "@/lib/siteStore";
 import { useState } from "react";
 import { Check, Droplet, ExternalLink, Gamepad2, Laptop, ShieldAlert, Smartphone, Zap } from "lucide-react";
 
@@ -200,6 +202,7 @@ const FAQS = [
 
 export default function Protection() {
   const c = useCopy();
+  const faqs = useSiteStore((s) => s.faqs);
   const [bookingOpen, setBookingOpen] = useState(false);
 
   const handleEnroll = () => {
@@ -230,6 +233,7 @@ export default function Protection() {
       </PageIntro>
       <div className="mc-page mc-pagebody">
 
+      <PageBlock id="plans" page="/protection">
       <section aria-labelledby="plans-title" className="mc-section" id="plans" style={{ paddingTop: 0, scrollMarginTop: "5rem" }}>
         <div className="mc-section-head">
           <h2 className="mc-h2" id="plans-title">Choose your protection plan</h2>
@@ -257,7 +261,9 @@ export default function Protection() {
           ))}
         </div>
       </section>
+      </PageBlock>
 
+      <PageBlock id="coverage" page="/protection">
       <section aria-labelledby="coverage-title" className="mc-section" style={{ paddingTop: 0 }}>
         <div className="mc-section-head">
           <h2 className="mc-h2" id="coverage-title">What&apos;s covered</h2>
@@ -273,7 +279,9 @@ export default function Protection() {
           ))}
         </div>
       </section>
+      </PageBlock>
 
+      <PageBlock id="compare" page="/protection">
       <section aria-labelledby="compare-title" className="mc-section" style={{ paddingTop: 0 }}>
         <div className="mc-section-head">
           <h2 className="mc-h2" id="compare-title">How AKKO compares</h2>
@@ -297,11 +305,14 @@ export default function Protection() {
           </table>
         </div>
       </section>
+      </PageBlock>
 
+      <PageBlock id="faq" page="/protection">
       <section aria-labelledby="faq-title" className="mc-section mc-narrow" style={{ paddingTop: 0, marginInline: 0 }}>
         <div className="mc-section-head"><h2 className="mc-h2" id="faq-title">Questions</h2></div>
-        <Accordion items={FAQS.map((f) => ({ title: f.q, content: f.a }))} />
+        <Accordion items={(faqs?.protection ?? FAQS).map((f) => ({ title: f.q, content: f.a }))} />
       </section>
+      </PageBlock>
 
       <section className="mc-section" style={{ paddingTop: 0 }}>
         <div className="mc-card mc-card--muted" style={{ display: "grid", justifyItems: "start", gap: "var(--space-4)", padding: "clamp(24px, 5vw, 56px)" }}>
