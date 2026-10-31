@@ -44,7 +44,9 @@ export default function Home() {
         title="Mobicare Device Recovery: iPhone and phone repair in Fairfield, IL"
       />
 
-      <div className="mc-band mc-band--tint">
+      <div className="mc-band mc-band--tint" style={hero.mediaUrl && hero.mediaType && hero.mediaType !== "none" ? ({ "--mc-hero-dim": hero.mediaDim ?? 55 } as CSSProperties) : undefined}>
+        {hero.mediaUrl && hero.mediaType === "image" && <div aria-hidden="true" className="mc-hero-media"><img alt="" decoding="async" fetchPriority="high" src={hero.mediaUrl} /></div>}
+        {hero.mediaUrl && hero.mediaType === "video" && <div aria-hidden="true" className="mc-hero-media"><video autoPlay loop muted playsInline poster={hero.mediaPoster || undefined} preload="metadata" src={hero.mediaUrl} /></div>}
         <div className="mc-page">
           <section className="mc-hero" id="hero-section">
             <div className="mc-hero-copy">

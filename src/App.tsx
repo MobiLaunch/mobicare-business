@@ -4,6 +4,7 @@ import ToastBridge from "@/components/ToastBridge";
 
 import { useProductStore, useCartStore } from "@/lib/store";
 import { useSiteStore, applyAppearance, getEffectiveColorScheme } from "@/lib/siteStore";
+import { installPreviewBridge } from "@/lib/previewBridge";
 import { sbFetchSiteSettings, isSupabaseConfigured } from "@/lib/supabase";
 import PublicLayout from "@/layouts/PublicLayout";
 const CheckoutDrawer = lazy(() => import("@/components/CheckoutDrawer"));
@@ -46,6 +47,7 @@ function StoreInit() {
   const appearance = useSiteStore((s) => s.appearance);
   const viewerColorScheme = useSiteStore((s) => s.viewerColorScheme);
 
+  useEffect(() => { installPreviewBridge(); }, []);
   useEffect(() => {
     if (appearance) applyAppearance({ ...appearance, colorScheme: viewerColorScheme ?? appearance.colorScheme });
   }, [appearance, viewerColorScheme]);

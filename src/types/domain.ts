@@ -139,4 +139,9 @@ export interface SiteAppearance {
   bgElevated: string;
   fontFamily: string;
   fontUrl?: string;
+  radiusControl?: string;
+  radiusSurface?: string;
+  texture?: string;
+  motion?: string;
+  spinner?: string;
 }

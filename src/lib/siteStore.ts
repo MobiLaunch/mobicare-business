@@ -1,4 +1,5 @@
 import type { SiteAppearance, ColorScheme } from "@/types/domain";
+import { applyDesign } from "@/lib/designTokens";
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -22,6 +23,11 @@ export interface Hero {
   description: string;
   primaryCta: string;
   secondaryCta: string;
+  /** Optional hero background: a photo or a looping video. */
+  mediaType?: "none" | "image" | "video";
+  mediaUrl?: string;
+  mediaPoster?: string;
+  mediaDim?: number;
 }
 export interface HowStep {
   title: string;
@@ -1453,6 +1459,66 @@ export const FONT_PRESETS: FontPreset[] = [
     css: '"Geist", system-ui, sans-serif',
     url: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap",
   },
+  {
+    id: "manrope",
+    label: "Manrope",
+    css: '"Manrope", sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap",
+  },
+  {
+    id: "space-grotesk",
+    label: "Space Grotesk",
+    css: '"Space Grotesk", sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap",
+  },
+  {
+    id: "plus-jakarta",
+    label: "Plus Jakarta Sans",
+    css: '"Plus Jakarta Sans", sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+  },
+  {
+    id: "sora",
+    label: "Sora",
+    css: '"Sora", sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap",
+  },
+  {
+    id: "nunito",
+    label: "Nunito",
+    css: '"Nunito", sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap",
+  },
+  {
+    id: "raleway",
+    label: "Raleway",
+    css: '"Raleway", sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap",
+  },
+  {
+    id: "playfair",
+    label: "Playfair Display (serif)",
+    css: '"Playfair Display", serif',
+    url: "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap",
+  },
+  {
+    id: "lora",
+    label: "Lora (serif)",
+    css: '"Lora", serif',
+    url: "https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap",
+  },
+  {
+    id: "fraunces",
+    label: "Fraunces (serif)",
+    css: '"Fraunces", serif',
+    url: "https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&display=swap",
+  },
+  {
+    id: "jetbrains",
+    label: "JetBrains Mono (mono)",
+    css: '"JetBrains Mono", monospace',
+    url: "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap",
+  },
   { id: "custom", label: "Custom URL", css: "", url: "" },
 ];
 
@@ -1577,6 +1643,8 @@ export function applyAppearance(a: Appearance) {
   if (a.fontFamily === "custom" && a.fontUrl) {
     injectFontLink("custom-font", a.fontUrl);
   }
+
+  applyDesign(a);
 }
 
 // The color scheme actually shown: this visitor's local override if they've
