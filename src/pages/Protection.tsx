@@ -314,6 +314,7 @@ export default function Protection() {
       </section>
       </PageBlock>
 
+      <PageBlock id="cta" page="/protection">
       <section className="mc-section" style={{ paddingTop: 0 }}>
         <div className="mc-card mc-card--muted" style={{ display: "grid", justifyItems: "start", gap: "var(--space-4)", padding: "clamp(24px, 5vw, 56px)" }}>
           <h2 className="mc-h2">Ready to protect your devices?</h2>
@@ -324,6 +325,7 @@ export default function Protection() {
           </div>
         </div>
       </section>
+      </PageBlock>
 
       {bookingOpen && <BookingWizard onClose={() => setBookingOpen(false)} />}
       </div>

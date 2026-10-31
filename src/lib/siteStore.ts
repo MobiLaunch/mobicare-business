@@ -183,7 +183,7 @@ export interface SiteContent {
   /** Replacement wording for any text on the site, matched by its exact original text. */
   textMap?: Record<string, string>;
   /** Which homepage blocks show, in what order, and which sections of other pages are hidden. */
-  layout?: { home?: { order?: string[]; hidden?: string[] }; pages?: Record<string, { hidden?: string[] }> };
+  layout?: { home?: { order?: string[]; hidden?: string[] }; pages?: Record<string, { hidden?: string[]; order?: string[] }> };
   /** The banner above the header. */
   /** Per-page tab titles and search descriptions, keyed by path. */
   meta?: Record<string, { title?: string; description?: string }>;
