@@ -176,6 +176,8 @@ export interface SiteContent {
   ctaStrip: CtaStrip;
   deviceManufacturers: DeviceManufacturer[];
   houseCallPricing: HouseCallPricing;
+  /** Admin overrides for page text, keyed as in lib/copy.ts. */
+  copy?: Record<string, string>;
 }
 
 // ─── Default site content ──────────────────────────────────────────────────

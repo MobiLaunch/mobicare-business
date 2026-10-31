@@ -8,6 +8,7 @@ import { Accordion } from "@/components/arc/accordion/accordion";
 import { Badge } from "@/components/arc/badge/badge";
 import { Button } from "@/components/arc/button/button";
 import BookingWizard from "@/components/BookingWizard";
+import { useCopy } from "@/lib/copy";
 
 interface PlanTier {
   id: string;
@@ -198,6 +199,7 @@ const FAQS = [
 ];
 
 export default function Protection() {
+  const c = useCopy();
   const [bookingOpen, setBookingOpen] = useState(false);
 
   const handleEnroll = () => {
@@ -212,7 +214,7 @@ export default function Protection() {
       />
 
       <PageIntro
-        kicker={<Badge tone="info">Official AKKO protection partner</Badge>}
+        kicker={<Badge tone="info"><span {...c.p("protection.kicker")}>{c("protection.kicker")}</span></Badge>}
         lead="Protect your phone and up to 25 personal electronics from drops, spills, cracked screens and theft. Lower monthly rates, $29 deductibles, and claims repaired right here at Mobicare."
         title={<>Full tech protection. <span className="mc-accent">Zero headaches.</span></>}
       >

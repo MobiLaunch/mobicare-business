@@ -4,6 +4,7 @@ import { RotateCcw, Shield, ShoppingCart, Truck } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
 import { useCartStore, useProductStore, useToastStore } from "@/lib/store";
+import { useCopy } from "@/lib/copy";
 import { getEstimatedArrivalWindow, getDispatchCutoff } from "@/lib/shipping";
 import PageMeta from "@/components/PageMeta";
 import ProductCard from "@/components/ProductCard";
@@ -16,6 +17,7 @@ import { EmptyState } from "@/components/arc/empty-state/empty-state";
 import { NumberField } from "@/components/arc/number-field/number-field";
 
 export default function ProductDetail() {
+  const c = useCopy();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const product = useProductStore((s) => s.getProduct(id || ""));
@@ -49,9 +51,9 @@ export default function ProductDetail() {
     else addToast(`Only ${product.stock} available in stock`, "error");
   };
   const trustRows = [
-    { icon: Truck, title: "Estimated delivery", sub: arrival.formatted },
-    { icon: Shield, title: "Secure checkout", sub: "Payments are encrypted and handled by Stripe." },
-    { icon: RotateCcw, title: "Exchange if defective", sub: "All sales are final. Defective items are exchanged in like-new condition with original packaging." },
+    { icon: Truck, k: "product.trust.delivery", title: c("product.trust.delivery"), sub: arrival.formatted },
+    { icon: Shield, k: "product.trust.secure.title", sk: "product.trust.secure.sub", title: c("product.trust.secure.title"), sub: c("product.trust.secure.sub") },
+    { icon: RotateCcw, k: "product.trust.exchange.title", sk: "product.trust.exchange.sub", title: c("product.trust.exchange.title"), sub: c("product.trust.exchange.sub") },
   ];
 
   return (
@@ -102,8 +104,8 @@ export default function ProductDetail() {
               <div key={row.title} className="mc-item" style={{ alignItems: "start" }}>
                 <span className="mc-icon" style={{ flexShrink: 0 }}><row.icon aria-hidden="true" size={18} strokeWidth={1.75} /></span>
                 <div>
-                  <strong className="mc-strong" style={{ display: "block" }}>{row.title}</strong>
-                  <span className="mc-small">{row.sub}</span>
+                  <strong className="mc-strong" style={{ display: "block" }} {...c.p(row.k)}>{row.title}</strong>
+                  <span className="mc-small" {...(row.sk ? c.p(row.sk) : {})}>{row.sub}</span>
                 </div>
               </div>
             ))}

@@ -1,3 +1,4 @@
+import { useCopy } from "@/lib/copy";
 import { Link } from "react-router-dom";
 
 import { useSiteStore } from "@/lib/siteStore";
@@ -27,10 +28,12 @@ const POLICIES = [
   { label: "Privacy", to: "/privacy" },
 ];
 
-function Column({ title, links }: { title: string; links: Array<{ label: string; to: string }> }) {
+function Column({ title, links, copyKey }: { title: string; links: Array<{ label: string; to: string }>; copyKey?: string }) {
+  const c = useCopy();
+
   return (
     <nav aria-label={title}>
-      <h2 className="mc-gl">{title}</h2>
+      <h2 className="mc-gl" {...(copyKey ? c.p(copyKey) : {})}>{title}</h2>
       <ul className="mc-stack-sm" style={{ listStyle: "none", margin: 0, padding: 0 }}>
         {links.map((l) => (
           <li key={l.to}><Link className="mc-footer-link" to={l.to}>{l.label}</Link></li>
@@ -41,6 +44,7 @@ function Column({ title, links }: { title: string; links: Array<{ label: string;
 }
 
 export default function Footer() {
+  const c = useCopy();
   const brand = useSiteStore((s) => s.brand);
   const business = useSiteStore((s) => s.business);
   const appearance = useSiteStore((s) => s.appearance);
@@ -56,15 +60,13 @@ export default function Footer() {
         <div className="mc-footer-grid">
           <div style={{ display: "grid", gap: "var(--space-3)", alignContent: "start" }}>
             <img alt={brand?.name || "Mobicare"} className="mc-logo" src={logo} style={{ height: "1.75rem" }} />
-            <p className="mc-small" style={{ maxWidth: "34ch" }}>
-              Southern Illinois&apos; repair shop for iPhones, Androids, tablets and more. Quality parts and honest service.
-            </p>
+            <p className="mc-small" style={{ maxWidth: "34ch" }} {...c.p("footer.tagline")}>{c("footer.tagline")}</p>
           </div>
-          <Column links={SHOP} title="Shop" />
-          <Column links={REPAIRS} title="Repairs" />
-          <Column links={POLICIES} title="Policies" />
+          <Column copyKey="footer.shop" links={SHOP} title={c("footer.shop")} />
+          <Column copyKey="footer.repairs" links={REPAIRS} title={c("footer.repairs")} />
+          <Column copyKey="footer.policies" links={POLICIES} title={c("footer.policies")} />
           <div>
-            <h2 className="mc-gl">Visit or call</h2>
+            <h2 className="mc-gl" {...c.p("footer.visit")}>{c("footer.visit")}</h2>
             <div className="mc-footer-hours">
               <a className="mc-footer-link" href={`tel:${phone.replace(/[^0-9+]/g, "")}`} style={{ color: "var(--foreground)", fontSize: "var(--text-lg)" }}>{phone}</a>
               <a className="mc-footer-link" href={`mailto:${email}`}>{email}</a>
@@ -75,7 +77,7 @@ export default function Footer() {
             </div>
           </div>
         </div>
-        <div className="mc-footer-bar"><p className="mc-small">© {new Date().getFullYear()} {footer.copyrightName || brand?.name}. All rights reserved.</p><p className="mc-small">Fairfield, Illinois</p></div>
+        <div className="mc-footer-bar"><p className="mc-small">© {new Date().getFullYear()} <span {...c.p("footer.copyrightName")}>{footer.copyrightName || brand?.name}</span>. <span {...c.p("footer.rights")}>{c("footer.rights")}</span></p><p className="mc-small" {...c.p("footer.place")}>{c("footer.place")}</p></div>
       </div>
     </footer>
   );

@@ -11,11 +11,13 @@ export function installPreviewBridge() {
   if (typeof window === "undefined" || window.parent === window) return;
   const onMessage = (e: MessageEvent) => {
     if (!ALLOWED.some((re) => re.test(e.origin))) return;
-    const d = e.data as { source?: string; appearance?: Record<string, unknown>; hero?: Record<string, unknown> } | null;
+    const d = e.data as { source?: string; appearance?: Record<string, unknown>; hero?: Record<string, unknown>; copy?: Record<string, string>; sections?: Record<string, unknown> } | null;
 
     if (!d || d.source !== "novaops-design") return;
     const state = useSiteStore.getState();
 
+    if (d.copy) useSiteStore.setState({ copy: d.copy } as never);
+    if (d.sections) useSiteStore.setState(d.sections as never);
     if (d.hero) useSiteStore.setState({ hero: { ...state.hero, ...d.hero } as typeof state.hero });
     if (d.appearance) {
       const next = { ...state.appearance, ...d.appearance } as typeof state.appearance;
@@ -26,5 +28,15 @@ export function installPreviewBridge() {
   };
 
   window.addEventListener("message", onMessage);
+  document.documentElement.setAttribute("data-preview", "1");
+  // Clicking any marked text asks the POS to edit it, instead of following the link or button underneath.
+  document.addEventListener("click", (e) => {
+    const el = (e.target as HTMLElement | null)?.closest?.("[data-edit]") as HTMLElement | null;
+
+    if (!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.parent.postMessage({ source: "mobicare-site", type: "edit", path: el.getAttribute("data-edit"), text: el.textContent }, "*");
+  }, true);
   window.parent.postMessage({ source: "mobicare-site", type: "ready" }, "*");
 }

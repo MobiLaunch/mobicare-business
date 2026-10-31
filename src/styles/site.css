@@ -653,3 +653,7 @@ html[data-motion="none"] .mc-spinner { animation-duration: 1.6s !important; anim
 .mc-hero-media img, .mc-hero-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .mc-hero-media::after { content: ""; position: absolute; inset: 0; background: color-mix(in oklab, var(--background) calc(var(--mc-hero-dim, 55) * 1%), transparent); }
 .mc-band:has(.mc-hero-media) > .mc-page { position: relative; z-index: 1; }
+
+/* Design studio preview: marked text is clickable to edit. */
+html[data-preview] [data-edit] { cursor: text; outline: 1px dashed transparent; outline-offset: 3px; border-radius: 4px; transition: outline-color 120ms; }
+html[data-preview] [data-edit]:hover { outline-color: var(--mc-brand, #12c887); background: color-mix(in oklab, var(--mc-brand, #12c887) 10%, transparent); }

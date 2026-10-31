@@ -1,3 +1,4 @@
+import { useCopy } from "@/lib/copy";
 import { useNavigate } from "react-router-dom";
 import { Mail, MapPin, Phone, Smartphone, Shield, Star, Zap, type LucideIcon } from "lucide-react";
 
@@ -14,6 +15,7 @@ const VALUE_PROPS: { icon: LucideIcon; title: string; desc: string }[] = [
 ];
 
 export default function About() {
+  const c = useCopy();
   const navigate = useNavigate();
   const about = useSiteStore((s) => s.about);
   const business = useSiteStore((s) => s.business);
@@ -32,16 +34,16 @@ export default function About() {
         title="About Mobicare: local device repair in Fairfield, Illinois"
       />
 
-      <PageIntro kicker={about?.eyebrow || "About Mobicare"} lead={about?.lead} title={about?.headline} />
+      <PageIntro editKicker="about.eyebrow" editLead="about.lead" editTitle="about.headline" kicker={about?.eyebrow || "About Mobicare"} lead={about?.lead} title={about?.headline} />
       <div className="mc-page mc-pagebody">
 
       <section aria-label="Why customers choose us" className="mc-section" style={{ paddingTop: 0 }}>
         <div className="mc-grid mc-grid-cards">
-          {VALUE_PROPS.map((v) => (
+          {VALUE_PROPS.map((v, i) => (
             <div key={v.title} className="mc-stack-sm" style={{ padding: "var(--space-5)", borderTop: "1px solid var(--border)" }}>
               <span className="mc-icon"><v.icon aria-hidden="true" size={20} strokeWidth={1.75} /></span>
-              <h2 className="mc-h3" style={{ fontSize: "var(--text-lg)" }}>{v.title}</h2>
-              <p className="mc-text">{v.desc}</p>
+              <h2 className="mc-h3" style={{ fontSize: "var(--text-lg)" }} {...c.p(`about.vp.${i + 1}.title`)}>{c(`about.vp.${i + 1}.title`)}</h2>
+              <p className="mc-text" {...c.p(`about.vp.${i + 1}.desc`)}>{c(`about.vp.${i + 1}.desc`)}</p>
             </div>
           ))}
         </div>
@@ -49,12 +51,10 @@ export default function About() {
 
       <section className="mc-section mc-grid mc-grid-2" style={{ paddingTop: 0, gap: "clamp(24px, 5vw, 64px)", alignItems: "start" }}>
         <div className="mc-stack">
-          <h2 className="mc-h2">Our story</h2>
-          {(about?.story || []).map((para, i) => <p key={i} className="mc-text" style={{ fontSize: "var(--text-lg)", lineHeight: 1.65 }}>{para}</p>)}
+          <h2 className="mc-h2" {...c.p("about.story.title")}>{c("about.story.title")}</h2>
+          {(about?.story || []).map((para, i) => <p key={i} className="mc-text" style={{ fontSize: "var(--text-lg)", lineHeight: 1.65 }} {...c.p(`about.story.${i}`)}>{para}</p>)}
           <div className="mc-stats">
-            <div className="mc-stat"><strong>100%</strong><span>Guaranteed parts</span></div>
-            <div className="mc-stat"><strong>1 to 2 hr</strong><span>Average turnaround</span></div>
-            <div className="mc-stat"><strong>Free</strong><span>Diagnostics with repair</span></div>
+            {[1, 2, 3].map((n) => <div key={n} className="mc-stat"><strong {...c.p(`about.stat.${n}.value`)}>{c(`about.stat.${n}.value`)}</strong><span {...c.p(`about.stat.${n}.label`)}>{c(`about.stat.${n}.label`)}</span></div>)}
           </div>
           <div className="mc-actions">
             <Button onClick={() => navigate("/shop")}>Shop accessories</Button>
@@ -91,7 +91,7 @@ export default function About() {
       {repairServices.length > 0 && (
         <section aria-labelledby="popular-title" className="mc-section" style={{ paddingTop: 0 }}>
           <div className="mc-section-head mc-section-head--row">
-            <h2 className="mc-h2" id="popular-title">Popular repairs</h2>
+            <h2 className="mc-h2" id="popular-title" {...c.p("about.popular.title")}>{c("about.popular.title")}</h2>
             <Button variant="secondary" onClick={() => navigate("/repairs")}>View all services</Button>
           </div>
           <div className="mc-group">

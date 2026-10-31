@@ -2,6 +2,7 @@ import { useSiteStore } from "@/lib/siteStore";
 import PageMeta from "@/components/PageMeta";
 import PageIntro from "@/components/PageIntro";
 import BookingWizard from "@/components/BookingWizard";
+import { useCopy } from "@/lib/copy";
 import { Accordion } from "@/components/arc/accordion/accordion";
 
 const FAQS = [
@@ -39,6 +40,7 @@ const BADGES = [
 ];
 
 export default function Repairs() {
+  const c = useCopy();
   const banner = useSiteStore((s) => s.repairBanner);
   const trustItems = useSiteStore((s) => s.trustItems) || [];
   const badges = trustItems.length ? trustItems.map((t) => t.label) : BADGES;
@@ -64,7 +66,7 @@ export default function Repairs() {
       </section>
 
       <section aria-labelledby="faq-title" className="mc-faq">
-        <div className="mc-section-head"><h2 className="mc-h2" id="faq-title">Frequently asked questions</h2></div>
+        <div className="mc-section-head"><h2 className="mc-h2" id="faq-title" {...c.p("repairs.faq.title")}>{c("repairs.faq.title")}</h2></div>
         <Accordion items={FAQS.map((f) => ({ title: f.q, content: f.a }))} />
       </section>
       </div>

@@ -8,6 +8,7 @@ import PageMeta from "@/components/PageMeta";
 import ProductCard from "@/components/ProductCard";
 import LocationCard from "@/components/home/LocationCard";
 import { AKKO_CONFIG } from "@/lib/config";
+import { useCopy } from "@/lib/copy";
 import { DEFAULT_SITE_CONTENT, useSiteStore } from "@/lib/siteStore";
 import { useProductStore } from "@/lib/store";
 
@@ -27,6 +28,7 @@ const POINT_ICONS: LucideIcon[] = [ShieldCheck, Zap, Smartphone];
 
 export default function Home() {
   const navigate = useNavigate();
+  const c = useCopy();
   const hero = useSiteStore((s) => s.hero);
   const services = useSiteStore((s) => s.repairServices);
   const ctaStrip = useSiteStore((s) => s.ctaStrip);
@@ -50,22 +52,22 @@ export default function Home() {
         <div className="mc-page">
           <section className="mc-hero" id="hero-section">
             <div className="mc-hero-copy">
-              <span className="mc-hero-pill"><i aria-hidden="true" />{hero.badgeText}</span>
+              <span className="mc-hero-pill"><i aria-hidden="true" /><span {...c.p("hero.badgeText")}>{hero.badgeText}</span></span>
               <h1 className="mc-h1">
-                {hero.headlineLine1} <span className="mc-accent">{hero.headlineAccent}</span>
+                <span {...c.p("hero.headlineLine1")}>{hero.headlineLine1}</span> <span className="mc-accent" {...c.p("hero.headlineAccent")}>{hero.headlineAccent}</span>
               </h1>
-              <p className="mc-lead">{hero.description}</p>
+              <p className="mc-lead" {...c.p("hero.description")}>{hero.description}</p>
               <div className="mc-actions">
                 <button className="mc-cta mc-cta--lg" type="button" onClick={() => setBooking({ service: null })}>
-                  <CalendarCheck aria-hidden="true" size={20} strokeWidth={1.75} />Book a repair
+                  <CalendarCheck aria-hidden="true" size={20} strokeWidth={1.75} /><span {...c.p("home.hero.book")}>{c("home.hero.book")}</span>
                 </button>
-                <button className="mc-ghost mc-ghost--lg" type="button" onClick={() => navigate("/shop")}>Shop accessories</button>
+                <button className="mc-ghost mc-ghost--lg" type="button" onClick={() => navigate("/shop")}><span {...c.p("home.hero.shop")}>{c("home.hero.shop")}</span></button>
               </div>
               <div className="mc-hero-meta">
                 {heroPoints.filter(Boolean).map((point, i) => {
                   const PointIcon = POINT_ICONS[i % POINT_ICONS.length];
 
-                  return <span key={i}><PointIcon aria-hidden="true" size={16} strokeWidth={1.75} />{point}</span>;
+                  return <span key={i}><PointIcon aria-hidden="true" size={16} strokeWidth={1.75} /><span {...c.p(`heroPoints.${i}`)}>{point}</span></span>;
                 })}
               </div>
             </div>
@@ -74,7 +76,7 @@ export default function Home() {
           {trustItems.length > 0 && (
             <div className="mc-strip" style={{ "--strip-cols": trustItems.length } as CSSProperties}>
               {trustItems.map((item, i) => (
-                <div key={i}><strong>{item.label}</strong><span>{item.desc}</span></div>
+                <div key={i}><strong {...c.p(`trustItems.${i}.label`)}>{item.label}</strong><span {...c.p(`trustItems.${i}.desc`)}>{item.desc}</span></div>
               ))}
             </div>
           )}
@@ -85,8 +87,8 @@ export default function Home() {
         {services.length > 0 && (
           <section aria-labelledby="services-title" className="mc-section" id="services-section">
             <div className="mc-section-head">
-              <h2 className="mc-h2" id="services-title">What can we fix?</h2>
-              <p className="mc-lead">Choose a repair to start booking. Prices are estimates until we see the device.</p>
+              <h2 className="mc-h2" id="services-title" {...c.p("home.services.title")}>{c("home.services.title")}</h2>
+              <p className="mc-lead" {...c.p("home.services.lead")}>{c("home.services.lead")}</p>
             </div>
             <div className="mc-grid mc-grid-cards">
               {services.map((s) => {
@@ -110,14 +112,14 @@ export default function Home() {
         <div className="mc-page">
           <section aria-labelledby="how-title" className="mc-section" id="how-it-works-section">
             <div className="mc-section-head">
-              <h2 className="mc-h2" id="how-title">How it works</h2>
-              <p className="mc-lead">Three steps from broken to back in your pocket.</p>
+              <h2 className="mc-h2" id="how-title" {...c.p("home.how.title")}>{c("home.how.title")}</h2>
+              <p className="mc-lead" {...c.p("home.how.lead")}>{c("home.how.lead")}</p>
             </div>
             <ol className="mc-steps">
               {howItWorks.map((s, i) => (
                 <li key={i}>
-                  <h3 className="mc-h3">{s.title}</h3>
-                  <p className="mc-text">{s.body}</p>
+                  <h3 className="mc-h3" {...c.p(`howItWorks.${i}.title`)}>{s.title}</h3>
+                  <p className="mc-text" {...c.p(`howItWorks.${i}.body`)}>{s.body}</p>
                 </li>
               ))}
             </ol>
@@ -130,7 +132,7 @@ export default function Home() {
           <section aria-labelledby="featured-title" className="mc-section" id="featured-products-section">
             <div className="mc-section-head mc-section-head--row">
               <div>
-                  <h2 className="mc-h2" id="featured-title">Best sellers</h2>
+                  <h2 className="mc-h2" id="featured-title" {...c.p("home.featured.title")}>{c("home.featured.title")}</h2>
               </div>
               <button className="mc-ghost" type="button" onClick={() => navigate("/shop")}>All products<ArrowRight aria-hidden="true" size={16} strokeWidth={1.75} /></button>
             </div>
@@ -145,19 +147,19 @@ export default function Home() {
         <section aria-labelledby="protect-title" className="mc-section" id="protection-teaser-section" style={{ paddingTop: 0 }}>
           <div className="mc-promo">
             <div className="mc-stack-sm" style={{ flex: "1 1 22rem" }}>
-              <h2 className="mc-h2" id="protect-title">Never pay full price for a broken phone again</h2>
+              <h2 className="mc-h2" id="protect-title" {...c.p("home.protect.title")}>{c("home.protect.title")}</h2>
               <p className="mc-text" style={{ fontSize: "var(--text-lg)" }}>Device protection plans start at ${AKKO_CONFIG.phonePlanPrice} a month and cover drops, spills and cracked screens.</p>
             </div>
-            <Link className="mc-cta mc-cta--lg mc-cta--ink" to="/protection">See plans<ArrowRight aria-hidden="true" size={18} strokeWidth={1.75} /></Link>
+            <Link className="mc-cta mc-cta--lg mc-cta--ink" to="/protection"><span {...c.p("home.protect.button")}>{c("home.protect.button")}</span><ArrowRight aria-hidden="true" size={18} strokeWidth={1.75} /></Link>
           </div>
         </section>
 
         <section aria-labelledby="cta-title" className="mc-section" id="cta-banner-section" style={{ paddingTop: 0 }}>
           <div className="mc-card mc-card--muted" style={{ display: "grid", justifyItems: "center", textAlign: "center", gap: "var(--space-5)", padding: "clamp(32px, 6vw, 72px)", background: "var(--surface)" }}>
-            <h2 className="mc-h2" id="cta-title" style={{ maxWidth: "20ch" }}>{ctaStrip.headline}</h2>
-            <p className="mc-lead">{ctaStrip.subtext}</p>
+            <h2 className="mc-h2" id="cta-title" style={{ maxWidth: "20ch" }} {...c.p("ctaStrip.headline")}>{ctaStrip.headline}</h2>
+            <p className="mc-lead" {...c.p("ctaStrip.subtext")}>{ctaStrip.subtext}</p>
             <div className="mc-actions" style={{ justifyContent: "center" }}>
-              <button className="mc-cta mc-cta--lg" type="button" onClick={() => setBooking({ service: null })}>Book a repair</button>
+              <button className="mc-cta mc-cta--lg" type="button" onClick={() => setBooking({ service: null })}><span {...c.p("home.cta.book")}>{c("home.cta.book")}</span></button>
               <button className="mc-ghost mc-ghost--lg" type="button" onClick={() => navigate("/shop")}>{ctaStrip.secondaryCta}</button>
             </div>
           </div>
