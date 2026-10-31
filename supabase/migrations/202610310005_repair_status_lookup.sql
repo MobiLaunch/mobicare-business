@@ -1,5 +1,6 @@
 -- Public repair status lookup: ticket number + last 4 digits of the phone on file returns only the
 -- repair's stage. Wrong guesses are logged; 5 misses on a ticket within 15 minutes locks it for a while.
+-- Old attempt rows are simply ignored by the 15-minute window (no cleanup step).
 create table if not exists public.repair_lookup_attempts (
   id bigint generated always as identity primary key,
   ticket_id bigint not null,
@@ -19,7 +20,6 @@ begin
   if p_ticket is null or length(d) < 4 then
     return jsonb_build_object('ok', false, 'reason', 'invalid');
   end if;
-  delete from public.repair_lookup_attempts where at < now() - interval '1 day';
   if (select count(*) from public.repair_lookup_attempts where at > now() - interval '1 minute') > 120 then
     return jsonb_build_object('ok', false, 'reason', 'busy');
   end if;

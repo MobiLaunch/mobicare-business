@@ -1220,3 +1220,25 @@ function dbToOrder(row: any): Order {
     total: parseFloat(row.total || 0),
   };
 }
+
+
+export interface RepairStatus {
+  ticket: number;
+  device: string;
+  status: string;
+  stage: "received" | "in_progress" | "waiting_parts" | "ready" | "done";
+  updated_at: string;
+}
+
+/** Public repair lookup: a ticket number plus the last 4 digits of the phone on file. Only the stage comes back. */
+export async function sbLookupRepairStatus(ticket: number, phone: string): Promise<{ ok: true; repair: RepairStatus } | { ok: false; reason: "invalid" | "not_found" | "locked" | "busy" | "error" }> {
+  const sb = getClient();
+
+  if (!sb) return { ok: false, reason: "error" };
+  const { data, error } = await sb.rpc("lookup_repair_status", { p_ticket: ticket, p_phone: phone });
+
+  if (error || !data) return { ok: false, reason: "error" };
+  if (!data.ok) return { ok: false, reason: data.reason ?? "not_found" };
+
+  return { ok: true, repair: data as RepairStatus };
+}

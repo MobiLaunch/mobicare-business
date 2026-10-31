@@ -9,6 +9,7 @@ import PublicLayout from "@/layouts/PublicLayout";
 const CheckoutDrawer = lazy(() => import("@/components/CheckoutDrawer"));
 import RequireAdmin from "@/components/RequireAdmin";
 const Login = lazy(() => import("@/pages/Login"));
+const RepairStatus = lazy(() => import("@/pages/RepairStatus"));
 import Home from "@/pages/Home";
 const Shop = lazy(() => import("@/pages/Shop"));
 const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
@@ -148,6 +149,7 @@ export default function App() {
         <Route element={<CartRedirect />} path="/cart" />
         <Route element={<OrderSuccess />} path="/order-success" />
         <Route element={<Repairs />} path="/repairs" />
+        <Route element={<RepairStatus />} path="/repair-status" />
         <Route element={<Protection />} path="/protection" />
         <Route element={<About />} path="/about" />
         <Route element={<Privacy />} path="/privacy" />
