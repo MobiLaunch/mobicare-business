@@ -52,8 +52,17 @@ export const COPY: CopyEntry[] = [
 
 const DEFAULTS = new Map(COPY.map((c) => [c.key, c.text]));
 
-/** Preview mode (the storefront inside the POS design studio): elements become clickable to edit. */
-export const inPreview = (): boolean => typeof window !== "undefined" && window.parent !== window && /[?&]preview=1/.test(window.location.search);
+/** Preview mode (the storefront inside the POS design studio): elements become clickable to edit. Decided once at load, so it survives in-site navigation. */
+const PREVIEW = (() => {
+  try {
+    if (typeof window === "undefined" || window.parent === window) return false;
+    if (/[?&]preview=1/.test(window.location.search)) sessionStorage.setItem("mc-preview", "1");
+
+    return sessionStorage.getItem("mc-preview") === "1";
+  } catch { return false; }
+})();
+
+export const inPreview = (): boolean => PREVIEW;
 
 /**
  * `const c = useCopy();` then `<h2 {...c.p("home.how.title")}>{c("home.how.title")}</h2>`.
