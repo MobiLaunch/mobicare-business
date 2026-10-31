@@ -184,6 +184,10 @@ export interface SiteContent {
   textMap?: Record<string, string>;
   /** Which homepage blocks show, and in what order. */
   layout?: { home?: { order?: string[]; hidden?: string[] } };
+  /** The banner above the header. */
+  announcement?: { enabled: boolean; text: string; link?: string; linkLabel?: string; tone?: "brand" | "dark" | "warning" };
+  /** Pages built in the design studio, served at /p/<slug>. */
+  pages?: Array<{ slug: string; title: string; description?: string; published?: boolean; inMenu?: boolean; blocks: Array<Record<string, string | undefined>> }>;
 }
 
 // ─── Default site content ──────────────────────────────────────────────────

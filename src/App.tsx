@@ -12,6 +12,7 @@ const CheckoutDrawer = lazy(() => import("@/components/CheckoutDrawer"));
 import RequireAdmin from "@/components/RequireAdmin";
 const Login = lazy(() => import("@/pages/Login"));
 const RepairStatus = lazy(() => import("@/pages/RepairStatus"));
+const CustomPage = lazy(() => import("@/pages/CustomPage"));
 import Home from "@/pages/Home";
 const Shop = lazy(() => import("@/pages/Shop"));
 const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
@@ -153,6 +154,7 @@ export default function App() {
         <Route element={<OrderSuccess />} path="/order-success" />
         <Route element={<Repairs />} path="/repairs" />
         <Route element={<RepairStatus />} path="/repair-status" />
+        <Route element={<CustomPage />} path="/p/:slug" />
         <Route element={<Protection />} path="/protection" />
         <Route element={<About />} path="/about" />
         <Route element={<Privacy />} path="/privacy" />

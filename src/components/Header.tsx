@@ -25,6 +25,7 @@ const NAV_KEYS: Record<string, string> = { "/": "home", "/shop": "shop", "/repai
 
 export default function Header() {
   const c = useCopy();
+  const pages = useSiteStore((s) => s.pages);
   const brand = useSiteStore((s) => s.brand);
   const appearance = useSiteStore((s) => s.appearance);
   const viewerColorScheme = useSiteStore((s) => s.viewerColorScheme);
@@ -67,7 +68,7 @@ export default function Header() {
         </div>
       </div>
 
-      <MenuPanel accountTo={user ? "/account" : "/login"} links={LINKS.map((l) => { const k = NAV_KEYS[l.to]; return { ...l, label: c(`nav.${k}`), hint: c(`nav.${k}.hint`) }; })} open={menuOpen} signedIn={!!user} onBook={() => setBooking(true)} onOpenChange={setMenuOpen} />
+      <MenuPanel accountTo={user ? "/account" : "/login"} links={[...LINKS.map((l) => { const k = NAV_KEYS[l.to]; return { ...l, label: c(`nav.${k}`), hint: c(`nav.${k}.hint`) }; }), ...(pages || []).filter((p) => p.published && p.inMenu).map((p) => ({ to: `/p/${p.slug}`, label: p.title, hint: p.description || "" }))]} open={menuOpen} signedIn={!!user} onBook={() => setBooking(true)} onOpenChange={setMenuOpen} />
 
       {booking && (
         <Suspense fallback={null}>

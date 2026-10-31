@@ -1,6 +1,7 @@
 import { Suspense, lazy } from "react";
 import { Outlet } from "react-router-dom";
 
+import AnnouncementBar from "@/components/AnnouncementBar";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -14,6 +15,7 @@ const ChatWidget = lazy(() => import("@/components/chat/ChatWidget"));
 export default function PublicLayout() {
   return (
     <div className="mc-app">
+      <AnnouncementBar />
       <Header />
       <main className="mc-main">
         <Suspense fallback={<div aria-label="Loading" className="mc-spinner" role="status" />}>
