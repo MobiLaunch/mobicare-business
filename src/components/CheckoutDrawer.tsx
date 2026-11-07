@@ -147,8 +147,24 @@ export default function CheckoutDrawer() {
   const proceedDelivery = () => { if (items.length) setStep("shipping"); };
 
   const proceedPayment = async () => {
-    const required = [shippingInfo.name, shippingInfo.email, shippingInfo.address, shippingInfo.city, shippingInfo.state, shippingInfo.zip];
-    if (required.some((value) => !value.trim())) return useToastStore.getState().add("Please complete all required delivery fields.", "error");
+    // Store pickup needs no street address — only a name and email so the
+    // shop can contact the customer when the order is ready.
+    const required =
+      shippingMethod === "pickup"
+        ? [shippingInfo.name, shippingInfo.email]
+        : [
+            shippingInfo.name,
+            shippingInfo.email,
+            shippingInfo.address,
+            shippingInfo.city,
+            shippingInfo.state,
+            shippingInfo.zip,
+          ];
+
+    if (required.some((value) => !value.trim()))
+      return useToastStore
+        .getState()
+        .add("Please complete all required delivery fields.", "error");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shippingInfo.email)) return useToastStore.getState().add("Please enter a valid email address.", "error");
     if (!items.length) return;
 
@@ -242,7 +258,7 @@ export default function CheckoutDrawer() {
             {step === "shipping" && <>
               <Modal.Body className="flex flex-1 flex-col gap-6 overflow-y-auto px-5 py-5 sm:px-6">
                 <section><div className="mb-3"><h3 className="m-0 text-sm font-bold text-foreground">How would you like to receive it?</h3><p className="m-0 mt-1 text-xs text-muted">Choose the option that works best for you.</p></div><div className="flex flex-col gap-2.5">{options.map((option) => { const selected = shippingMethod === option.id; return <button key={option.id} type="button" aria-pressed={selected} className={`relative min-h-[72px] rounded-2xl border p-3.5 text-left transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${selected ? "border-accent bg-accent-soft ring-1 ring-accent shadow-[var(--elev-1)]" : "border-border bg-surface hover:border-accent/40 hover:bg-surface-secondary"}`} onClick={() => setShippingMethod(option.id)}><div className="flex items-center gap-3"><span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${selected ? "bg-accent text-accent-foreground" : "bg-surface-secondary text-muted"}`}><Truck aria-hidden="true" className="size-4" /></span><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-3"><strong className="text-sm">{option.name}</strong><span className="shrink-0 text-sm font-extrabold">{option.formattedCost}</span></div><p className="m-0 mt-0.5 text-xs text-muted">{option.description}</p></div><span className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 ${selected ? "border-accent" : "border-border"}`}>{selected && <span className="size-2.5 rounded-full bg-accent" />}</span></div></button>; })}</div></section>
-                <section><div className="mb-3"><h3 className="m-0 text-sm font-bold text-foreground">Delivery address</h3><p className="m-0 mt-1 text-xs text-muted">Where should we send your order?</p></div><div className="surface-sunken rounded-card p-4"><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{([['name','Full name','Jane Doe','text'],['email','Email','jane@example.com','email'],['phone','Phone','555-555-5555','tel'],['address','Street address','123 Main St','text'],['city','City','Fairfield','text'],['state','State','IL','text'],['zip','ZIP','62837','text']] as const).map(([key,label,placeholder,type]) => <TextField key={key} isRequired={key !== 'phone'} className={key === 'name' || key === 'email' || key === 'address' ? 'flex flex-col gap-1 sm:col-span-2' : 'flex flex-col gap-1'} type={type} value={shippingInfo[key]} onChange={(value) => setShippingInfo((v) => ({ ...v, [key]: value }))}><Label className="text-xs font-semibold text-muted">{label}</Label><InputGroup><InputGroup.Input placeholder={placeholder} /></InputGroup><FieldError /></TextField>)}</div></div></section>
+                <section><div className="mb-3"><h3 className="m-0 text-sm font-bold text-foreground">{shippingMethod === "pickup" ? "Pickup details" : "Delivery address"}</h3><p className="m-0 mt-1 text-xs text-muted">{shippingMethod === "pickup" ? "No address needed — we'll email you when your order is ready for pickup." : "Where should we send your order?"}</p></div><div className="surface-sunken rounded-card p-4"><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{([['name','Full name','Jane Doe','text'],['email','Email','jane@example.com','email'],['phone','Phone','555-555-5555','tel'],['address','Street address','123 Main St','text'],['city','City','Fairfield','text'],['state','State','IL','text'],['zip','ZIP','62837','text']] as const).filter(([key]) => shippingMethod !== "pickup" || key === "name" || key === "email" || key === "phone").map(([key,label,placeholder,type]) => <TextField key={key} isRequired={key !== 'phone'} className={key === 'name' || key === 'email' || key === 'address' ? 'flex flex-col gap-1 sm:col-span-2' : 'flex flex-col gap-1'} type={type} value={shippingInfo[key]} onChange={(value) => setShippingInfo((v) => ({ ...v, [key]: value }))}><Label className="text-xs font-semibold text-muted">{label}</Label><InputGroup><InputGroup.Input placeholder={placeholder} /></InputGroup><FieldError /></TextField>)}</div></div></section>
                 <div className="surface-sunken rounded-card p-4 text-label"><div className="flex justify-between"><span className="text-muted">Subtotal</span><span>${subtotal.toFixed(2)}</span></div><div className="flex justify-between py-1"><span className="text-muted">Shipping</span><span>{shipping.cost ? `$${shipping.cost.toFixed(2)}` : "FREE"}</span></div><div className="my-2 border-t border-border"/><div className="flex justify-between font-bold"><span>Tax & total</span><span className="text-xs font-semibold text-muted">Calculated securely at checkout</span></div></div>
               </Modal.Body>
               <Modal.Footer className="flex flex-col gap-2 border-t border-border bg-surface px-5 py-4 sm:px-6"><Button fullWidth isDisabled={quoting} size="lg" variant="primary" onPress={proceedPayment}>{quoting ? "Preparing secure checkout…" : "Continue to payment"} {!quoting && <ArrowRight aria-hidden="true" className="size-4" />}</Button><Button fullWidth isDisabled={quoting} variant="ghost" onPress={() => setStep("cart")}><ArrowLeft aria-hidden="true" className="size-4" />Back to cart</Button></Modal.Footer>

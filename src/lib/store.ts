@@ -653,18 +653,33 @@ export const useProductStore = create<ProductState>()(
     }),
     {
       name: "mobicare-store",
-      // Don't persist transient flags
-      partialize: (s) => ({
-        products: s.products,
-        categories: s.categories,
-      }),
-      version: 2,
-      migrate: (persistedState) => {
+      // Don't persist transient flags. And don't persist the catalog at all
+      // once Supabase is the source of truth: the persisted seed catalog
+      // (different names/prices from Supabase) otherwise survives in a
+      // returning visitor's browser and shows alongside — or instead of —
+      // the live data whenever the Supabase fetch is slow or fails.
+      // Offline/demo mode (Supabase not configured) still persists, so
+      // local edits survive a reload there.
+      partialize: (s) =>
+        s.usingSupabase
+          ? {}
+          : {
+              products: s.products,
+              categories: s.categories,
+            },
+      version: 3,
+      migrate: (persistedState, version) => {
         if (!persistedState || typeof persistedState !== "object")
           return persistedState;
         const safeState = { ...(persistedState as Record<string, unknown>) };
 
         delete safeState.orders;
+        // v3 stopped persisting the catalog: drop any seed snapshot saved
+        // by an older version so it can't resurface as stale prices.
+        if (version < 3) {
+          delete safeState.products;
+          delete safeState.categories;
+        }
 
         return safeState;
       },

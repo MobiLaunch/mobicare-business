@@ -1,3 +1,4 @@
+import type { Category } from "@/types/domain";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FilterX, Layers, Search, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
@@ -8,6 +9,56 @@ import { useProductStore } from "@/lib/store";
 import ProductCard from "@/components/ProductCard";
 import PageMeta from "@/components/PageMeta";
 import CategoryIcon from "@/components/CategoryIcon";
+
+// Resolve a `?cat=` value to a real category id. The footer links use the
+// original seed slugs (chargers / cases / screen-protectors / cables), but
+// the live Supabase categories are Protection / Charging / Accessories with
+// unrelated ids — matching on the raw param returned 0 products. Resolve by
+// id first, then by slugified name, then by these legacy-slug aliases, and
+// fall back to "all" for anything still unknown instead of an empty shop.
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const LEGACY_CAT_ALIASES: Record<string, string[]> = {
+  chargers: ["charging"],
+  cables: ["charging"],
+  cases: ["protection"],
+  "screen-protectors": ["protection"],
+};
+
+function resolveCategoryParam(
+  param: string | null,
+  categories: Category[],
+): string {
+  if (!param) return "all";
+
+  const raw = param.trim().toLowerCase();
+  if (raw === "all") return "all";
+  if (categories.some((c) => c.id === param)) return param;
+
+  const bySlug = categories.find((c) => slugify(c.name) === slugify(param));
+  if (bySlug) return bySlug.id;
+
+  const byName = categories.find((c) => c.name.toLowerCase() === raw);
+  if (byName) return byName.id;
+
+  for (const alias of LEGACY_CAT_ALIASES[slugify(param)] ?? []) {
+    const match = categories.find((c) => slugify(c.name) === alias);
+    if (match) return match.id;
+  }
+
+  return "all";
+}
+
+// Product titles abbreviate "Case" as "CSE" ("CLR TPU CSE…"), so searching
+// "case" matched nothing. Normalise both the query and the haystack so
+// stockroom shorthand maps to the word customers actually type.
+const normalizeSearchText = (value: string) =>
+  value.toLowerCase().replace(/\bcse\b/g, "case");
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured" },
@@ -25,14 +76,20 @@ export default function Shop() {
   const [search, setSearch] = useState("");
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
   const [sort, setSort] = useState("featured");
-  const [selectedCat, setSelectedCat] = useState(searchParams.get("cat") || "all");
-  const [selectedSubcat, setSelectedSubcat] = useState(searchParams.get("subcat") || "all");
+  const [selectedCat, setSelectedCat] = useState(() =>
+    resolveCategoryParam(searchParams.get("cat"), categories),
+  );
+  const [selectedSubcat, setSelectedSubcat] = useState(
+    searchParams.get("subcat") || "all",
+  );
   const searchWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setSelectedCat(searchParams.get("cat") || "all");
+    setSelectedCat(resolveCategoryParam(searchParams.get("cat"), categories));
     setSelectedSubcat(searchParams.get("subcat") || "all");
-  }, [searchParams]);
+    // Re-resolve when the live categories arrive: the first render only has
+    // the seed categories, and the Supabase ids differ.
+  }, [searchParams, categories]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -102,8 +159,25 @@ export default function Shop() {
         : selectedSubcat !== "all"
           ? p.category === selectedSubcat
           : descendantIds(selectedCat).includes(p.category);
-    const q = search.trim().toLowerCase();
-    const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q) || (p.tags || []).some((t) => t.toLowerCase().includes(q)) || p.category?.toLowerCase().includes(q);
+    const q = normalizeSearchText(search.trim());
+    // Match against the product's own text plus its category (and parent
+    // category) names, so "case" finds CSE-titled products filed under
+    // Protection, and "charger" finds items under Charging.
+    const category = categories.find((c) => c.id === p.category);
+    const parentCategory = category?.parentId
+      ? categories.find((c) => c.id === category.parentId)
+      : undefined;
+    const haystack = normalizeSearchText(
+      [
+        p.name,
+        p.description ?? "",
+        ...(p.tags || []),
+        p.category ?? "",
+        category?.name ?? "",
+        parentCategory?.name ?? "",
+      ].join(" "),
+    );
+    const matchesSearch = !q || haystack.includes(q);
     return matchesCat && matchesSearch;
   });
 
