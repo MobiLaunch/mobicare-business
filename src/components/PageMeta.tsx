@@ -3,6 +3,36 @@ import { useLocation } from "react-router-dom";
 
 import { useSiteStore } from "@/lib/siteStore";
 
+interface FbqFn {
+  (...args: unknown[]): void;
+  callMethod?: (...args: unknown[]) => void;
+  queue: unknown[];
+  loaded: boolean;
+  version: string;
+  push?: FbqFn;
+}
+
+interface PixelWindow {
+  fbq?: FbqFn;
+  _fbq?: FbqFn;
+}
+
+function createFbqStub(win: PixelWindow): FbqFn {
+  const queue: unknown[] = [];
+  const fn = (...args: unknown[]) => {
+    const active = win.fbq;
+    if (active && active.callMethod) active.callMethod(...args);
+    else queue.push(args);
+  };
+  const stub: FbqFn = Object.assign(fn, {
+    queue,
+    loaded: true,
+    version: "2.0",
+  });
+  stub.push = stub;
+  return stub;
+}
+
 interface PageMetaProps {
   title?: string;
   description?: string;
@@ -119,28 +149,13 @@ export default function PageMeta({ title, description }: PageMetaProps) {
     const scriptId = `fb-pixel-${pixelId}`;
     if (document.getElementById(scriptId)) return;
 
-    const w = window as unknown as {
-      fbq?: ((...args: unknown[]) => void) & {
-        callMethod?: (...args: unknown[]) => void;
-        queue?: unknown[];
-        loaded?: boolean;
-        version?: string;
-        push?: (...args: unknown[]) => void;
-      };
-      _fbq?: unknown;
-    };
+    const w = window as unknown as PixelWindow;
+    let fbq = w.fbq;
 
-    if (!w.fbq) {
-      const n: NonNullable<typeof w.fbq> = function (...args: unknown[]) {
-        if (n.callMethod) n.callMethod(...args);
-        else n.queue!.push(args);
-      };
-      if (!w._fbq) w._fbq = n;
-      n.push = n;
-      n.loaded = true;
-      n.version = "2.0";
-      n.queue = [];
-      w.fbq = n;
+    if (!fbq) {
+      fbq = createFbqStub(w);
+      if (!w._fbq) w._fbq = fbq;
+      w.fbq = fbq;
 
       const s = document.createElement("script");
       s.id = scriptId;
@@ -149,8 +164,8 @@ export default function PageMeta({ title, description }: PageMetaProps) {
       document.head.appendChild(s);
     }
 
-    w.fbq("init", pixelId);
-    w.fbq("track", "PageView");
+    fbq("init", pixelId);
+    fbq("track", "PageView");
   }, [seo?.facebookPixelId]);
 
   return null;
