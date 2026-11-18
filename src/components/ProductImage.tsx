@@ -30,23 +30,20 @@ export default function ProductImage({ src, alt, className = "" }: ProductImageP
 
   if (state === "failed") {
     return (
-      <div
-        aria-label={alt}
-        className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-surface-secondary text-muted"
-        role="img"
-      >
-        <ImageOff className="size-5 opacity-50" />
-        <span className="px-3 text-center text-caption opacity-70">Image unavailable</span>
+      <div aria-label={alt} className="mc-img-failed" role="img">
+        <ImageOff aria-hidden="true" size={20} />
+        <span>Image unavailable</span>
       </div>
     );
   }
 
   return (
     <>
-      {state === "loading" && <div className="absolute inset-0 animate-pulse bg-surface-tertiary" />}
+      {state === "loading" && <div aria-hidden="true" className="mc-img-skel" />}
       <img
         alt={alt}
-        className={`h-full w-full object-cover ${state === "loading" ? "opacity-0" : "opacity-100"} transition-opacity duration-300 ${className}`}
+        className={`mc-img ${className}`.trim()}
+        data-ready={state === "ready" ? "true" : undefined}
         loading="lazy"
         src={src}
         onError={() => setState("failed")}

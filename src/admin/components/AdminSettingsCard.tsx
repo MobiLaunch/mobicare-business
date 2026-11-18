@@ -9,53 +9,29 @@ interface AdminSettingsCardProps {
   children: ReactNode;
 }
 
-export default function AdminSettingsCard({
-  icon: Icon,
-  title,
-  description,
-  statusChip,
-  children,
-}: AdminSettingsCardProps) {
+export default function AdminSettingsCard({ icon: Icon, title, description, statusChip, children }: AdminSettingsCardProps) {
   return (
-    <div className="mb-7 rounded-[28px] bg-surface-secondary p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
-      <div className="mb-6 flex flex-wrap items-center gap-4">
-        <span className="flex size-[52px] shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-          <Icon className="size-6" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="m-0 mb-1 text-heading font-extrabold text-foreground">
-            {title}
-          </h3>
-          <p className="m-0 text-sm text-muted">{description}</p>
+    <section className="ad-setcard">
+      <div className="ad-setcard-head">
+        <span className="ico"><Icon aria-hidden="true" size={22} strokeWidth={1.75} /></span>
+        <div>
+          <h2>{title}</h2>
+          <p>{description}</p>
         </div>
         {statusChip}
       </div>
-      {children}
-    </div>
+      <div className="ad-setcard-body">{children}</div>
+    </section>
   );
 }
 
-export function SettingsStepItem({
-  number,
-  title,
-  description,
-  children,
-}: {
-  number: number;
-  title: string;
-  description: ReactNode;
-  children: ReactNode;
-}) {
+export function SettingsStepItem({ number, title, description, children }: { number: number; title: string; description: ReactNode; children: ReactNode }) {
   return (
-    <div className="mb-7 flex gap-4 last:mb-0">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-extrabold text-accent">
-        {number}
-      </span>
-      <div className="min-w-0 flex-1">
-        <h4 className="m-0 mb-1.5 text-body-sm font-extrabold text-foreground">
-          {title}
-        </h4>
-        <p className="m-0 mb-3 text-sm text-muted">{description}</p>
+    <div className="ad-step">
+      <span className="n">{number}</span>
+      <div>
+        <h3>{title}</h3>
+        <p className="d">{description}</p>
         {children}
       </div>
     </div>

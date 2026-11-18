@@ -1,87 +1,32 @@
-import type {
-  BookingRecord,
-  CustomerChatMessage,
-  Order,
-} from "../types/domain";
-
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  AlertTriangle,
-  ArrowRight,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  Key,
-  LogOut,
-  Mail,
-  MessageCircle,
-  Package,
-  Phone,
-  RefreshCw,
-  Send,
-  ShieldCheck,
-  User,
-  Wrench,
-} from "lucide-react";
-import {
-  Alert,
-  Button,
-  Card,
-  Chip,
-  FieldError,
-  Form,
-  InputGroup,
-  Label,
-  Spinner,
-  Tabs,
-  TextArea,
-  TextField,
-} from "@heroui/react";
+import type { BookingRecord, CustomerChatMessage, Order } from "../types/domain";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { LogOut, RefreshCw } from "lucide-react";
+import { Alert } from "@/components/arc/alert/alert";
+import { Avatar } from "@/components/arc/avatar/avatar";
+import { Badge, type BadgeTone } from "@/components/arc/badge/badge";
+import { Button } from "@/components/arc/button/button";
+import { ChatComposer, ChatThread, type ChatMessage } from "@/components/arc/chat-thread/chat-thread";
+import { EmptyState } from "@/components/arc/empty-state/empty-state";
+import { Input } from "@/components/arc/input/input";
+import { PasswordField } from "@/components/arc/password-field/password-field";
+import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
+import { Skeleton } from "@/components/arc/skeleton/skeleton";
 
 import { useAuth } from "../lib/AuthContext";
 import {
+  getClient,
   updateCustomerProfile,
   updateCustomerPassword,
   sbFetchCustomerBookings,
   sbFetchCustomerOrders,
   sbFetchCustomerChat,
+  sbMarkCustomerMessagesRead,
   sbSendCustomerChatMessage,
-  sbMarkCustomerChatRead,
-  subscribeCustomerChat,
 } from "../lib/supabase";
-import { formatBookingDate } from "../components/BookingWizard";
 import PageMeta from "../components/PageMeta";
 
 type AccountTab = "profile" | "bookings" | "orders" | "messages" | "settings";
-
-function orderChipColor(
-  status: string,
-): "success" | "accent" | "danger" | "warning" {
-  const s = (status || "").toLowerCase();
-  if (s === "delivered" || s === "paid") return "success";
-  if (s === "processing" || s === "shipped") return "accent";
-  if (s === "cancelled" || s === "refunded" || s === "payment_failed")
-    return "danger";
-  return "warning";
-}
-
-function bookingChipColor(
-  status: string,
-): "success" | "accent" | "danger" | "warning" {
-  const s = (status || "").toLowerCase();
-  if (s === "completed") return "success";
-  if (s === "confirmed") return "accent";
-  if (s === "cancelled" || s === "no-show") return "danger";
-  return "warning";
-}
 
 export default function Account() {
   const { user, profile, loading, reloadProfile, logout } = useAuth();
@@ -95,7 +40,6 @@ export default function Account() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [chatMessages, setChatMessages] = useState<CustomerChatMessage[]>([]);
-  const [chatDraft, setChatDraft] = useState("");
   const [chatSending, setChatSending] = useState(false);
   const [chatError, setChatError] = useState("");
   const [dataLoading, setDataLoading] = useState(false);
@@ -105,23 +49,13 @@ export default function Account() {
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
-  const chatListRef = useRef<HTMLDivElement>(null);
-
+  useEffect(() => { if (!loading && !user) navigate("/login", { replace: true }); }, [loading, user, navigate]);
   useEffect(() => {
-    if (!loading && !user) navigate("/login", { replace: true });
-  }, [loading, user, navigate]);
-
-  useEffect(() => {
-    if (profile) {
-      setFullName(profile.full_name || "");
-      setPhone(profile.phone || "");
-    } else if (user?.user_metadata) {
-      setFullName(String(user.user_metadata.full_name || ""));
-      setPhone(String(user.user_metadata.phone || ""));
-    }
+    if (profile) { setFullName(profile.full_name || ""); setPhone(profile.phone || ""); }
+    else if (user?.user_metadata) { setFullName(user.user_metadata.full_name || ""); setPhone(user.user_metadata.phone || ""); }
   }, [profile, user]);
 
-  const loadUserData = useCallback(async () => {
+  const loadUserData = async () => {
     if (!user) return;
     setDataLoading(true);
     try {
@@ -131,950 +65,305 @@ export default function Account() {
         sbFetchCustomerChat(user.id),
       ]);
       if (ordersRes.data) setOrders(ordersRes.data);
-      if (bookingsRes.data) setBookings(bookingsRes.data);
+      if (bookingsRes.data) setBookings(bookingsRes.data as BookingRecord[]);
       if (chatRes.data) setChatMessages(chatRes.data);
-    } catch (error) {
-      console.error("Error loading account data:", error);
-    } finally {
-      setDataLoading(false);
-    }
-  }, [user]);
+    } catch (error) { console.error("Error loading account data:", error); }
+    finally { setDataLoading(false); }
+  };
+  useEffect(() => { if (user?.id) void loadUserData(); }, [user?.id]);
 
+  // Keep customer chat thread fresh via Supabase Realtime + fallback poll while viewing Messages
   useEffect(() => {
-    if (user?.id) void loadUserData();
-  }, [user?.id, loadUserData]);
+    if (activeTab !== "messages" || !user?.id) return;
+    let active = true;
 
-  // Realtime subscription on public.messages (user_id=eq.<uid>)
-  useEffect(() => {
-    if (!user?.id) return;
-    const unsubscribe = subscribeCustomerChat(user.id, (msg, eventType) => {
-      setChatMessages((prev) => {
-        if (eventType === "DELETE") {
-          return prev.filter((m) => m.id !== msg.id);
+    const syncMessages = async () => {
+      const { data } = await sbFetchCustomerChat(user.id);
+
+      if (active && data) {
+        setChatMessages(data);
+        if (data.some((m) => m.direction === "outbound" && !m.read)) {
+          void sbMarkCustomerMessagesRead();
         }
-        const exists = prev.some((m) => m.id === msg.id);
-        if (exists) {
-          return prev.map((m) => (m.id === msg.id ? msg : m));
-        }
-        return [...prev, msg];
-      });
-    });
-    return unsubscribe;
-  }, [user?.id]);
+      }
+    };
 
-  // Auto-scroll to newest message when Messages tab is open or messages arrive
-  useEffect(() => {
-    if (activeTab !== "messages") return;
-    const el = chatListRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
-  }, [activeTab, chatMessages.length]);
+    void syncMessages();
 
-  // Mark shop outbound replies as read when customer views Messages tab
-  const unreadOutboundCount = chatMessages.filter(
-    (m) => m.direction === "outbound" && !m.read,
-  ).length;
+    const sb = getClient();
+    const channel = sb
+      ? sb
+          .channel(`customer-chat-${user.id}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "messages" },
+            () => {
+              void syncMessages();
+            },
+          )
+          .subscribe()
+      : null;
 
-  useEffect(() => {
-    if (activeTab !== "messages" || !user?.id || unreadOutboundCount === 0)
-      return;
-    const unreadIds = chatMessages
-      .filter((m) => m.direction === "outbound" && !m.read)
-      .map((m) => m.id);
-    if (!unreadIds.length) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void syncMessages();
+    }, 15_000);
 
-    setChatMessages((prev) =>
-      prev.map((m) => (unreadIds.includes(m.id) ? { ...m, read: true } : m)),
-    );
-    void sbMarkCustomerChatRead(user.id, unreadIds);
-  }, [activeTab, user?.id, unreadOutboundCount, chatMessages]);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      if (sb && channel) void sb.removeChannel(channel);
+    };
+  }, [activeTab, user?.id]);
 
-  const handleSendChat = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!user || !chatDraft.trim()) return;
+  const sendChat = async (text: string) => {
+    const body = text.trim();
+
+    if (!user || !body) return;
     setChatSending(true);
     setChatError("");
     try {
-      const name =
-        profile?.full_name ||
-        fullName ||
-        user.email?.split("@")[0] ||
-        "Customer";
-      const customerPhone =
-        profile?.phone ||
-        phone ||
-        String(user.user_metadata?.phone || "");
-      const { data, error } = await sbSendCustomerChatMessage(
-        user.id,
-        name,
-        user.email || "",
-        chatDraft.trim(),
-        customerPhone,
-      );
+      const name = profile?.full_name || fullName || user.email?.split("@")[0] || "Customer";
+      const { data, error } = await sbSendCustomerChatMessage(user.id, name, user.email || "", body);
 
-      if (error) {
-        setChatError(
-          typeof error === "object" && error && "message" in error
-            ? (error as { message: string }).message
-            : "Failed to send message.",
-        );
-      } else if (data) {
-        setChatMessages((msgs) =>
-          msgs.some((m) => m.id === data.id) ? msgs : [...msgs, data],
-        );
-        setChatDraft("");
-      }
-    } catch {
-      setChatError("Failed to send message.");
-    } finally {
-      setChatSending(false);
-    }
+      if (error) setChatError(typeof error === "object" && error && "message" in error ? (error as { message: string }).message : "Failed to send message.");
+      else if (data) setChatMessages((msgs) => [...msgs, data]);
+    } catch { setChatError("Failed to send message."); }
+    finally { setChatSending(false); }
   };
 
   const handleUpdateProfile = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!user) return;
-    setProfileSaving(true);
-    setProfileSuccess("");
-    setProfileError("");
+    event.preventDefault(); if (!user) return;
+    setProfileSaving(true); setProfileSuccess(""); setProfileError("");
     try {
-      const { error } = await updateCustomerProfile(user.id, {
-        full_name: fullName,
-        phone,
-        email: user.email,
-      });
-      if (error) {
-        setProfileError(
-          typeof error === "object" && error && "message" in error
-            ? (error as { message: string }).message
-            : "Failed to update profile.",
-        );
-      } else {
-        await reloadProfile();
-        setProfileSuccess("Profile updated successfully!");
-      }
-    } catch {
-      setProfileError("An unexpected error occurred.");
-    } finally {
-      setProfileSaving(false);
-    }
+      const { error } = await updateCustomerProfile(user.id, { full_name: fullName, phone });
+      if (error) setProfileError(typeof error === "object" && error && "message" in error ? (error as { message: string }).message : "Failed to update profile.");
+      else { await reloadProfile(); setProfileSuccess("Profile updated successfully!"); }
+    } catch { setProfileError("An unexpected error occurred."); }
+    finally { setProfileSaving(false); }
   };
 
   const handleChangePassword = async (event: FormEvent) => {
-    event.preventDefault();
-    setPasswordSuccess("");
-    setPasswordError("");
-    if (newPassword.length < 8) {
-      return setPasswordError("Password must be at least 8 characters long.");
-    }
-    if (newPassword !== confirmPassword) {
-      return setPasswordError("Passwords do not match.");
-    }
+    event.preventDefault(); setPasswordSuccess(""); setPasswordError("");
+    if (newPassword.length < 6) return setPasswordError("Password must be at least 6 characters long.");
+    if (newPassword !== confirmPassword) return setPasswordError("Passwords do not match.");
     setPasswordSaving(true);
     try {
       const { error } = await updateCustomerPassword(newPassword);
-      if (error) {
-        setPasswordError(
-          typeof error === "object" && error && "message" in error
-            ? (error as { message: string }).message
-            : "Unable to update password.",
-        );
-      } else {
-        setPasswordSuccess("Password updated successfully!");
-        setNewPassword("");
-        setConfirmPassword("");
-      }
-    } catch {
-      setPasswordError("Failed to update password.");
-    } finally {
-      setPasswordSaving(false);
-    }
+      if (error) setPasswordError(typeof error === "object" && error && "message" in error ? (error as { message: string }).message : "Unable to update password.");
+      else { setPasswordSuccess("Password updated successfully!"); setNewPassword(""); setConfirmPassword(""); }
+    } catch { setPasswordError("Failed to update password."); }
+    finally { setPasswordSaving(false); }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/", { replace: true });
-  };
+  const handleLogout = async () => { await logout(); navigate("/", { replace: true }); };
 
-  if (loading || !user) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
+  if (loading || !user) return <div aria-label="Loading" className="mc-spinner" role="status" />;
 
-  const displayName =
-    profile?.full_name || fullName || user.email?.split("@")[0] || "Customer";
-  const tabItems = [
-    {
-      id: "profile" as const,
-      label: "Profile",
-      description: "Contact information",
-      icon: User,
-    },
-    {
-      id: "bookings" as const,
-      label: "Bookings",
-      description: "Repair appointments",
-      count: bookings.length,
-      icon: Wrench,
-    },
-    {
-      id: "orders" as const,
-      label: "Orders",
-      description: "Shopping history",
-      count: orders.length,
-      icon: Package,
-    },
-    {
-      id: "messages" as const,
-      label: "Messages",
-      description:
-        unreadOutboundCount > 0
-          ? `${unreadOutboundCount} unread repl${unreadOutboundCount === 1 ? "y" : "ies"}`
-          : "Chat with the shop",
-      count:
-        unreadOutboundCount > 0 ? unreadOutboundCount : chatMessages.length,
-      highlightBadge: unreadOutboundCount > 0,
-      icon: MessageCircle,
-    },
-    {
-      id: "settings" as const,
-      label: "Security",
-      description: "Password & security",
-      icon: ShieldCheck,
-    },
+  const displayName = profile?.full_name || fullName || user.email?.split("@")[0] || "Customer";
+  const tabs = [
+    { value: "profile", label: "Profile" },
+    { value: "bookings", label: `Bookings${bookings.length ? ` (${bookings.length})` : ""}` },
+    { value: "orders", label: `Orders${orders.length ? ` (${orders.length})` : ""}` },
+    { value: "messages", label: "Messages" },
+    { value: "settings", label: "Security" },
   ];
+  const thread: ChatMessage[] = chatMessages.map((m) => ({ id: String(m.id), authorId: m.direction === "inbound" ? "me" : "shop", text: m.body, createdAt: m.created_at, status: m.direction === "inbound" ? "delivered" : undefined }));
 
   return (
-    <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-8 lg:px-8">
-      <PageMeta
-        description="Manage your Mobicare account, view repair bookings, and track order history."
-        title="My Account — Mobicare Device Recovery"
-      />
+    <div className="mc-page mc-section mc-narrow" id="account-page" style={{ marginInline: "auto" }}>
+      <PageMeta description="Manage your Mobicare account, view repair bookings, and track order history." title="My account | Mobicare Device Recovery" />
 
-      <section className="surface-raised mb-5 overflow-hidden rounded-panel sm:mb-7">
-        <div className="bg-accent-soft/60 px-4 py-5 sm:px-7 sm:py-6">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3.5">
-              <div
-                aria-hidden="true"
-                className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground shadow-sm sm:size-14"
-              >
-                <User className="size-6 sm:size-7" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground sm:text-2xl">
-                    Hello, {displayName}
-                  </h1>
-                  <Chip size="sm" variant="soft">
-                    <Chip.Label>Customer</Chip.Label>
-                  </Chip>
-                </div>
-                <p className="mt-0.5 truncate text-sm text-muted">
-                  {user.email}
-                </p>
-              </div>
+      <div className="mc-stack" style={{ gap: "var(--space-8)" }}>
+        <header className="mc-profile" id="account-profile-card">
+          <Avatar name={displayName} size="xl" />
+          <div style={{ flex: 1, minWidth: "10rem" }}>
+            <h1 className="mc-h2" style={{ overflowWrap: "anywhere" }}>{displayName}</h1>
+            <p className="mc-small" style={{ overflowWrap: "anywhere" }}>{user.email}</p>
+          </div>
+          <Button variant="secondary" onClick={handleLogout}><LogOut aria-hidden="true" size={16} strokeWidth={1.75} />Sign out</Button>
+        </header>
+
+        <div className="mc-stats">
+          <div className="mc-stat"><strong>{bookings.length}</strong><span>Bookings</span></div>
+          <div className="mc-stat"><strong>{orders.length}</strong><span>Orders</span></div>
+          <div className="mc-stat"><strong>{chatMessages.length}</strong><span>Messages</span></div>
+        </div>
+
+        <div style={{ overflowX: "auto" }}>
+          <SegmentedControl label="Account sections" options={tabs} value={activeTab} onValueChange={(v) => setActiveTab(v as AccountTab)} />
+        </div>
+
+        {activeTab === "profile" && (
+          <form className="mc-form" onSubmit={handleUpdateProfile}>
+            {profileSuccess && <Alert title={profileSuccess} tone="success" />}
+            {profileError && <Alert title={profileError} tone="danger" />}
+            <h2 className="mc-h3">Contact information</h2>
+            <Input description="To change your email address, contact the shop." disabled label="Email" value={user.email || ""} readOnly />
+            <div className="mc-form-2">
+              <Input autoComplete="name" disabled={profileSaving} label="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              <Input autoComplete="tel" disabled={profileSaving} inputMode="tel" label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
-            <Button
-              className="min-h-10 w-full sm:w-auto"
-              variant="outline"
-              onPress={handleLogout}
-            >
-              <LogOut aria-hidden="true" className="size-4" />
-              <span>Sign Out</span>
-            </Button>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 divide-x divide-border border-t border-border sm:grid-cols-3">
-          <SummaryStat
-            icon={<Wrench className="size-4" />}
-            label="Bookings"
-            value={bookings.length}
-          />
-          <SummaryStat
-            icon={<Package className="size-4" />}
-            label="Orders"
-            value={orders.length}
-          />
-          <div className="col-span-2 hidden sm:col-span-1 sm:block">
-            <SummaryStat
-              icon={<MessageCircle className="size-4" />}
-              label="Shop Replies"
-              value={
-                unreadOutboundCount > 0
-                  ? `${unreadOutboundCount} Unread`
-                  : "Up to date"
-              }
-            />
-          </div>
-        </div>
-      </section>
+            <div className="mc-actions"><Button loading={profileSaving} type="submit">Save changes</Button></div>
 
-      <div
-        aria-label="Account actions"
-        className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-5 sm:gap-3"
-      >
-        {tabItems.map(
-          ({ id, label, description, count, highlightBadge, icon: Icon }) => {
-            const selected = activeTab === id;
-            return (
-              <Button
-                key={id}
-                aria-pressed={selected}
-                className={`group flex h-auto min-w-0 flex-col whitespace-normal rounded-2xl border p-3.5 text-left transition-all sm:p-4 ${selected ? "border-accent bg-accent-soft shadow-sm" : "border-border bg-surface hover:border-accent/50 hover:bg-surface-secondary"}`}
-                variant="ghost"
-                onPress={() => setActiveTab(id)}
-              >
-                <div className="flex w-full items-start justify-between gap-2">
-                  <span
-                    className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-accent text-accent-foreground" : "bg-surface-secondary text-accent"}`}
-                  >
-                    <Icon aria-hidden="true" className="size-4" />
-                  </span>
-                  {typeof count === "number" && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-micro font-bold ${highlightBadge ? "bg-accent text-accent-foreground" : "bg-surface-secondary text-muted"}`}
-                    >
-                      {highlightBadge ? `${count} new` : count}
-                    </span>
-                  )}
-                </div>
-                <strong className="mt-3 block truncate text-sm font-bold text-foreground">
-                  {label}
-                </strong>
-                <span className="mt-0.5 block truncate text-caption text-muted">
-                  {description}
-                </span>
-              </Button>
-            );
-          },
+            <h2 className="mc-h3" style={{ marginTop: "var(--space-6)" }}>Help and policies</h2>
+            <div className="mc-group">
+              <Link className="mc-item mc-item--between" to="/shipping">Shipping</Link>
+              <Link className="mc-item mc-item--between" to="/returns">Returns and exchanges</Link>
+              <Link className="mc-item mc-item--between" to="/refunds">Refunds</Link>
+              <Link className="mc-item mc-item--between" to="/privacy">Privacy</Link>
+            </div>
+          </form>
         )}
-      </div>
 
-      <Tabs
-        className="w-full"
-        selectedKey={activeTab}
-        variant="secondary"
-        onSelectionChange={(key) => setActiveTab(String(key) as AccountTab)}
-      >
-        <Tabs.ListContainer className="sr-only">
-          <Tabs.List aria-label="Account sections">
-            {tabItems.map(({ id, label }) => (
-              <Tabs.Tab key={id} id={id}>
-                {label}
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-        </Tabs.ListContainer>
-
-        <Tabs.Panel id="profile">
-          <Card className="rounded-card p-4 sm:p-7">
-            <Card.Header className="pb-5">
-              <Card.Title className="text-xl font-bold">
-                Contact Information
-              </Card.Title>
-              <Card.Description>
-                Keep your contact details current for repair notifications and
-                orders.
-              </Card.Description>
-            </Card.Header>
-            <Card.Content>
-              {profileSuccess && (
-                <Alert className="mb-4" status="success">
-                  <Alert.Indicator>
-                    <CheckCircle2 className="size-4" />
-                  </Alert.Indicator>
-                  <Alert.Content>
-                    <Alert.Description>{profileSuccess}</Alert.Description>
-                  </Alert.Content>
-                </Alert>
-              )}
-              {profileError && (
-                <Alert className="mb-4" status="danger">
-                  <Alert.Indicator>
-                    <AlertTriangle className="size-4" />
-                  </Alert.Indicator>
-                  <Alert.Content>
-                    <Alert.Description>{profileError}</Alert.Description>
-                  </Alert.Content>
-                </Alert>
-              )}
-              <Form
-                className="grid grid-cols-1 gap-5 sm:grid-cols-2"
-                onSubmit={handleUpdateProfile}
-              >
-                <TextField
-                  isDisabled
-                  className="flex flex-col gap-1.5 sm:col-span-2"
-                >
-                  <Label>Email Address</Label>
-                  <InputGroup>
-                    <InputGroup.Prefix>
-                      <Mail aria-hidden="true" className="size-4 text-muted" />
-                    </InputGroup.Prefix>
-                    <InputGroup.Input value={user.email || ""} />
-                  </InputGroup>
-                  <span className="text-xs text-muted">
-                    Email address cannot be changed directly.
-                  </span>
-                </TextField>
-                <TextField
-                  className="flex flex-col gap-1.5"
-                  isDisabled={profileSaving}
-                  value={fullName}
-                  onChange={setFullName}
-                >
-                  <Label>Full Name</Label>
-                  <InputGroup>
-                    <InputGroup.Prefix>
-                      <User aria-hidden="true" className="size-4" />
-                    </InputGroup.Prefix>
-                    <InputGroup.Input placeholder="Jane Doe" />
-                  </InputGroup>
-                  <FieldError />
-                </TextField>
-                <TextField
-                  className="flex flex-col gap-1.5"
-                  isDisabled={profileSaving}
-                  type="tel"
-                  value={phone}
-                  onChange={setPhone}
-                >
-                  <Label>Phone Number</Label>
-                  <InputGroup>
-                    <InputGroup.Prefix>
-                      <Phone aria-hidden="true" className="size-4" />
-                    </InputGroup.Prefix>
-                    <InputGroup.Input placeholder="(618) 555-0199" />
-                  </InputGroup>
-                  <FieldError />
-                </TextField>
-                <Button
-                  className="min-h-11 w-full sm:w-auto"
-                  isDisabled={profileSaving}
-                  type="submit"
-                  variant="primary"
-                >
-                  {profileSaving ? (
-                    <>
-                      <Spinner size="sm" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <span>Save Changes</span>
-                  )}
-                </Button>
-              </Form>
-            </Card.Content>
-          </Card>
-        </Tabs.Panel>
-
-        <Tabs.Panel id="bookings">
-          <AccountSectionHeader
-            action="Refresh"
-            icon={<RefreshCw className="size-3.5" />}
-            title="Your Repair Bookings"
-            onAction={loadUserData}
-          />
-          {dataLoading ? (
-            <LoadingCard />
-          ) : bookings.length === 0 ? (
-            <EmptyCard
-              action="Book a Repair"
-              description="You haven’t submitted any repair appointments yet."
-              icon={<Wrench className="size-10" />}
-              title="No bookings yet"
-              onAction={() => navigate("/repairs")}
-            />
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {bookings.map((booking) => (
-                <BookingTicket key={booking.id} booking={booking} />
-              ))}
+        {activeTab === "bookings" && (
+          <section aria-label="Repair bookings" className="mc-stack">
+            <div className="mc-section-head--row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 className="mc-h3">Repair bookings</h2>
+              <Button loading={dataLoading} size="sm" variant="secondary" onClick={loadUserData}><RefreshCw aria-hidden="true" size={14} strokeWidth={1.75} />Refresh</Button>
             </div>
-          )}
-        </Tabs.Panel>
+            {dataLoading && bookings.length === 0 ? <Skeleton lines={4} /> : bookings.length === 0 ? (
+              <EmptyState action={<Button onClick={() => navigate("/repairs")}>Book a repair</Button>} description="You haven't submitted any repair appointments yet." title="No bookings yet" />
+            ) : bookings.map((b) => <BookingTicket key={b.id} booking={b} />)}
+          </section>
+        )}
 
-        <Tabs.Panel id="orders">
-          <AccountSectionHeader
-            action="Refresh"
-            icon={<RefreshCw className="size-3.5" />}
-            title="Order History"
-            onAction={loadUserData}
-          />
-          {dataLoading ? (
-            <LoadingCard />
-          ) : orders.length === 0 ? (
-            <EmptyCard
-              action="Browse Shop"
-              description="Your order history is currently empty."
-              icon={<Package className="size-10" />}
-              title="No orders yet"
-              onAction={() => navigate("/shop")}
-            />
-          ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {orders.map((order) => (
-                <Card
-                  key={order.id}
-                  className="rounded-card p-4 transition-shadow hover:shadow-md sm:p-5"
-                >
-                  <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
-                    <div>
-                      <span className="text-xs font-semibold text-muted">
-                        Order ID
-                      </span>
-                      <p className="m-0 font-mono text-sm font-bold text-foreground">
-                        #{order.id}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <Chip
-                        color={orderChipColor(order.status)}
-                        size="sm"
-                        variant="soft"
-                      >
-                        <Chip.Label className="capitalize">
-                          {(order.status || "paid").replace(/_/g, " ")}
-                        </Chip.Label>
-                      </Chip>
-                      <p className="m-0 mt-1 text-xs text-muted">
-                        {order.createdAt
-                          ? new Date(order.createdAt).toLocaleDateString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              },
-                            )
-                          : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {order.items?.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex items-start justify-between gap-4 text-sm"
-                      >
-                        <span className="min-w-0 text-foreground">
-                          {item.name}{" "}
-                          <span className="text-muted">× {item.qty}</span>
-                        </span>
-                        <span className="shrink-0 font-semibold text-foreground">
-                          ${(item.price * item.qty).toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-sm">
-                    <span className="text-xs text-muted">
-                      {order.shipping === 0
-                        ? "Free Shipping / Pickup"
-                        : `Shipping: $${order.shipping.toFixed(2)}`}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-foreground">Total</span>
-                      <span className="text-base font-bold text-accent">
-                        ${order.total?.toFixed(2) || "0.00"}
-                      </span>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+        {activeTab === "orders" && (
+          <section aria-label="Order history" className="mc-stack">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 className="mc-h3">Order history</h2>
+              <Button loading={dataLoading} size="sm" variant="secondary" onClick={loadUserData}><RefreshCw aria-hidden="true" size={14} strokeWidth={1.75} />Refresh</Button>
             </div>
-          )}
-        </Tabs.Panel>
-
-        <Tabs.Panel id="messages">
-          <AccountSectionHeader
-            action="Refresh"
-            icon={<RefreshCw className="size-3.5" />}
-            title="Messages with Mobicare"
-            onAction={loadUserData}
-          />
-          <Card className="rounded-card p-4 sm:p-6">
-            {dataLoading && chatMessages.length === 0 ? (
-              <LoadingCard />
+            {dataLoading && orders.length === 0 ? <Skeleton lines={4} /> : orders.length === 0 ? (
+              <EmptyState action={<Button onClick={() => navigate("/shop")}>Browse the shop</Button>} description="Your order history is currently empty." title="No orders yet" />
             ) : (
               <>
-                <div
-                  ref={chatListRef}
-                  className="mb-4 flex max-h-[420px] flex-col gap-3 overflow-y-auto pr-1"
-                >
-                  {chatMessages.length === 0 ? (
-                    <p className="m-0 py-8 text-center text-sm text-muted">
-                      No messages yet — send one below and our Fairfield shop
-                      technicians will reply right here in real time.
-                    </p>
-                  ) : (
-                    chatMessages.map((m) => (
-                      <div
-                        key={m.id}
-                        className={`max-w-[82%] rounded-2xl p-3.5 text-sm ${
-                          m.direction === "inbound"
-                            ? "ml-auto bg-accent text-accent-foreground"
-                            : "bg-surface-secondary text-foreground"
-                        }`}
-                      >
-                        <span
-                          className={`mb-1 block text-[10px] font-bold uppercase tracking-wider ${
-                            m.direction === "inbound"
-                              ? "text-accent-foreground/75"
-                              : "text-accent"
-                          }`}
-                        >
-                          {m.direction === "inbound" ? "You" : "Mobicare Shop"}
-                        </span>
-                        <p className="m-0 whitespace-pre-wrap">{m.body}</p>
-                        <span
-                          className={`mt-1.5 block text-[10px] ${
-                            m.direction === "inbound"
-                              ? "text-accent-foreground/70"
-                              : "text-muted"
-                          }`}
-                        >
-                          {new Date(m.created_at).toLocaleString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-                {chatError && (
-                  <Alert className="mb-3" status="danger">
-                    <Alert.Indicator>
-                      <AlertTriangle className="size-4" />
-                    </Alert.Indicator>
-                    <Alert.Content>
-                      <Alert.Description>{chatError}</Alert.Description>
-                    </Alert.Content>
-                  </Alert>
-                )}
-                <Form className="flex items-end gap-2" onSubmit={handleSendChat}>
-                  <TextArea
-                    aria-label="Message to Mobicare"
-                    className="flex-1"
-                    disabled={chatSending}
-                    placeholder="Ask about a repair, quote, or order…"
-                    rows={2}
-                    value={chatDraft}
-                    onChange={(e) => setChatDraft(e.target.value)}
-                  />
-                  <Button
-                    className="min-h-11 shrink-0"
-                    isDisabled={chatSending || !chatDraft.trim()}
-                    type="submit"
-                    variant="primary"
-                  >
-                    {chatSending ? (
-                      <Spinner size="sm" />
-                    ) : (
-                      <Send className="size-4" />
-                    )}
-                    <span className="hidden sm:inline">Send</span>
-                  </Button>
-                </Form>
+                {orders.map((order) => <OrderCard key={order.id} order={order} />)}
+                <p className="mc-small">All sales are final. Defective items may be exchanged. See <Link className="mc-link" to="/returns">returns and exchanges</Link>.</p>
               </>
             )}
-          </Card>
-        </Tabs.Panel>
+          </section>
+        )}
 
-        <Tabs.Panel id="settings">
-          <Card className="rounded-card p-4 sm:p-7">
-            <Card.Header className="pb-5">
-              <Card.Title className="text-xl font-bold">
-                Account Security
-              </Card.Title>
-              <Card.Description>
-                Change your password (8+ characters) to keep your Mobicare
-                account secure.
-              </Card.Description>
-            </Card.Header>
-            <Card.Content>
-              {passwordSuccess && (
-                <Alert className="mb-4" status="success">
-                  <Alert.Indicator>
-                    <CheckCircle2 className="size-4" />
-                  </Alert.Indicator>
-                  <Alert.Content>
-                    <Alert.Description>{passwordSuccess}</Alert.Description>
-                  </Alert.Content>
-                </Alert>
-              )}
-              {passwordError && (
-                <Alert className="mb-4" status="danger">
-                  <Alert.Indicator>
-                    <AlertTriangle className="size-4" />
-                  </Alert.Indicator>
-                  <Alert.Content>
-                    <Alert.Description>{passwordError}</Alert.Description>
-                  </Alert.Content>
-                </Alert>
-              )}
-              <Form
-                className="grid grid-cols-1 gap-5 sm:max-w-2xl sm:grid-cols-2"
-                onSubmit={handleChangePassword}
-              >
-                <TextField
-                  isRequired
-                  className="flex flex-col gap-1.5"
-                  isDisabled={passwordSaving}
-                  minLength={8}
-                  type="password"
-                  value={newPassword}
-                  onChange={setNewPassword}
-                >
-                  <Label>New Password (8+ characters)</Label>
-                  <InputGroup>
-                    <InputGroup.Prefix>
-                      <Key aria-hidden="true" className="size-4" />
-                    </InputGroup.Prefix>
-                    <InputGroup.Input placeholder="••••••••" />
-                  </InputGroup>
-                  <FieldError />
-                </TextField>
-                <TextField
-                  isRequired
-                  className="flex flex-col gap-1.5"
-                  isDisabled={passwordSaving}
-                  minLength={8}
-                  type="password"
-                  value={confirmPassword}
-                  onChange={setConfirmPassword}
-                >
-                  <Label>Confirm New Password</Label>
-                  <InputGroup>
-                    <InputGroup.Prefix>
-                      <Key aria-hidden="true" className="size-4" />
-                    </InputGroup.Prefix>
-                    <InputGroup.Input placeholder="••••••••" />
-                  </InputGroup>
-                  <FieldError />
-                </TextField>
-                <Button
-                  className="min-h-11 w-full sm:w-auto"
-                  isDisabled={passwordSaving}
-                  type="submit"
-                  variant="primary"
-                >
-                  {passwordSaving ? (
-                    <>
-                      <Spinner size="sm" />
-                      <span>Updating Password...</span>
-                    </>
-                  ) : (
-                    <span>Update Password</span>
-                  )}
-                </Button>
-              </Form>
-            </Card.Content>
-          </Card>
-        </Tabs.Panel>
-      </Tabs>
+        {activeTab === "messages" && (
+          <section aria-label="Messages" className="mc-stack">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 className="mc-h3">Messages</h2>
+              <Button loading={dataLoading} size="sm" variant="secondary" onClick={loadUserData}><RefreshCw aria-hidden="true" size={14} strokeWidth={1.75} />Refresh</Button>
+            </div>
+            <div className="mc-card mc-card--flush" style={{ display: "flex", flexDirection: "column", height: "min(32rem, 70dvh)" }}>
+              <div style={{ flex: 1, minHeight: 0 }}>
+                {thread.length === 0
+                  ? <p className="mc-small" style={{ padding: "var(--space-8)", textAlign: "center" }}>No messages yet. Send one below and the shop will reply here.</p>
+                  : <ChatThread composer={false} currentUserId="me" label="Conversation with the shop" messages={thread} participants={[{ id: "me", name: displayName }, { id: "shop", name: "Mobicare" }]} />}
+              </div>
+              {chatError && <Alert title={chatError} tone="danger" />}
+              <div style={{ padding: "var(--space-3) var(--space-4) var(--space-4)", borderTop: "1px solid var(--border-subtle)" }}>
+                <ChatComposer allowAttachments={false} disabled={chatSending} placeholder="Message the shop" onSend={(d) => sendChat(d.text)} />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "settings" && (
+          <form className="mc-form" onSubmit={handleChangePassword} style={{ maxWidth: "28rem" }}>
+            {passwordSuccess && <Alert title={passwordSuccess} tone="success" />}
+            {passwordError && <Alert title={passwordError} tone="danger" />}
+            <h2 className="mc-h3">Change password</h2>
+            <PasswordField autoComplete="new-password" description="Use at least 6 characters." disabled={passwordSaving} label="New password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+            <PasswordField autoComplete="new-password" disabled={passwordSaving} label="Confirm new password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+            <div className="mc-actions"><Button loading={passwordSaving} type="submit">Update password</Button></div>
+          </form>
+        )}
+      </div>
     </div>
+  );
+}
+
+const STATUS_TONE: Record<string, BadgeTone> = {
+  paid: "success",
+  confirmed: "success",
+  completed: "success",
+  delivered: "success",
+  cancelled: "danger",
+  refunded: "danger",
+  payment_failed: "danger",
+  "no-show": "danger",
+  shipped: "info",
+  processing: "info",
+  pending: "warning",
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const clean = (status || "pending").toLowerCase();
+
+  return <Badge tone={STATUS_TONE[clean] || "warning"}>{clean.replace(/_/g, " ")}</Badge>;
+}
+
+function OrderCard({ order }: { order: Order }) {
+  const displayId = order.id.startsWith("ORD-")
+    ? order.id
+    : order.id.slice(0, 8).toUpperCase();
+
+  return (
+    <article className="mc-card mc-card--flush">
+      <header className="mc-item mc-item--between" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+        <span>
+          <strong className="mc-strong">Order #{displayId}</strong>
+          {order.createdAt && <span className="mc-small" style={{ display: "block" }}>{new Date(order.createdAt).toLocaleDateString()}</span>}
+        </span>
+        <StatusBadge status={order.status} />
+      </header>
+      <div className="mc-group" style={{ border: 0, borderRadius: 0 }}>
+        {order.trackingNumber && (
+          <div className="mc-item mc-item--between">
+            <span className="mc-small">Tracking</span>
+            <span className="mc-strong mc-num">{order.trackingNumber}</span>
+          </div>
+        )}
+        {order.items?.map((item, i) => (
+          <div key={i} className="mc-item mc-item--between">
+            <span>{item.name} <span className="mc-small">x {item.qty}</span></span>
+            <span className="mc-num">${((Number(item.price) || 0) * (Number(item.qty) || 1)).toFixed(2)}</span>
+          </div>
+        ))}
+        <div className="mc-item mc-item--between"><span className="mc-strong">Total</span><span className="mc-price">${(Number(order.total) || 0).toFixed(2)}</span></div>
+      </div>
+    </article>
   );
 }
 
 function BookingTicket({ booking }: { booking: BookingRecord }) {
-  const ticketNumber = `MC-${String(booking.id)
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .slice(-8)
-    .toUpperCase()
-    .padStart(6, "0")}`;
-  const status = booking.status || "pending";
-  const statusColor = bookingChipColor(status);
+  const hasPosTicket = typeof booking.novaops_ticket_id === "number" && booking.novaops_ticket_id > 0;
+  const ticketNumber = hasPosTicket
+    ? String(booking.novaops_ticket_id)
+    : `MC-${String(booking.id).replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase().padStart(8, "0")}`;
 
   return (
-    <Card className="surface-raised lift relative overflow-hidden rounded-card">
-      <div className="pointer-events-none absolute -left-3 top-[42%] size-6 rounded-full border border-border bg-background" />
-      <div className="pointer-events-none absolute -right-3 top-[42%] size-6 rounded-full border border-border bg-background" />
-      <div className="p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="m-0 font-mono text-micro font-bold uppercase tracking-[0.2em] text-muted">
-              Mobicare • Repair Appointment
-            </p>
-            <p className="m-0 mt-1 font-mono text-xl font-black tracking-tight text-foreground">
-              #{ticketNumber}
-            </p>
-          </div>
-          <Chip color={statusColor} size="sm" variant="soft">
-            <Chip.Label className="capitalize">{status}</Chip.Label>
-          </Chip>
+    <article className="mc-ticket">
+      <header className="mc-ticket-head">
+        <div>
+          <p className="mc-small">Repair ticket</p>
+          <p className="mc-strong mc-num" style={{ margin: 0, fontSize: "var(--text-lg)" }}>#{ticketNumber}</p>
         </div>
-
-        <div className="my-4 border-t border-dashed border-border" />
-
-        <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
-          <div className="min-w-0">
-            <p className="m-0 text-micro font-bold uppercase tracking-wider text-muted">
-              Service
-            </p>
-            <h3 className="m-0 mt-1 text-lg font-extrabold text-foreground">
-              {booking.service}
-            </h3>
-            <p className="m-0 mt-1 text-sm font-medium text-foreground">
-              {booking.device_type}
-              {booking.device_model ? ` — ${booking.device_model}` : ""}
-            </p>
-            {booking.issue && (
-              <p className="m-0 mt-2 line-clamp-2 text-xs leading-relaxed text-muted">
-                {booking.issue}
-              </p>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-4 border-t border-border pt-3 sm:min-w-[180px] sm:grid-cols-1 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
-            <div>
-              <p className="m-0 text-micro font-bold uppercase tracking-wider text-muted">
-                Date
-              </p>
-              <p className="m-0 mt-1 text-sm font-bold text-foreground">
-                {formatBookingDate(booking.appt_date)}
-              </p>
-            </div>
-            <div>
-              <p className="m-0 text-micro font-bold uppercase tracking-wider text-muted">
-                Time
-              </p>
-              <p className="m-0 mt-1 flex items-center gap-1.5 text-sm font-bold text-foreground">
-                <Clock aria-hidden="true" className="size-3.5 text-accent" />
-                {booking.appt_time}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="my-4 border-t border-dashed border-border" />
-        <div className="flex items-end justify-between gap-4">
-          <div className="flex items-center gap-2 text-xs text-muted">
-            <Calendar aria-hidden="true" className="size-3.5" />
-            <span>
-              {booking.visit_type === "home"
-                ? `Home Visit · ${booking.home_address || "On-site"}`
-                : "In-Store · 920 Commerce Dr, Suite 3"}
-            </span>
-          </div>
-          <div aria-hidden="true" className="flex h-7 items-end gap-px opacity-50">
-            {Array.from({ length: 28 }, (_, i) => (
-              <span
-                key={i}
-                className={`w-px bg-foreground ${i % 4 === 0 ? "h-7" : i % 3 === 0 ? "h-5" : "h-3"}`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function SummaryStat({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div className="flex items-center gap-2.5 px-4 py-3.5 sm:px-6">
-      <span
-        aria-hidden="true"
-        className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent"
-      >
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <p className="m-0 text-caption font-semibold uppercase tracking-wide text-muted">
-          {label}
-        </p>
-        <p className="m-0 text-sm font-bold text-foreground">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function AccountSectionHeader({
-  title,
-  action,
-  icon,
-  onAction,
-}: {
-  title: string;
-  action: string;
-  icon: ReactNode;
-  onAction: () => void;
-}) {
-  return (
-    <div className="mb-3 flex items-center justify-between gap-3">
+        <StatusBadge status={booking.status || "pending"} />
+      </header>
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-foreground">
-          {title}
-        </h2>
-        <p className="mt-0.5 text-xs text-muted">
-          Your latest activity with Mobicare.
-        </p>
+        <h3 className="mc-h3">{booking.service}</h3>
+        <p className="mc-text">{booking.device_type}{booking.device_model ? `, ${booking.device_model}` : ""}</p>
+        {booking.issue && <p className="mc-small" style={{ marginTop: "var(--space-2)" }}>{booking.issue}</p>}
       </div>
-      <Button
-        className="min-h-10 shrink-0"
-        size="sm"
-        variant="outline"
-        onPress={onAction}
-      >
-        {icon}
-        <span className="hidden min-[420px]:inline">{action}</span>
-      </Button>
-    </div>
-  );
-}
-
-function LoadingCard() {
-  return (
-    <div className="surface-raised flex min-h-[220px] items-center justify-center rounded-card p-8">
-      <Spinner />
-    </div>
-  );
-}
-
-function EmptyCard({
-  icon,
-  title,
-  description,
-  action,
-  onAction,
-}: {
-  icon: ReactNode;
-  title: string;
-  description: string;
-  action: string;
-  onAction: () => void;
-}) {
-  return (
-    <Card className="rounded-card p-7 text-center sm:p-10">
-      <div
-        aria-hidden="true"
-        className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-accent-soft text-accent"
-      >
-        {icon}
+      <div className="mc-ticket-meta">
+        <div className="mc-kv"><small>Date</small><span>{booking.appt_date}</span></div>
+        <div className="mc-kv"><small>Time</small><span>{booking.appt_time}</span></div>
+        <div className="mc-kv"><small>Visit</small><span>{booking.visit_type === "home" ? "Home visit" : "In-store"}</span></div>
       </div>
-      <h3 className="text-lg font-bold text-foreground">{title}</h3>
-      <p className="mx-auto mt-1 max-w-sm text-sm text-muted">{description}</p>
-      <Button className="mt-5 min-h-11" variant="primary" onPress={onAction}>
-        {action}
-        <ArrowRight aria-hidden="true" className="size-4" />
-      </Button>
-    </Card>
+      {hasPosTicket && (
+        <div>
+          <Link className="mc-link mc-small" to={`/repair-status?ticket=${booking.novaops_ticket_id}`}>
+            Check live repair stage →
+          </Link>
+        </div>
+      )}
+    </article>
   );
 }

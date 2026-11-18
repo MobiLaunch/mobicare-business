@@ -1,412 +1,118 @@
-import type { LucideIcon } from "lucide-react";
-
-import { useMemo } from "react";
+import PageBlock from "@/components/PageBlock";
+import { useCopy } from "@/lib/copy";
 import { useNavigate } from "react-router-dom";
-import {
-  ArrowRight,
-  BadgeCheck,
-  Clock,
-  Mail,
-  MapPin,
-  Phone,
-  Shield,
-  Smartphone,
-  Star,
-  Zap,
-} from "lucide-react";
-import { Button } from "@heroui/react";
+import { Mail, MapPin, Phone, Smartphone, Shield, Star, Zap, type LucideIcon } from "lucide-react";
 
-import { useSiteStore } from "@/lib/siteStore";
+import { Button } from "@/components/arc/button/button";
 import PageMeta from "@/components/PageMeta";
-import CategoryIcon from "@/components/CategoryIcon";
+import PageIntro from "@/components/PageIntro";
+import { BUSINESS } from "@/lib/config";
+import { useSiteStore } from "@/lib/siteStore";
 
-const DEFAULT_ABOUT_SECTIONS = ["values", "story", "popular"];
+const VALUE_PROPS: { icon: LucideIcon; title: string; desc: string }[] = [
+  { icon: Shield, title: "90-day warranty", desc: "Every part we replace is covered for 90 days. If it fails, we replace it free." },
+  { icon: Zap, title: "Same-day service", desc: "Most screen and battery repairs are done within one to two hours while you wait." },
+  { icon: Star, title: "Honest pricing", desc: "A $35 bench fee covers diagnostics and is credited toward your repair. You approve the cost before we start." },
+  { icon: Smartphone, title: "All major brands", desc: "iPhones, Samsung, Google Pixel, iPads, tablets and more. We fix them all." },
+];
 
 export default function About() {
+  const c = useCopy();
   const navigate = useNavigate();
   const about = useSiteStore((s) => s.about);
   const business = useSiteStore((s) => s.business);
   const repairServices = useSiteStore((s) => s.repairServices) || [];
-  const copy = useSiteStore((s) => s.copy);
-  const layout = useSiteStore((s) => s.layout);
 
-  const fullAddress =
-    business?.address && business.address !== "Fairfield, Illinois"
-      ? business.address
-      : "920 Commerce Drive, Suite 3, Fairfield, IL 62837";
-
-  const valueProps: {
-    icon: LucideIcon;
-    title: string;
-    desc: string;
-    titleEdit: string;
-    descEdit: string;
-  }[] = [
-    {
-      icon: Shield,
-      title: copy?.["about.vp.1.title"] || "90-Day Warranty",
-      desc:
-        copy?.["about.vp.1.desc"] ||
-        "Every part we replace is covered for 90 days. If it fails, we replace it free.",
-      titleEdit: "copy.about.vp.1.title",
-      descEdit: "copy.about.vp.1.desc",
-    },
-    {
-      icon: Zap,
-      title: copy?.["about.vp.2.title"] || "Same-Day Service",
-      desc:
-        copy?.["about.vp.2.desc"] ||
-        "Most screen and battery repairs are done within 1–2 hours while you wait.",
-      titleEdit: "copy.about.vp.2.title",
-      descEdit: "copy.about.vp.2.desc",
-    },
-    {
-      icon: Star,
-      title: copy?.["about.vp.3.title"] || "Honest Pricing",
-      desc:
-        copy?.["about.vp.3.desc"] ||
-        "$35 diagnostic bench fee — 100% credited toward your repair. No hidden fees, and you approve the quote before we start.",
-      titleEdit: "copy.about.vp.3.title",
-      descEdit: "copy.about.vp.3.desc",
-    },
-    {
-      icon: Smartphone,
-      title: copy?.["about.vp.4.title"] || "All Major Brands",
-      desc:
-        copy?.["about.vp.4.desc"] ||
-        "iPhones, Samsung, Google Pixel, iPads, tablets, and laptops — we fix them all.",
-      titleEdit: "copy.about.vp.4.title",
-      descEdit: "copy.about.vp.4.desc",
-    },
+  const contactRows: { icon: LucideIcon; label: string; val?: string; href?: string }[] = [
+    { icon: Phone, label: "Phone", val: business?.phone, href: business?.phone ? `tel:${business.phone.replace(/[^0-9+]/g, "")}` : undefined },
+    { icon: Mail, label: "Email", val: business?.email, href: business?.email ? `mailto:${business.email}` : undefined },
+    { icon: MapPin, label: "Location", val: business?.city },
   ];
-
-  const contactRows: {
-    icon: LucideIcon;
-    label: string;
-    val?: string;
-    href?: string;
-  }[] = [
-    {
-      icon: Phone,
-      label: "Phone",
-      val: business?.phone,
-      href: business?.phone
-        ? `tel:${business.phone.replace(/[^0-9+]/g, "")}`
-        : undefined,
-    },
-    {
-      icon: Mail,
-      label: "Email",
-      val: business?.email,
-      href: business?.email ? `mailto:${business.email}` : undefined,
-    },
-    {
-      icon: MapPin,
-      label: "Location",
-      val: fullAddress,
-      href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`,
-    },
-  ];
-
-  const visibleSections = useMemo(() => {
-    const cfg = layout?.pages?.["/about"];
-    const custom = (cfg?.order || []).filter((id) =>
-      DEFAULT_ABOUT_SECTIONS.includes(id),
-    );
-    const full = [
-      ...custom,
-      ...DEFAULT_ABOUT_SECTIONS.filter((id) => !custom.includes(id)),
-    ];
-    const hidden = new Set(cfg?.hidden || []);
-    return full.filter((id) => !hidden.has(id));
-  }, [layout]);
 
   return (
-    <div className="mx-auto max-w-[1400px] overflow-x-hidden px-[clamp(12px,3vw,24px)] pb-16">
+    <>
       <PageMeta
-        description="Learn more about Mobicare, Southern Illinois' trusted repair shop since 2019 for iPhones, Androids, and laptops. Fast turnarounds, 90-day warranty, honest pricing."
-        title="About Mobicare — Local Device Repair in Fairfield, Illinois"
+        description="Learn more about Mobicare, southern Illinois' trusted repair shop for iPhones, Androids, and laptops. Fast turnarounds, 90-day warranty, honest pricing."
+        title="About Mobicare: local device repair in Fairfield, Illinois"
       />
 
-      {/* Hero */}
-      <div className="relative pb-[clamp(36px,6vw,56px)] pt-[clamp(32px,6vw,64px)] text-center">
-        <div className="pointer-events-none absolute left-1/2 top-[40%] h-[200px] w-[clamp(280px,60vw,540px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-soft/60 blur-[50px]" />
+      <PageIntro editKicker="about.eyebrow" editLead="about.lead" editTitle="about.headline" kicker={about?.eyebrow || "About Mobicare"} lead={about?.lead} title={about?.headline} />
+      <div className="mc-page mc-pagebody">
 
-        <div className="relative z-[1]">
-          <span
-            className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-accent"
-            data-edit="about.eyebrow"
-          >
-            <BadgeCheck className="size-4" />
-            {about?.eyebrow || "About Mobicare · Est. 2019"}
-          </span>
-
-          <h1
-            className="m-0 mb-5 break-words text-display font-black leading-[1.1] tracking-tight text-foreground"
-            data-edit="about.headline"
-          >
-            {about?.headline}
-          </h1>
-
-          <p
-            className="mx-auto max-w-[680px] break-words text-body-lg leading-relaxed text-muted"
-            data-edit="about.lead"
-          >
-            {about?.lead}
-          </p>
+      <PageBlock id="values" page="/about">
+      <section aria-label="Why customers choose us" className="mc-section" style={{ paddingTop: 0 }}>
+        <div className="mc-grid mc-grid-cards">
+          {VALUE_PROPS.map((v, i) => (
+            <div key={v.title} className="mc-stack-sm" style={{ padding: "var(--space-5)", borderTop: "1px solid var(--border)" }}>
+              <span className="mc-icon"><v.icon aria-hidden="true" size={20} strokeWidth={1.75} /></span>
+              <h2 className="mc-h3" style={{ fontSize: "var(--text-lg)" }} {...c.p(`about.vp.${i + 1}.title`)}>{c(`about.vp.${i + 1}.title`)}</h2>
+              <p className="mc-text" {...c.p(`about.vp.${i + 1}.desc`)}>{c(`about.vp.${i + 1}.desc`)}</p>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
+      </PageBlock>
 
-      {visibleSections.map((sectionId) => {
-        if (sectionId === "values") {
-          return (
-            <section key="values" className="pb-[clamp(32px,6vw,48px)]">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {valueProps.map((v) => (
-                  <article
-                    key={v.titleEdit}
-                    className="surface-raised lift h-full min-w-0 rounded-card p-6"
-                  >
-                    <span className="mb-5 flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
-                      <v.icon className="size-6" />
-                    </span>
-                    <h3
-                      className="m-0 mb-2 break-words text-xl font-bold text-foreground"
-                      data-edit={v.titleEdit}
-                    >
-                      {v.title}
-                    </h3>
-                    <p
-                      className="m-0 break-words text-sm leading-relaxed text-muted"
-                      data-edit={v.descEdit}
-                    >
-                      {v.desc}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            </section>
-          );
-        }
+      <PageBlock id="story" page="/about">
+      <section className="mc-section mc-grid mc-grid-2" style={{ paddingTop: 0, gap: "clamp(24px, 5vw, 64px)", alignItems: "start" }}>
+        <div className="mc-stack">
+          <h2 className="mc-h2" {...c.p("about.story.title")}>{c("about.story.title")}</h2>
+          {(about?.story || []).map((para, i) => <p key={i} className="mc-text" style={{ fontSize: "var(--text-lg)", lineHeight: 1.65 }} {...c.p(`about.story.${i}`)}>{para}</p>)}
+          <div className="mc-stats">
+            {[1, 2, 3].map((n) => <div key={n} className="mc-stat"><strong {...c.p(`about.stat.${n}.value`)}>{c(`about.stat.${n}.value`)}</strong><span {...c.p(`about.stat.${n}.label`)}>{c(`about.stat.${n}.label`)}</span></div>)}
+          </div>
+          <div className="mc-actions">
+            <Button onClick={() => navigate("/shop")}>Shop accessories</Button>
+            <Button variant="secondary" onClick={() => navigate("/repairs")}>View repair services</Button>
+          </div>
+        </div>
 
-        if (sectionId === "story") {
-          return (
-            <section
-              key="story"
-              className="surface-raised my-4 overflow-hidden rounded-panel"
-            >
-              <div className="flex w-full flex-wrap gap-10 p-[clamp(24px,5vw,56px)]">
-                {/* Story */}
-                <div className="min-w-0 flex-[1_1_340px] break-words">
-                  <span className="mb-1.5 block text-caption font-bold uppercase tracking-widest text-accent">
-                    Who We Are · Est. 2019
+        <div className="mc-stack-sm">
+          <h2 className="mc-gl">Find us</h2>
+          <div className="mc-group">
+            {contactRows.map((row) => {
+              const Tag = row.href ? "a" : "div";
+
+              return (
+                <Tag key={row.label} className="mc-item" href={row.href} rel={row.href ? "noopener noreferrer" : undefined}>
+                  <row.icon aria-hidden="true" size={18} strokeWidth={1.75} style={{ color: "var(--text-secondary)", flexShrink: 0 }} />
+                  <span style={{ minWidth: 0 }}>
+                    <small className="mc-small" style={{ display: "block" }}>{row.label}</small>
+                    <span className="mc-strong" style={{ overflowWrap: "anywhere" }}>{row.val || "Available"}</span>
                   </span>
-                  <h2
-                    className="m-0 mb-5 text-heading-xl font-extrabold tracking-tight text-foreground"
-                    data-edit="copy.about.story.title"
-                  >
-                    {copy?.["about.story.title"] || "Our Story"}
-                  </h2>
+                </Tag>
+              );
+            })}
+            <div className="mc-item" style={{ alignItems: "start" }}>
+              <span className="mc-small" style={{ minWidth: "3.5rem" }}>Hours</span>
+              <span className="mc-footer-hours">
+                {(business?.hours?.length ? business.hours : BUSINESS.hours).map((h) => <span key={h.days}><span className="mc-strong">{h.days}:</span> {h.hours}</span>)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+      </PageBlock>
 
-                  {(about?.story || []).map((para, i) => (
-                    <p
-                      key={i}
-                      className="mb-[18px] break-words text-body-lg leading-[1.75] text-muted"
-                      data-edit={`about.story.${i}`}
-                    >
-                      {para}
-                    </p>
-                  ))}
-
-                  <div className="surface-sunken my-7 grid grid-cols-1 gap-4 rounded-card p-5 sm:grid-cols-3">
-                    <div>
-                      <strong
-                        className="block text-xl font-extrabold text-accent"
-                        data-edit="copy.about.stat.1.value"
-                      >
-                        {copy?.["about.stat.1.value"] || "100%"}
-                      </strong>
-                      <span
-                        className="text-xs text-muted"
-                        data-edit="copy.about.stat.1.label"
-                      >
-                        {copy?.["about.stat.1.label"] || "Guaranteed Parts"}
-                      </span>
-                    </div>
-                    <div>
-                      <strong
-                        className="block text-xl font-extrabold text-accent"
-                        data-edit="copy.about.stat.2.value"
-                      >
-                        {copy?.["about.stat.2.value"] || "1–2 Hr"}
-                      </strong>
-                      <span
-                        className="text-xs text-muted"
-                        data-edit="copy.about.stat.2.label"
-                      >
-                        {copy?.["about.stat.2.label"] || "Avg Turnaround"}
-                      </span>
-                    </div>
-                    <div>
-                      <strong
-                        className="block text-xl font-extrabold text-accent"
-                        data-edit="copy.about.stat.3.value"
-                      >
-                        $35
-                      </strong>
-                      <span
-                        className="text-xs text-muted"
-                        data-edit="copy.about.stat.3.label"
-                      >
-                        Bench Fee — 100% Credited Toward Repair
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <Button
-                      className="flex h-12 items-center gap-1.5 rounded-full bg-accent px-6 text-sm font-bold text-accent-foreground"
-                      variant="primary"
-                      onPress={() => navigate("/shop")}
-                    >
-                      <span>Shop Accessories</span>
-                      <ArrowRight className="size-4" />
-                    </Button>
-                    <Button
-                      className="h-12 rounded-pill border border-border bg-surface px-6 text-label font-bold text-foreground"
-                      variant="outline"
-                      onPress={() => navigate("/repairs")}
-                    >
-                      View Repair Services
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Find Us */}
-                <div className="min-w-0 flex-[1_1_280px]">
-                  <article className="surface-raised rounded-card p-6">
-                    <h3 className="m-0 mb-5 text-heading font-extrabold text-foreground">
-                      Find Us
-                    </h3>
-
-                    <div className="flex flex-col gap-2">
-                      {contactRows.map((row) => {
-                        const Tag = row.href ? "a" : "div";
-                        const isExternal = row.href?.startsWith("http");
-
-                        return (
-                          <Tag
-                            key={row.label}
-                            className="flex items-center gap-3.5 rounded-2xl p-3 no-underline transition-all hover:translate-x-1 hover:bg-surface"
-                            href={row.href}
-                            rel={isExternal ? "noopener noreferrer" : undefined}
-                            target={isExternal ? "_blank" : undefined}
-                          >
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-                              <row.icon className="size-5" />
-                            </span>
-                            <div className="min-w-0 overflow-hidden">
-                              <strong className="block text-xs uppercase tracking-wide text-muted">
-                                {row.label}
-                              </strong>
-                              <span className="block break-words text-sm font-semibold text-foreground">
-                                {row.val || "Available"}
-                              </span>
-                            </div>
-                          </Tag>
-                        );
-                      })}
-
-                      <div className="flex items-start gap-3.5 p-3">
-                        <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-                          <Clock className="size-5" />
-                        </span>
-                        <div className="min-w-0">
-                          <strong className="mb-1 block text-xs uppercase tracking-wide text-muted">
-                            Hours
-                          </strong>
-                          {(business?.hours || []).map((h) => (
-                            <span
-                              key={h.days}
-                              className="block text-label leading-relaxed text-muted"
-                            >
-                              <strong className="text-foreground">
-                                {h.days}:
-                              </strong>{" "}
-                              {h.hours}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </article>
-                </div>
-              </div>
-            </section>
-          );
-        }
-
-        if (sectionId === "popular") {
-          return (
-            <section
-              key="popular"
-              className="pb-4 pt-[clamp(32px,6vw,56px)]"
-            >
-              <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-                <div>
-                  <p className="m-0 text-caption font-bold uppercase tracking-widest text-accent">
-                    What We Do
-                  </p>
-                  <h2
-                    className="m-0 mt-1 text-heading-xl font-extrabold text-foreground"
-                    data-edit="copy.about.popular.title"
-                  >
-                    {copy?.["about.popular.title"] || "Popular Repairs"}
-                  </h2>
-                </div>
-                <Button
-                  className="flex h-[42px] items-center gap-1.5 rounded-full border border-border bg-surface-secondary px-5 text-sm font-bold text-foreground"
-                  variant="outline"
-                  onPress={() => navigate("/repairs")}
-                >
-                  <span>View All Services</span>
-                  <ArrowRight className="size-4" />
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {repairServices.map((svc) => (
-                  <Button
-                    key={svc.id}
-                    className="flex h-auto items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-5 py-4 text-left transition-all hover:-translate-y-0.5 hover:border-accent/40"
-                    variant="ghost"
-                    onPress={() =>
-                      navigate(`/repairs?service=${encodeURIComponent(svc.id)}`)
-                    }
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-accent">
-                        <CategoryIcon
-                          className="size-[18px]"
-                          iconId={svc.icon}
-                        />
-                      </span>
-                      <strong className="break-words text-body-sm font-bold text-foreground">
-                        {svc.name}
-                      </strong>
-                    </div>
-                    <span className="shrink-0 whitespace-nowrap rounded-full bg-accent-soft px-2.5 py-1 text-xs font-bold text-accent">
-                      {svc.priceRange}
-                    </span>
-                  </Button>
-                ))}
-              </div>
-            </section>
-          );
-        }
-
-        return null;
-      })}
-    </div>
+      {repairServices.length > 0 && (
+        <PageBlock id="popular" page="/about">
+        <section aria-labelledby="popular-title" className="mc-section" style={{ paddingTop: 0 }}>
+          <div className="mc-section-head mc-section-head--row">
+            <h2 className="mc-h2" id="popular-title" {...c.p("about.popular.title")}>{c("about.popular.title")}</h2>
+            <Button variant="secondary" onClick={() => navigate("/repairs")}>View all services</Button>
+          </div>
+          <div className="mc-group">
+            {repairServices.map((svc) => (
+              <button key={svc.id} className="mc-item mc-item--between" style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: 0, font: "inherit" }} type="button" onClick={() => navigate(`/repairs#${svc.id}`)}>
+                <span className="mc-strong">{svc.name}</span>
+                <span className="mc-small">{svc.priceRange}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+        </PageBlock>
+      )}
+      </div>
+    </>
   );
 }

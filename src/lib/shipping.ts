@@ -13,146 +13,46 @@ export interface ShippingOption {
   maxDays: number;
 }
 
-const SHOP_TIMEZONE = "America/Chicago";
-
-const WEEKDAY_MAP: Record<string, number> = {
-  Sun: 0,
-  Mon: 1,
-  Tue: 2,
-  Wed: 3,
-  Thu: 4,
-  Fri: 5,
-  Sat: 6,
-};
-
-const DAY_NAMES_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DAY_NAMES_FULL = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
+const SHOP_TIME_ZONE = "America/Chicago";
 
 /**
- * Extracts calendar components in America/Chicago (CST/CDT) regardless of
- * what timezone the visitor's browser is set to.
+ * Extracts calendar and wall-clock parts in Fairfield, IL (`America/Chicago`),
+ * plus a UTC-noon Date representing that Chicago calendar date so date-fns
+ * day arithmetic (`addDays`, `format`, `isSunday`) always reflects shop-local days.
  */
-export function getChicagoParts(date: Date = new Date()) {
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone: SHOP_TIMEZONE,
-    weekday: "short",
+function getChicagoClock(now: Date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: SHOP_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
     hour12: false,
-  });
+  }).formatToParts(now);
 
-  const parts = dtf.formatToParts(date);
-  const get = (type: string) =>
-    parts.find((p) => p.type === type)?.value || "0";
-
-  const weekdayStr = get("weekday");
-  const dayOfWeek = WEEKDAY_MAP[weekdayStr] ?? 0;
-  const year = parseInt(get("year"), 10);
-  const month = parseInt(get("month"), 10); // 1-12
-  const day = parseInt(get("day"), 10);
-  const rawHour = parseInt(get("hour"), 10);
+  const num = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value || 0);
+  const year = num("year");
+  const month = num("month");
+  const day = num("day");
+  const rawHour = num("hour");
   const hour = rawHour === 24 ? 0 : rawHour;
-  const minute = parseInt(get("minute"), 10);
+  const minute = num("minute");
+
+  // Local noon anchor avoids DST midnight edge cases when adding days
+  const calendarDate = new Date(year, month - 1, day, 12, 0, 0);
+  const dayOfWeek = calendarDate.getDay(); // 0 = Sun ... 6 = Sat
 
   return {
-    dayOfWeek,
     year,
     month,
     day,
     hour,
     minute,
-    minutesOfDay: hour * 60 + minute,
-    localAnchorDate: new Date(year, month - 1, day, 12, 0, 0),
-  };
-}
-
-/**
- * Shop hours in Fairfield, IL (America/Chicago):
- * Mon–Fri: 9:00 AM – 6:00 PM (540 .. 1080)
- * Saturday: 10:00 AM – 4:00 PM (600 .. 960)
- * Sunday: Closed
- */
-function getOpenCloseMinutes(dayOfWeek: number): {
-  open: number;
-  close: number;
-  openLabel: string;
-} | null {
-  if (dayOfWeek === 0) return null; // Sunday closed
-  if (dayOfWeek === 6) {
-    return { open: 10 * 60, close: 16 * 60, openLabel: "10 AM" };
-  }
-  return { open: 9 * 60, close: 18 * 60, openLabel: "9 AM" };
-}
-
-export function getShopOpenStatus(now: Date = new Date()): {
-  isOpen: boolean;
-  canReadyToday: boolean;
-  badgeText: string;
-  pickupText: string;
-} {
-  const chi = getChicagoParts(now);
-  const todaySchedule = getOpenCloseMinutes(chi.dayOfWeek);
-
-  if (
-    todaySchedule &&
-    chi.minutesOfDay >= todaySchedule.open &&
-    chi.minutesOfDay < todaySchedule.close
-  ) {
-    // Require at least 45 minutes before closing to promise ~1 hour pickup today
-    const canReadyToday = chi.minutesOfDay <= todaySchedule.close - 45;
-    if (canReadyToday) {
-      return {
-        isOpen: true,
-        canReadyToday: true,
-        badgeText: "● Open Now · Fairfield, IL",
-        pickupText: "Ready today in ~1 hour",
-      };
-    }
-  }
-
-  // If before opening time today on a business day:
-  if (todaySchedule && chi.minutesOfDay < todaySchedule.open) {
-    return {
-      isOpen: false,
-      canReadyToday: true,
-      badgeText: `Closed · Opens Today ${todaySchedule.openLabel}`,
-      pickupText: `Ready today after ${todaySchedule.openLabel}`,
-    };
-  }
-
-  // Otherwise find next open day (Mon–Sat)
-  for (let offset = 1; offset <= 7; offset++) {
-    const nextDow = (chi.dayOfWeek + offset) % 7;
-    const sched = getOpenCloseMinutes(nextDow);
-    if (sched) {
-      const dayShort = DAY_NAMES_SHORT[nextDow];
-      const dayFull = offset === 1 ? "tomorrow" : DAY_NAMES_FULL[nextDow];
-      return {
-        isOpen: false,
-        canReadyToday: false,
-        badgeText: `Closed · Opens ${dayShort} ${sched.openLabel}`,
-        pickupText: `Ready ${dayFull} at ${sched.openLabel}`,
-      };
-    }
-  }
-
-  return {
-    isOpen: false,
-    canReadyToday: false,
-    badgeText: "Closed · Opens Mon 9 AM",
-    pickupText: "Ready Monday at 9 AM",
+    dayOfWeek,
+    calendarDate,
+    minutesSinceMidnight: hour * 60 + minute,
   };
 }
 
@@ -168,6 +68,7 @@ export function calculateTransitDate(
 
   while (daysAdded < transitDays) {
     currentDate = addDays(currentDate, 1);
+    // Carriers (USPS/UPS) operate Mon-Sat; skip Sunday
     if (!isSunday(currentDate)) {
       daysAdded++;
     }
@@ -178,41 +79,44 @@ export function calculateTransitDate(
 
 /**
  * Returns whether orders placed right now qualify for same-day processing dispatch.
- * Daily order cutoff is 2:00 PM CST/CDT (Mon–Sat, Sun closed).
+ * Daily order cutoff is 2:00 PM CT (Mon-Sat, Sun closed) in America/Chicago.
  */
 export function getDispatchCutoff(now: Date = new Date()) {
-  const chi = getChicagoParts(now);
-  const cutoffMinutes = 14 * 60; // 2:00 PM America/Chicago
-  const isSundayToday = chi.dayOfWeek === 0;
-  const isPastCutoff = chi.minutesOfDay >= cutoffMinutes;
+  const ct = getChicagoClock(now);
+  const cutoffMinutes = 14 * 60; // 2:00 PM CT
+  const isSundayToday = ct.dayOfWeek === 0;
+  const isPastCutoff = ct.minutesSinceMidnight >= cutoffMinutes;
 
   if (isSundayToday || isPastCutoff) {
-    // Days until next Mon–Sat 2:00 PM CST/CDT
-    let daysUntilNext = 1;
-    if (!isSundayToday && chi.dayOfWeek === 6) {
-      daysUntilNext = 2; // Saturday after 2 PM -> Monday 2 PM
-    }
-    const minutesUntilMidnight = 24 * 60 - chi.minutesOfDay;
-    const totalMinutesUntilNext =
-      minutesUntilMidnight + (daysUntilNext - 1) * 24 * 60 + cutoffMinutes;
-    const totalHours = Math.floor(totalMinutesUntilNext / 60);
-    const remMinutes = totalMinutesUntilNext % 60;
-
-    const nextDayWord =
-      isSundayToday || chi.dayOfWeek === 6 ? "Monday" : "tomorrow";
+    // Next dispatch is Monday if today is Saturday (past 2 PM) or Sunday; otherwise tomorrow
+    const daysUntilNextDispatch = isSundayToday
+      ? 1
+      : ct.dayOfWeek === 6
+        ? 2
+        : 1;
+    const totalMinutesUntil =
+      daysUntilNextDispatch * 24 * 60 -
+      ct.minutesSinceMidnight +
+      cutoffMinutes;
+    const totalHours = Math.floor(totalMinutesUntil / 60);
+    const totalMinutes = totalMinutesUntil % 60;
+    const nextLabel =
+      !isSundayToday && ct.dayOfWeek === 6
+        ? "Order now for Monday dispatch"
+        : "Order now for dispatch tomorrow";
 
     return {
       isToday: false,
       hours: totalHours,
-      minutes: remMinutes,
-      formatted: `${totalHours}h ${remMinutes}m`,
-      text: `Order now for dispatch ${nextDayWord} (2 PM CT cutoff)`,
+      minutes: totalMinutes,
+      formatted: `${totalHours}h ${totalMinutes}m`,
+      text: nextLabel,
     };
   }
 
-  const minsLeft = Math.max(0, cutoffMinutes - chi.minutesOfDay);
-  const hoursLeft = Math.floor(minsLeft / 60);
-  const minutesLeft = minsLeft % 60;
+  const remainingMinutes = Math.max(0, cutoffMinutes - ct.minutesSinceMidnight);
+  const hoursLeft = Math.floor(remainingMinutes / 60);
+  const minutesLeft = remainingMinutes % 60;
 
   return {
     isToday: true,
@@ -224,19 +128,19 @@ export function getDispatchCutoff(now: Date = new Date()) {
 }
 
 /**
- * Returns dynamic arrival window for given min/max business days from now (in CST/CDT).
+ * Returns dynamic arrival window for given min/max business days from now (America/Chicago).
  */
 export function getEstimatedArrivalWindow(
   minDays: number = 3,
   maxDays: number = 5,
   fromDate: Date = new Date(),
 ) {
-  const chi = getChicagoParts(fromDate);
+  const ct = getChicagoClock(fromDate);
   const cutoff = getDispatchCutoff(fromDate);
-  let dispatchDate = chi.localAnchorDate;
+  let dispatchDate = ct.calendarDate;
 
   if (!cutoff.isToday) {
-    dispatchDate = addDays(dispatchDate, 1);
+    dispatchDate = addDays(ct.calendarDate, 1);
     while (isSunday(dispatchDate)) {
       dispatchDate = addDays(dispatchDate, 1);
     }
@@ -262,6 +166,36 @@ export function getEstimatedArrivalWindow(
   };
 }
 
+function getFairfieldPickupEstimate(fromDate: Date): string {
+  const ct = getChicagoClock(fromDate);
+  // Fairfield shop hours: Mon–Fri 9:00 AM – 6:00 PM CT (same-day ~1h pickup cutoff 5:00 PM),
+  // Saturday 10:00 AM – 4:00 PM CT (same-day ~1h pickup cutoff 3:00 PM), Sunday Closed.
+  const isSaturdayToday = ct.dayOfWeek === 6;
+  const isSundayToday = ct.dayOfWeek === 0;
+
+  if (!isSundayToday) {
+    const openMin = isSaturdayToday ? 10 * 60 : 9 * 60;
+    const lastPickupOrderMin = isSaturdayToday ? 15 * 60 : 17 * 60;
+    const openLabel = isSaturdayToday ? "10:00 AM" : "9:00 AM";
+
+    if (ct.minutesSinceMidnight < openMin) {
+      return `Ready today after ${openLabel}`;
+    }
+    if (ct.minutesSinceMidnight <= lastPickupOrderMin) {
+      return "Ready today in ~1 hour";
+    }
+  }
+
+  let nextOpen = addDays(ct.calendarDate, 1);
+
+  while (isSunday(nextOpen)) {
+    nextOpen = addDays(nextOpen, 1);
+  }
+  const nextOpenLabel = nextOpen.getDay() === 6 ? "10:00 AM" : "9:00 AM";
+
+  return `Ready ${format(nextOpen, "EEEE")} after ${nextOpenLabel}`;
+}
+
 /**
  * Returns available shipping options computed dynamically for a given subtotal.
  */
@@ -278,8 +212,9 @@ export function getDynamicShippingOptions(
     baseMaxDays,
     fromDate,
   );
+
   const expressArrival = getEstimatedArrivalWindow(1, 2, fromDate);
-  const shopStatus = getShopOpenStatus(fromDate);
+  const pickupText = getFairfieldPickupEstimate(fromDate);
 
   return [
     {
@@ -314,9 +249,9 @@ export function getDynamicShippingOptions(
       name: "Fairfield Store Pickup",
       cost: 0,
       formattedCost: "FREE",
-      estimatedArrival: shopStatus.pickupText,
-      shortArrival: "Store Pickup",
-      description: `920 Commerce Dr, Suite 3, Fairfield, IL · ${shopStatus.pickupText}`,
+      estimatedArrival: pickupText,
+      shortArrival: pickupText,
+      description: "Pick up at 920 Commerce Drive, Suite 3, Fairfield, IL (Mon–Sat)",
       badge: "Local",
       minDays: 0,
       maxDays: 0,

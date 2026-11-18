@@ -1,58 +1,34 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  CircleAlert,
-  Eye,
-  EyeOff,
-  Info,
-  Lock,
-  LogIn,
-  Mail,
-  Zap,
-} from "lucide-react";
-import {
-  Alert,
-  Button,
-  Card,
-  Chip,
-  FieldError,
-  Form,
-  InputGroup,
-  Label,
-  Spinner,
-  TextField,
-} from "@heroui/react";
+import { useNavigate } from "react-router-dom";
+import { LogIn } from "lucide-react";
 
+import { Alert } from "@/components/arc/alert/alert";
+import { Button } from "@/components/arc/button/button";
+import { Input } from "@/components/arc/input/input";
+import { PasswordField } from "@/components/arc/password-field/password-field";
 import { isLocalAuthAvailable, useAdminStore } from "@/lib/store";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import PageMeta from "@/components/PageMeta";
+import localLogo from "@/assets/mobicare-logo.svg";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
   const login = useAdminStore((s) => s.login);
+  const sendReset = useAdminStore((s) => s.sendReset);
   const restoreSession = useAdminStore((s) => s.restoreSession);
   const isAuthenticated = useAdminStore((s) => s.isAuthenticated);
+  const lockedUntil = useAdminStore((s) => s.lockedUntil);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPw, setShowPw] = useState(false);
-  const [lockSecs, setLockSecs] = useState(() => {
-    const lockedUntil = useAdminStore.getState().lockedUntil || 0;
-
-    return lockedUntil > Date.now()
-      ? Math.ceil((lockedUntil - Date.now()) / 1000)
-      : 0;
-  });
-  const [error, setError] = useState(() => {
-    const lockedUntil = useAdminStore.getState().lockedUntil || 0;
-    const secs =
-      lockedUntil > Date.now()
-        ? Math.ceil((lockedUntil - Date.now()) / 1000)
-        : 0;
-
-    return secs > 0 ? `Too many attempts. Try again in ${secs}s.` : "";
-  });
+  const [error, setError] = useState("");
+  const [resetSent, setResetSent] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lockSecs, setLockSecs] = useState(() =>
+    lockedUntil && lockedUntil > Date.now()
+      ? Math.ceil((lockedUntil - Date.now()) / 1000)
+      : 0,
+  );
 
   const supabaseReady = isSupabaseConfigured();
   const localAuthReady = !supabaseReady && isLocalAuthAvailable;
@@ -61,6 +37,15 @@ export default function AdminLogin() {
   useEffect(() => {
     void restoreSession();
   }, [restoreSession]);
+
+  useEffect(() => {
+    if (lockedUntil && lockedUntil > Date.now()) {
+      const remaining = Math.ceil((lockedUntil - Date.now()) / 1000);
+
+      setLockSecs(remaining);
+    }
+  }, [lockedUntil]);
+
   useEffect(() => {
     if (isAuthenticated) navigate("/admin/dashboard");
   }, [isAuthenticated, navigate]);
@@ -75,13 +60,14 @@ export default function AdminLogin() {
   // Clear the lockout error once the countdown reaches zero so the form
   // doesn't show a stale "try again in Xs" message.
   useEffect(() => {
-    if (lockSecs === 0) setError("");
-  }, [lockSecs]);
+    if (lockSecs === 0 && error.startsWith("Too many attempts")) setError("");
+  }, [lockSecs, error]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (loading || lockSecs > 0) return;
     setError("");
+    setResetSent("");
     setLoading(true);
     try {
       const result = supabaseReady
@@ -90,7 +76,11 @@ export default function AdminLogin() {
 
       if (result.locked) {
         setLockSecs(result.secsLeft || 30);
-        setError(`Too many attempts. Try again in ${result.secsLeft}s.`);
+        setError(
+          result.error
+            ? `${result.error} Too many attempts — try again in ${result.secsLeft}s.`
+            : `Too many attempts. Try again in ${result.secsLeft}s.`,
+        );
       } else if (!result.ok) {
         const hint =
           result.attemptsLeft != null
@@ -106,166 +96,81 @@ export default function AdminLogin() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    setError("");
+    setResetSent("");
+    if (!email.trim() || !email.includes("@")) {
+      setError("Enter your admin email address above first, then click Forgot password.");
+
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error: resetErr } = await sendReset(email.trim());
+
+      if (resetErr) {
+        setError(
+          typeof resetErr === "object" && resetErr && "message" in resetErr
+            ? String((resetErr as { message: string }).message)
+            : "Unable to send password reset email.",
+        );
+      } else {
+        setResetSent(`If ${email.trim()} is registered, a password reset link is on its way.`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+    <div className="ad-login">
       <PageMeta title="Admin Login — Mobicare" />
 
-      <div className="pointer-events-none absolute -left-24 -top-28 size-[500px] rounded-full bg-[radial-gradient(ellipse,var(--accent-soft)_0%,transparent_70%)] blur-[80px]" />
-      <div className="pointer-events-none absolute -bottom-20 -right-20 size-[400px] rounded-full bg-[radial-gradient(ellipse,var(--accent)_8%,transparent_70%)] opacity-40 blur-[80px]" />
-
-      <main className="relative z-[1] w-full max-w-[420px]">
-        <div className="mb-5 flex items-center gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-            <Zap className="size-5" />
-          </span>
-          <div>
-            <strong className="block text-foreground">Mobicare</strong>
-            <Chip color="default" size="sm">
-              <Chip.Label>Admin Portal</Chip.Label>
-            </Chip>
-          </div>
+      <main className="ad-login-card">
+        <img alt="Mobicare" src={localLogo} />
+        <div>
+          <h1>Welcome back</h1>
+          <p className="ad-hint" style={{ marginTop: 4 }}>
+            {supabaseReady ? "Enter your admin email and password." : localAuthReady ? "Development-only local access mode." : "Supabase is required for admin access."}
+          </p>
         </div>
 
-        <Card className="rounded-[32px] bg-surface/85 p-8 shadow-[0_4px_32px_rgba(0,0,0,0.08)] backdrop-blur-xl">
-          <Card.Header className="mb-1 pb-0">
-            <span className="mb-1 block text-caption font-bold uppercase tracking-widest text-accent">
-              Store workspace
-            </span>
-            <Card.Title className="text-2xl">Welcome back</Card.Title>
-            <Card.Description>
-              {supabaseReady
-                ? "Enter your admin email and password."
-                : localAuthReady
-                  ? "Development-only local access mode."
-                  : "Supabase is required for admin access."}
-            </Card.Description>
-          </Card.Header>
+        {!supabaseReady && (
+          <Alert role="status" title={localAuthReady ? "Local access enabled" : "Supabase not configured"} tone={localAuthReady ? "info" : "danger"}>
+            {localAuthReady ? "Local authentication is enabled only for development builds." : "Configure Supabase Auth before using the admin portal."}
+          </Alert>
+        )}
 
-          <Card.Content className="flex flex-col gap-4 pt-4">
-            {!supabaseReady && (
-              <Alert
-                role="status"
-                status={localAuthReady ? "default" : "danger"}
-              >
-                <Alert.Indicator>
-                  {localAuthReady ? (
-                    <Info className="size-4" />
-                  ) : (
-                    <CircleAlert className="size-4" />
-                  )}
-                </Alert.Indicator>
-                <Alert.Content>
-                  <Alert.Description>
-                    {localAuthReady
-                      ? "Local authentication is enabled only for development builds."
-                      : "Configure Supabase Auth before using the admin portal."}
-                  </Alert.Description>
-                </Alert.Content>
-              </Alert>
-            )}
+        {resetSent && <Alert role="status" title={resetSent} tone="success" />}
+        {error && <Alert role="alert" title={error} tone="danger" />}
 
-            {error && (
-              <Alert role="alert" status="danger">
-                <Alert.Indicator>
-                  <CircleAlert className="size-4" />
-                </Alert.Indicator>
-                <Alert.Content>
-                  <Alert.Description>{error}</Alert.Description>
-                </Alert.Content>
-              </Alert>
-            )}
+        <form className="ad-form" onSubmit={handleSubmit}>
+          {supabaseReady && (
+            <Input autoComplete="email" disabled={fieldsDisabled} label="Email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          )}
+          <PasswordField autoComplete="current-password" disabled={fieldsDisabled} label="Password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Button disabled={fieldsDisabled || loading} loading={loading} size="lg" type="submit">
+            <LogIn aria-hidden="true" size={16} strokeWidth={1.75} />
+            {loading ? "Signing in…" : lockSecs > 0 ? `Locked — ${lockSecs}s` : "Sign in"}
+          </Button>
+        </form>
 
-            <Form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-              {supabaseReady && (
-                <TextField
-                  isRequired
-                  className="flex flex-col gap-1.5"
-                  isDisabled={fieldsDisabled}
-                  type="email"
-                  value={email}
-                  onChange={setEmail}
-                >
-                  <Label>Email</Label>
-                  <InputGroup>
-                    <InputGroup.Prefix>
-                      <Mail className="size-4" />
-                    </InputGroup.Prefix>
-                    <InputGroup.Input autoComplete="email" />
-                  </InputGroup>
-                  <FieldError />
-                </TextField>
-              )}
-
-              <TextField
-                isRequired
-                className="flex flex-col gap-1.5"
-                isDisabled={fieldsDisabled}
-                type={showPw ? "text" : "password"}
-                value={password}
-                onChange={setPassword}
-              >
-                <Label>Password</Label>
-                <InputGroup>
-                  <InputGroup.Prefix>
-                    <Lock className="size-4" />
-                  </InputGroup.Prefix>
-                  <InputGroup.Input autoComplete="current-password" />
-                  <InputGroup.Suffix>
-                    <button
-                      aria-label={showPw ? "Hide password" : "Show password"}
-                      disabled={!supabaseReady && !localAuthReady}
-                      tabIndex={-1}
-                      type="button"
-                      onClick={() => setShowPw((v) => !v)}
-                    >
-                      {showPw ? (
-                        <EyeOff className="size-4" />
-                      ) : (
-                        <Eye className="size-4" />
-                      )}
-                    </button>
-                  </InputGroup.Suffix>
-                </InputGroup>
-                <FieldError />
-              </TextField>
-
-              <Button
-                fullWidth
-                isDisabled={fieldsDisabled || loading}
-                size="lg"
-                type="submit"
-                variant="primary"
-              >
-                {loading ? <Spinner size="sm" /> : <LogIn className="size-4" />}
-                <span>
-                  {loading
-                    ? "Signing in…"
-                    : lockSecs > 0
-                      ? `Locked — ${lockSecs}s`
-                      : "Sign in"}
-                </span>
-              </Button>
-            </Form>
-
-            <p className="m-0 text-center text-sm text-muted">
-              {supabaseReady ? (
-                <>
-                  Forgot password?{" "}
-                  <Link
-                    className="font-semibold text-accent hover:underline"
-                    to="/forgot-password"
-                  >
-                    Send a reset link
-                  </Link>
-                </>
-              ) : localAuthReady ? (
-                "Development-only local access is disabled in production."
-              ) : (
-                "Admin access requires a configured Supabase Auth project."
-              )}
-            </p>
-          </Card.Content>
-        </Card>
+        <p className="ad-hint" style={{ textAlign: "center" }}>
+          {supabaseReady ? (
+            <button
+              className="ad-crumblink"
+              disabled={loading || lockSecs > 0}
+              type="button"
+              onClick={() => void handleForgotPassword()}
+            >
+              Forgot password? Send a reset link
+            </button>
+          ) : localAuthReady ? (
+            "Development-only local access is disabled in production."
+          ) : (
+            "Admin access requires a configured Supabase Auth project."
+          )}
+        </p>
       </main>
     </div>
   );

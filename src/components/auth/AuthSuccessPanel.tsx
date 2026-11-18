@@ -1,42 +1,24 @@
 import type { ReactNode } from "react";
-
 import { Link } from "react-router-dom";
-import { buttonVariants } from "@heroui/react";
+
+import { Button } from "@/components/arc/button/button";
 
 interface AuthSuccessPanelProps {
-  icon: ReactNode;
   title: string;
   message: ReactNode;
   ctaLabel: string;
   ctaTo: string;
 }
 
-// Shared "you're done" state used by three different auth flows (Signup's
+// Shared "you're done" state used by three auth flows (Signup's
 // email-verification notice, ForgotPassword's inbox notice, ResetPassword's
-// confirmation) — same icon-over-heading-over-message-over-CTA shape each
-// time, just with different copy.
-export default function AuthSuccessPanel({
-  icon,
-  title,
-  message,
-  ctaLabel,
-  ctaTo,
-}: AuthSuccessPanelProps) {
+// confirmation): heading, message, one action.
+export default function AuthSuccessPanel({ title, message, ctaLabel, ctaTo }: AuthSuccessPanelProps) {
   return (
-    <div className="flex flex-col items-center gap-3 py-2 text-center">
-      {icon}
-      <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
-      <p className="text-muted">{message}</p>
-      <Link
-        className={buttonVariants({
-          variant: "primary",
-          size: "lg",
-          fullWidth: true,
-        })}
-        to={ctaTo}
-      >
-        {ctaLabel}
-      </Link>
+    <div className="mc-stack">
+      <h1 className="mc-h2">{title}</h1>
+      <p className="mc-text">{message}</p>
+      <Link style={{ textDecoration: "none" }} to={ctaTo}><Button tabIndex={-1}>{ctaLabel}</Button></Link>
     </div>
   );
 }

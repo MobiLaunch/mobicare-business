@@ -1,32 +1,33 @@
-import { useEffect } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
-import { Accordion } from "@heroui/react";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 
-import BookingWizard from "@/components/BookingWizard";
-import PageMeta from "@/components/PageMeta";
+import PageBlock from "@/components/PageBlock";
 import { useSiteStore } from "@/lib/siteStore";
+import PageMeta from "@/components/PageMeta";
+import PageIntro from "@/components/PageIntro";
+import BookingWizard from "@/components/BookingWizard";
+import { useCopy } from "@/lib/copy";
+import { Accordion } from "@/components/arc/accordion/accordion";
 
-const DEFAULT_REPAIR_FAQS = [
+const FAQS = [
   {
     q: "How long do repairs take?",
     a: "Most screen and battery replacements are completed same-day, typically within 1–2 hours. Water damage recovery or data extraction can take 24–48 hours.",
   },
   {
     q: "Do you offer a warranty on repairs?",
-    a: "Yes — every part we install is backed by a 90-day warranty. If that part fails within 90 days, we'll replace it at no charge. Physical or liquid damage after repair isn't covered.",
+    a: "Yes — every part we install is backed by a 90-day warranty. If that part fails within 90 days, we'll replace it at no charge. Labor for unrelated issues isn't covered.",
   },
   {
     q: "Do you fix all phone brands?",
-    a: "We repair iPhones, Samsung Galaxy, Google Pixel, Motorola, LG, OnePlus, as well as iPads, Android tablets, and laptops.",
+    a: "We repair iPhones, Samsung Galaxy, Google Pixel, Motorola, LG, OnePlus, as well as iPads and Android tablets.",
   },
   {
     q: "Is there a diagnostic fee?",
-    a: "Yes — a flat $35 diagnostic bench fee covers a full hardware diagnostic on any device, and 100% of that fee is credited toward your repair if you proceed.",
+    a: "Yes — a flat $35 bench fee covers a full diagnostic on any device and is credited toward your repair if you proceed. You'll get a clear, no-obligation quote before we start any work.",
   },
   {
-    q: "What is your warranty & refund policy on repairs?",
-    a: "Every replacement part we install carries a 90-day parts warranty — if a part is defective, we replace it free of charge. Diagnostic bench fees and completed repair labor are non-refundable.",
+    q: "Do you offer refunds?",
+    a: "We don't offer refunds. Every part we install is covered by a 90-day parts warranty — if the part fails, we replace it at no charge. Labor and the bench fee are non-refundable. See our Refund policy for details.",
   },
   {
     q: "Do I need an appointment?",
@@ -42,118 +43,78 @@ const BADGES = [
 ];
 
 export default function Repairs() {
+  const c = useCopy();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const repairBanner = useSiteStore((s) => s.repairBanner);
+  const banner = useSiteStore((s) => s.repairBanner);
   const faqs = useSiteStore((s) => s.faqs);
-  const copy = useSiteStore((s) => s.copy);
-  const layout = useSiteStore((s) => s.layout);
-
-  const hashService = location.hash
-    ? decodeURIComponent(location.hash.replace(/^#/, ""))
-    : "";
-  const preselectedService =
-    searchParams.get("service") ||
-    (hashService && hashService !== "repairs-booking-section"
-      ? hashService
-      : null);
-
-  useEffect(() => {
-    if (preselectedService) {
-      const el = document.getElementById("repairs-booking-section");
-      el?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [preselectedService]);
-
-  const faqList = faqs?.repairs?.length ? faqs.repairs : DEFAULT_REPAIR_FAQS;
-  const hideFaq = Boolean(layout?.pages?.["/repairs"]?.hidden?.includes("faq"));
+  const trustItems = useSiteStore((s) => s.trustItems) || [];
+  const badges = trustItems.length ? trustItems.map((t) => t.label) : BADGES;
+  const preselectedService = location.hash
+    ? decodeURIComponent(location.hash.slice(1))
+    : searchParams.get("service");
 
   return (
-    <div className="mx-auto max-w-[1400px] overflow-x-hidden px-[clamp(12px,3vw,24px)] pb-16">
+    <>
       <PageMeta
         description="Professional same-day phone repairs, cracked screens, dead batteries, water damage diagnostics and repairs for iPhones, iPads, Samsung and more in Fairfield, IL."
-        title="Device Repair Services — Screen, Battery & More | Mobicare Fairfield IL"
+        title="Device repair services: screen, battery and more | Mobicare Fairfield IL"
       />
 
-      {/* Hero */}
-      <section className="pb-8 pt-[clamp(24px,5vw,48px)] text-center">
-        <p
-          className="m-0 mb-1.5 text-caption font-bold uppercase tracking-widest text-accent"
-          data-edit="repairBanner.eyebrow"
-        >
-          {repairBanner?.eyebrow || "Device Repair Services"}
-        </p>
-        <h1
-          className="type-display m-0 mb-3 whitespace-pre-line text-display text-foreground"
-          data-edit="repairBanner.headline"
-        >
-          {repairBanner?.headline || "We Fix What's Broken."}
-        </h1>
-        <p
-          className="mx-auto mb-7 max-w-[640px] text-body-lg leading-relaxed text-muted"
-          data-edit="repairBanner.description"
-        >
-          {repairBanner?.description ||
-            "Fast, honest repairs on every major device brand. $35 diagnostic bench fee — 100% credited toward your repair — plus a 90-day parts warranty."}
-        </p>
-
-        <div className="mb-8 flex flex-wrap justify-center gap-3">
-          {BADGES.map((badge) => (
-            <span
-              key={badge}
-              className="rounded-full border border-border bg-surface-secondary px-3.5 py-1.5 text-xs font-semibold text-foreground"
-            >
-              ✓ {badge}
-            </span>
+      <PageIntro
+        lead={
+          banner?.description || "Fast, honest repairs on every major device brand."
+        }
+        title={
+          banner?.headline ? (
+            banner.headline.split("\n").map((line, i) => (
+              <span key={i} style={{ display: "block" }}>
+                {line}
+              </span>
+            ))
+          ) : (
+            <>We fix what&apos;s broken.</>
+          )
+        }
+      >
+        <div className="mc-hero-meta">
+          {badges.map((badge) => (
+            <span key={badge}>{badge}</span>
           ))}
         </div>
-      </section>
+        <p className="mc-small">
+          Already checked in a device or placed an order?{" "}
+          <Link className="mc-link" to="/repair-status">
+            Track your status →
+          </Link>
+        </p>
+      </PageIntro>
 
-      {/* Booking flow */}
-      <section className="mb-14 scroll-mt-24" id="repairs-booking-section">
-        <BookingWizard defaultService={preselectedService} mode="page" />
-      </section>
-
-      {/* FAQ */}
-      {!hideFaq && (
-        <section className="mx-auto mb-14 max-w-[840px]">
-          <div className="mb-8 text-center">
-            <p className="m-0 mb-1 text-caption font-bold uppercase tracking-widest text-accent">
-              Got Questions?
-            </p>
-            <h2
-              className="m-0 text-heading-lg font-extrabold text-foreground"
-              data-edit="copy.repairs.faq.title"
-            >
-              {copy?.["repairs.faq.title"] || "Frequently Asked Questions"}
-            </h2>
-          </div>
-
-          <Accordion className="flex flex-col gap-3">
-            {faqList.map((faq, idx) => (
-              <Accordion.Item
-                key={`${faq.q}-${idx}`}
-                className="surface-raised overflow-hidden rounded-card transition-all duration-200"
-                id={`faq-${idx}`}
-              >
-                <Accordion.Heading>
-                  <Accordion.Trigger className="w-full gap-3 px-5 py-4 text-left text-base font-bold text-foreground">
-                    <span>{faq.q}</span>
-                    <Accordion.Indicator>
-                      <ChevronDown className="size-5 shrink-0 text-accent" />
-                    </Accordion.Indicator>
-                  </Accordion.Trigger>
-                </Accordion.Heading>
-                <Accordion.Panel>
-                  <Accordion.Body className="px-5 pb-[18px] pt-0 text-sm leading-relaxed text-muted">
-                    {faq.a}
-                  </Accordion.Body>
-                </Accordion.Panel>
-              </Accordion.Item>
-            ))}
-          </Accordion>
+      <div className="mc-page mc-pagebody mc-split">
+        <section aria-label="Book a repair" id="repairs-booking-section">
+          <BookingWizard defaultService={preselectedService} mode="page" />
         </section>
-      )}
-    </div>
+
+        <PageBlock id="faq" page="/repairs">
+          <section aria-labelledby="faq-title" className="mc-faq">
+            <div className="mc-section-head">
+              <h2
+                className="mc-h2"
+                id="faq-title"
+                {...c.p("repairs.faq.title")}
+              >
+                {c("repairs.faq.title")}
+              </h2>
+            </div>
+            <Accordion
+              items={(faqs?.repairs ?? FAQS).map((f) => ({
+                title: f.q,
+                content: f.a,
+              }))}
+            />
+          </section>
+        </PageBlock>
+      </div>
+    </>
   );
 }

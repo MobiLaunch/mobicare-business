@@ -1,39 +1,27 @@
 import type { Product } from "@/types/domain";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  ImageOff,
-  PackageOpen,
-  Pencil,
-  Plus,
-  Search,
-  Star,
-  Trash2,
-  Upload,
-  X,
-} from "lucide-react";
-import {
-  Button,
-  FieldError,
-  InputGroup,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  Spinner,
-  Switch,
-  TextArea,
-  TextField,
-  ToggleButton,
-} from "@heroui/react";
+import { History, ImageOff, Link2, PackageOpen, Pencil, Plus, Star, Trash2 } from "lucide-react";
 
+import { Button } from "@/components/arc/button/button";
+import { Dialog, DialogContent } from "@/components/arc/dialog/dialog";
+import { Input } from "@/components/arc/input/input";
+import { SearchField } from "@/components/arc/search-field/search-field";
+import { Select } from "@/components/arc/select/select";
+import { Switch } from "@/components/arc/switch/switch";
+import { Textarea } from "@/components/arc/textarea/textarea";
 import { useProductStore, useToastStore } from "@/lib/store";
-import { isSupabaseConfigured, sbUploadSiteMedia } from "@/lib/supabase";
+import {
+  isSupabaseConfigured,
+  sbFetchPosInventory,
+  sbFetchStockMovements,
+  sbSetInventoryStock,
+  type PosInventoryItem,
+  type StockMovement,
+} from "@/lib/supabase";
 import AdminPageHeader from "@/admin/components/AdminPageHeader";
-import AdminDataTable, {
-  type AdminDataTableColumn,
-} from "@/admin/components/AdminDataTable";
+import AdminDataTable, { type AdminDataTableColumn } from "@/admin/components/AdminDataTable";
 import AdminConfirmDialog from "@/admin/components/AdminConfirmDialog";
 
 interface ProductFormState {
@@ -49,6 +37,7 @@ interface ProductFormState {
   featured: boolean;
   active: boolean;
   shippingDays: { min: number; max: number };
+  inventoryId?: number | null;
 }
 
 const EMPTY_PRODUCT: ProductFormState = {
@@ -66,44 +55,30 @@ const EMPTY_PRODUCT: ProductFormState = {
   shippingDays: { min: 3, max: 7 },
 };
 
-function StockBadge({ stock }: { stock: number }) {
-  if (stock === 0)
-    return (
-      <span className="rounded-full bg-danger/15 px-2.5 py-1 text-xs font-bold text-danger">
-        Out of Stock
-      </span>
-    );
-  if (stock <= 5)
-    return (
-      <span className="rounded-full bg-warning/15 px-2.5 py-1 text-xs font-bold text-warning">
-        Low ({stock})
-      </span>
-    );
+const REASONS: Record<string, string> = {
+  adjustment: "Adjusted",
+  web_order: "Web order",
+  web_order_cancelled: "Web order cancelled",
+  web_order_refunded: "Web order refunded",
+};
 
-  return (
-    <span className="rounded-full bg-success/15 px-2.5 py-1 text-xs font-bold text-success">
-      {stock} in stock
-    </span>
-  );
+function StockBadge({ stock }: { stock: number }) {
+  if (stock === 0) return <span className="ad-pill" data-tone="danger">Out of stock</span>;
+  if (stock <= 5) return <span className="ad-pill" data-tone="warning">Low ({stock})</span>;
+
+  return <span className="ad-pill" data-tone="success">{stock} in stock</span>;
 }
 
 export default function Products() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const products = useProductStore((s) => s.products);
   const categories = useProductStore((s) => s.categories);
   const topLevelCategories = categories.filter((c) => !c.parentId);
-  const categoryName = (id: string) =>
-    categories.find((c) => c.id === id)?.name || id;
-  // Flat list, not react-aria's ListBox.Section+Header: that combination
-  // reproducibly crashed the popover on open in this HeroUI/react-aria
-  // version (a "recovered from concurrent render error" + hang on click) —
-  // this is the fallback the implementation plan called out in advance for
-  // exactly that possibility. Subcategories are visually indented instead.
-  const categoryListItems = topLevelCategories.flatMap((top) => [
-    { id: top.id, label: top.name, indent: false },
-    ...categories
-      .filter((c) => c.parentId === top.id)
-      .map((sub) => ({ id: sub.id, label: sub.name, indent: true })),
+  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name || id;
+  // Flat list with subcategories visually indented under their parent.
+  const categoryOptions = topLevelCategories.flatMap((top) => [
+    { value: top.id, label: top.name },
+    ...categories.filter((c) => c.parentId === top.id).map((sub) => ({ value: sub.id, label: `— ${sub.name}` })),
   ]);
   const addProduct = useProductStore((s) => s.addProduct);
   const updateProduct = useProductStore((s) => s.updateProduct);
@@ -116,38 +91,105 @@ export default function Products() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductFormState>(EMPTY_PRODUCT);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [uploadingImg, setUploadingImg] = useState(false);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [posItems, setPosItems] = useState<PosInventoryItem[]>([]);
+  const [posLoading, setPosLoading] = useState(false);
+  const [posSearch, setPosSearch] = useState("");
+  const [picked, setPicked] = useState<number[]>([]);
+  const [linkCategory, setLinkCategory] = useState("");
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [costs, setCosts] = useState<Record<number, number>>({});
+  const [lowOnly, setLowOnly] = useState(false);
+  const synced = isSupabaseConfigured();
+  const linkedIds = new Set(products.map((p) => p.inventoryId).filter((v): v is number => typeof v === "number"));
+  const lowCount = products.filter((p) => p.active && p.stock <= 5).length;
+
+  const loadMovements = () => {
+    if (synced) void sbFetchStockMovements(8).then((m) => m && setMovements(m));
+  };
+
+  useEffect(loadMovements, [synced, products]);
+
+  // Cost lives on the POS item; the shop only needs it here to show margin.
+  useEffect(() => {
+    if (!synced) return;
+    void sbFetchPosInventory().then((items) => items && setCosts(Object.fromEntries(items.filter((i) => i.cost > 0).map((i) => [i.id, i.cost]))));
+  }, [synced]);
+
+  const openLink = async () => {
+    setLinkOpen(true);
+    setPicked([]);
+    setPosSearch("");
+    setPosLoading(true);
+    const items = await sbFetchPosInventory();
+
+    setPosLoading(false);
+    if (!items) addToast("Couldn't read the POS inventory. Sign in as the shop owner and try again.", "error");
+    else setPosItems(items);
+  };
+
+  const posVisible = posItems
+    .filter((i) => !linkedIds.has(i.id))
+    .filter((i) => !posSearch || `${i.name} ${i.sku} ${i.category}`.toLowerCase().includes(posSearch.toLowerCase()));
+
+  const handleLink = async () => {
+    if (!linkCategory) return void addToast("Pick a shop category for the new products", "error");
+    const chosen = posItems.filter((i) => picked.includes(i.id));
+    let addedCount = 0;
+
+    // Added as hidden drafts: the shop owner reviews photos and copy, then switches them on.
+    for (const item of chosen) {
+      const saved = await addProduct({
+        name: item.name,
+        sku: item.sku || `POS-${item.id}`,
+        category: linkCategory,
+        price: item.price,
+        stock: item.stock,
+        description: item.name,
+        images: [],
+        tags: [],
+        featured: false,
+        active: false,
+        weight: 0,
+        shippingDays: { min: 3, max: 7 },
+        inventoryId: item.id,
+      });
+
+      if (saved) addedCount++;
+    }
+    if (addedCount === 0) {
+      addToast("Could not add POS items — check admin permissions and SKU uniqueness.", "error");
+
+      return;
+    }
+    await updateAfterLink(addedCount);
+  };
+
+  const updateAfterLink = async (count: number) => {
+    setLinkOpen(false);
+    addToast(`${count} POS item${count === 1 ? "" : "s"} added as hidden drafts. Review them, then switch them on.`, "success");
+  };
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ ...EMPTY_PRODUCT, images: [""] });
+    setForm({ ...EMPTY_PRODUCT });
     setModalOpen(true);
   };
 
   useEffect(() => {
     if (searchParams.get("action") === "add") {
       setEditingId(null);
-      setForm({ ...EMPTY_PRODUCT, images: [""] });
+      setForm({ ...EMPTY_PRODUCT });
       setModalOpen(true);
-      const next = new URLSearchParams(searchParams);
-      next.delete("action");
-      setSearchParams(next, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams]);
 
   const filtered = products.filter((p) => {
-    const matchesCat =
-      catFilter === "all" ||
-      p.category === catFilter ||
-      categories.some((c) => c.id === p.category && c.parentId === catFilter);
-    const matchesSearch =
-      !search ||
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku?.toLowerCase().includes(search.toLowerCase());
+    const matchesCat = catFilter === "all" || p.category === catFilter;
+    const matchesLow = !lowOnly || p.stock <= 5;
+    const matchesSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase());
 
-    return matchesCat && matchesSearch;
+    return matchesCat && matchesSearch && matchesLow;
   });
 
   const openEdit = (product: Product) => {
@@ -163,74 +205,12 @@ export default function Products() {
     setModalOpen(true);
   };
 
-  const updateForm = <K extends keyof ProductFormState>(
-    k: K,
-    v: ProductFormState[K],
-  ) => setForm((f) => ({ ...f, [k]: v }));
-
-  const setImageAt = (index: number, url: string) =>
-    setForm((f) => ({
-      ...f,
-      images: f.images.map((img, i) => (i === index ? url : img)),
-    }));
-
-  const addImageSlot = () =>
-    setForm((f) => ({ ...f, images: [...f.images, ""] }));
-
-  const removeImageSlot = (index: number) =>
-    setForm((f) => {
-      const next = f.images.filter((_, i) => i !== index);
-
-      return { ...f, images: next.length ? next : [""] };
-    });
-
-  const handleImageFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    e.target.value = "";
-    if (!files.length) return;
-
-    setUploadingImg(true);
-    const uploadedUrls: string[] = [];
-
-    for (const file of files) {
-      if (isSupabaseConfigured()) {
-        const res = await sbUploadSiteMedia(file);
-
-        if (res.url) {
-          uploadedUrls.push(res.url);
-        } else {
-          addToast(res.error || `Failed to upload ${file.name}`, "error");
-        }
-      } else {
-        const dataUrl = await new Promise<string | null>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || ""));
-          reader.onerror = () => resolve(null);
-          reader.readAsDataURL(file);
-        });
-
-        if (dataUrl) uploadedUrls.push(dataUrl);
-      }
-    }
-
-    setUploadingImg(false);
-    if (uploadedUrls.length > 0) {
-      setForm((f) => {
-        const existing = f.images.map((s) => s.trim()).filter(Boolean);
-
-        return { ...f, images: [...existing, ...uploadedUrls] };
-      });
-      addToast(
-        `Uploaded ${uploadedUrls.length} image${uploadedUrls.length !== 1 ? "s" : ""}`,
-        "success",
-      );
-    }
-  };
+  const updateForm = <K extends keyof ProductFormState>(k: K, v: ProductFormState[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
     const { name, category, price, stock, sku, description } = form;
 
-    if (!name.trim() || !category || !price || !stock || !sku.trim() || !description.trim()) {
+    if (!name || !category || !price || !stock || !sku || !description) {
       addToast("Please fill in all required fields (*)", "error");
 
       return;
@@ -249,10 +229,7 @@ export default function Products() {
 
       return;
     }
-    if (
-      compareNum != null &&
-      (!Number.isFinite(compareNum) || compareNum < 0)
-    ) {
+    if (compareNum != null && (!Number.isFinite(compareNum) || compareNum < 0)) {
       addToast("Please enter a valid compare-at price", "error");
 
       return;
@@ -265,588 +242,310 @@ export default function Products() {
 
     const data: Partial<Product> = {
       ...form,
-      name: name.trim(),
-      sku: sku.trim(),
-      description: description.trim(),
       price: priceNum,
       comparePrice: compareNum,
       stock: stockNum,
-      tags: form.tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
+      tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
       images: form.images.map((u) => u.trim()).filter(Boolean),
     };
 
-    setSaving(true);
-    try {
-      if (editingId) {
-        await updateProduct(editingId, data);
-        addToast("Product saved successfully", "success");
-      } else {
-        await addProduct(data);
-        addToast("New product added to catalog", "success");
+    if (editingId) {
+      const prevProduct = products.find((p) => p.id === editingId);
+      const linked = prevProduct?.inventoryId;
+
+      if (typeof linked === "number" && stockNum !== prevProduct?.stock) {
+        // One shared count: the POS item is the source of truth, the shop mirrors it.
+        const syncedStock = await sbSetInventoryStock(linked, stockNum);
+
+        if (!syncedStock && synced) {
+          addToast("Could not update shared POS stock count.", "error");
+
+          return;
+        }
       }
-      setModalOpen(false);
-    } catch (err) {
-      addToast(
-        err instanceof Error ? err.message : "Failed to save product.",
-        "error",
-      );
-    } finally {
-      setSaving(false);
+      const ok = await updateProduct(editingId, data);
+
+      if (!ok) {
+        addToast("Could not save product — check SKU uniqueness and admin permissions.", "error");
+
+        return;
+      }
+      addToast("Product saved successfully", "success");
+    } else {
+      const saved = await addProduct(data);
+
+      if (!saved) {
+        addToast("Could not add product — check SKU uniqueness and admin permissions.", "error");
+
+        return;
+      }
+      addToast("New product added to catalog", "success");
     }
+    setModalOpen(false);
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      await deleteProduct(id);
-      addToast("Product removed from catalog", "info");
-    } catch (err) {
-      addToast(
-        err instanceof Error ? err.message : "Failed to delete product.",
-        "error",
-      );
-    }
+    const ok = await deleteProduct(id);
+
+    if (ok) addToast("Product removed from catalog", "info");
+    else addToast("Could not remove product from database.", "error");
   };
 
   const handleToggleActive = async (product: Product) => {
-    const nextActive = !product.active;
-    try {
-      await updateProduct(product.id, { active: nextActive });
-      addToast(
-        `Product ${nextActive ? "published on" : "hidden from"} live store`,
-        "info",
-      );
-    } catch (err) {
-      addToast(
-        err instanceof Error ? err.message : "Could not update product visibility.",
-        "error",
-      );
-    }
+    const ok = await updateProduct(product.id, { active: !product.active });
+
+    if (ok) addToast(`Product ${product.active ? "hidden from" : "published on"} live store`, "info");
+    else addToast("Could not update product visibility.", "error");
   };
 
   const handleToggleFeatured = async (product: Product) => {
-    try {
-      await updateProduct(product.id, { featured: !product.featured });
-    } catch (err) {
-      addToast(
-        err instanceof Error ? err.message : "Could not update featured status.",
-        "error",
-      );
-    }
+    const ok = await updateProduct(product.id, { featured: !product.featured });
+
+    if (!ok) addToast("Could not update featured status.", "error");
   };
 
+  const thumb = (p: Product) => (
+    <span className="ad-thumb">{p.images?.[0] ? <img alt="" src={p.images[0]} /> : <ImageOff aria-hidden="true" size={16} />}</span>
+  );
+
+  const priceCell = (p: Product) => (
+    <div>
+      <strong className="ad-num" style={{ fontWeight: 500 }}>${p.price.toFixed(2)}</strong>
+      {typeof p.inventoryId === "number" && costs[p.inventoryId] > 0 && p.price > 0 && (
+        <div className="ad-hint">{Math.round(((p.price - costs[p.inventoryId]) / p.price) * 100)}% margin</div>
+      )}
+      {p.comparePrice && <div className="ad-hint" style={{ textDecoration: "line-through" }}>${p.comparePrice.toFixed(2)}</div>}
+    </div>
+  );
+
+  const featuredBtn = (p: Product) => (
+    <button aria-label={p.featured ? `Remove ${p.name} from featured` : `Mark ${p.name} as featured`} aria-pressed={p.featured} className="ad-iconbtn" type="button" onClick={() => handleToggleFeatured(p)}>
+      <Star aria-hidden="true" fill={p.featured ? "var(--warning)" : "none"} size={16} style={{ color: p.featured ? "var(--warning)" : undefined }} />
+    </button>
+  );
+
+  const visibility = (p: Product) => <Switch aria-label={`${p.name} visible on store`} checked={p.active} onCheckedChange={() => handleToggleActive(p)} />;
+
+  const rowActions = (p: Product) => (
+    <div className="ad-row-actions">
+      {featuredBtn(p)}
+      <button aria-label={`Edit ${p.name}`} className="ad-iconbtn" type="button" onClick={() => openEdit(p)}><Pencil aria-hidden="true" size={16} /></button>
+      <button aria-label={`Delete ${p.name}`} className="ad-iconbtn ad-iconbtn--danger" type="button" onClick={() => setDeleteConfirm(p.id)}><Trash2 aria-hidden="true" size={16} /></button>
+    </div>
+  );
+
   const columns: AdminDataTableColumn<Product>[] = [
-    {
-      key: "details",
-      header: "Product Details",
-      render: (p) => (
-        <div className="flex min-w-[200px] items-center gap-3">
-          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-tertiary">
-            {p.images?.[0] ? (
-              <img
-                alt={p.name}
-                className="size-full object-cover"
-                src={p.images[0]}
-              />
-            ) : (
-              <ImageOff className="size-4 text-muted" />
-            )}
-          </div>
-          <strong className="text-sm text-foreground">{p.name}</strong>
-        </div>
-      ),
-    },
-    {
-      key: "sku",
-      header: "SKU",
-      render: (p) => (
-        <code className="rounded-md bg-surface-tertiary px-1.5 py-0.5 text-xs font-bold">
-          {p.sku}
-        </code>
-      ),
-    },
-    {
-      key: "category",
-      header: "Category",
-      render: (p) => (
-        <span className="rounded-full bg-surface-tertiary px-2.5 py-1 text-xs font-semibold">
-          {categoryName(p.category)}
-        </span>
-      ),
-    },
-    {
-      key: "price",
-      header: "Price",
-      render: (p) => (
-        <div>
-          <strong className="text-sm text-accent">${p.price.toFixed(2)}</strong>
-          {p.comparePrice && (
-            <div className="text-caption text-muted line-through">
-              ${p.comparePrice.toFixed(2)}
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: "stock",
-      header: "Stock",
-      render: (p) => <StockBadge stock={p.stock} />,
-    },
-    {
-      key: "active",
-      header: "Visibility",
-      render: (p) => (
-        <Switch isSelected={p.active} onChange={() => handleToggleActive(p)}>
-          <Switch.Content>
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
-          </Switch.Content>
-        </Switch>
-      ),
-    },
-    {
-      key: "featured",
-      header: "Featured",
-      render: (p) => (
-        <ToggleButton
-          isIconOnly
-          aria-label={p.featured ? "Remove from featured" : "Mark as featured"}
-          isSelected={p.featured}
-          variant="ghost"
-          onChange={() => handleToggleFeatured(p)}
-        >
-          <Star
-            className={`size-4 ${p.featured ? "fill-warning text-warning" : "text-muted"}`}
-          />
-        </ToggleButton>
-      ),
-    },
-    {
-      key: "actions",
-      header: "Actions",
-      render: (p) => (
-        <div className="flex items-center gap-1">
-          <Button
-            isIconOnly
-            aria-label="Edit product"
-            variant="ghost"
-            onPress={() => openEdit(p)}
-          >
-            <Pencil className="size-4" />
-          </Button>
-          <Button
-            isIconOnly
-            aria-label="Delete product"
-            variant="ghost"
-            onPress={() => setDeleteConfirm(p.id)}
-          >
-            <Trash2 className="size-4 text-danger" />
-          </Button>
-        </div>
-      ),
-    },
+    { key: "details", header: "Product", render: (p) => <div className="ad-cell-main">{thumb(p)}<div><strong style={{ fontWeight: 500, display: "block" }}>{p.name}</strong>{typeof p.inventoryId === "number" && <span className="ad-hint">Stock shared with POS</span>}</div></div> },
+    { key: "sku", header: "SKU", render: (p) => <code className="ad-code">{p.sku}</code> },
+    { key: "category", header: "Category", render: (p) => <span className="ad-pill" data-tone="neutral">{categoryName(p.category)}</span> },
+    { key: "price", header: "Price", render: priceCell },
+    { key: "stock", header: "Stock", render: (p) => <StockBadge stock={p.stock} /> },
+    { key: "active", header: "Visible", render: visibility },
+    { key: "actions", header: "", render: rowActions },
   ];
 
+  const empty = { icon: PackageOpen, title: "No matching products found", description: "Try adjusting your search criteria or category filter." };
+
   return (
-    <div>
+    <div className="ad-stack">
       <AdminPageHeader
         action={
-          <Button variant="primary" onPress={openAdd}>
-            <Plus className="size-4" />
-            <span>Add New Product</span>
-          </Button>
+          <>
+            {synced && <Button variant="secondary" onClick={openLink}><Link2 aria-hidden="true" size={16} strokeWidth={1.75} />Add from POS</Button>}
+            <Button onClick={openAdd}><Plus aria-hidden="true" size={16} strokeWidth={1.75} />Add product</Button>
+          </>
         }
-        description={`${products.length} total items · ${products.filter((p) => p.active).length} currently active on store`}
-        eyebrow="Inventory Catalog"
-        title="Products Management"
+        description={`${products.length} total items · ${products.filter((p) => p.active).length} active on the store.`}
+        title="Products"
       />
 
-      <div className="mb-6 flex flex-wrap gap-4">
-        <TextField
-          className="min-w-[240px] flex-1"
-          value={search}
-          onChange={setSearch}
-        >
-          <InputGroup>
-            <InputGroup.Prefix>
-              <Search className="size-4" />
-            </InputGroup.Prefix>
-            <InputGroup.Input placeholder="Search by product name or SKU code…" />
-          </InputGroup>
-        </TextField>
-
-        <Select
-          className="w-full sm:w-56"
-          selectedKey={catFilter}
-          onSelectionChange={(key) => setCatFilter(String(key))}
-        >
-          <Select.Trigger>
-            <Select.Value />
-          </Select.Trigger>
-          <Select.Popover>
-            <ListBox>
-              <ListBox.Item id="all">All Categories</ListBox.Item>
-              {categoryListItems.map((item) => (
-                <ListBox.Item key={item.id} className={item.indent ? "pl-7 text-muted" : ""} id={item.id}>
-                  {item.indent ? `— ${item.label}` : item.label}
-                </ListBox.Item>
-              ))}
-            </ListBox>
-          </Select.Popover>
-        </Select>
+      <div className="ad-toolbar">
+        <div className="grow"><SearchField label="Search products" placeholder="Search by name or SKU" value={search} onValueChange={setSearch} /></div>
+        <div style={{ minWidth: "12rem" }}>
+          <Select label="Category" options={[{ value: "all", label: "All categories" }, ...categoryOptions]} value={catFilter} onValueChange={setCatFilter} />
+        </div>
       </div>
 
-      <AdminDataTable
-        columns={columns}
-        data={filtered}
-        emptyState={{
-          icon: PackageOpen,
-          title: "No matching products found",
-          description: "Try adjusting your search criteria or category filter.",
-        }}
-        rowKey={(p) => p.id}
-      />
+      {(lowCount > 0 || lowOnly) && (
+        <div className="ad-chiprow" role="group" aria-label="Stock filter">
+          <Button size="sm" variant={lowOnly ? "primary" : "secondary"} onClick={() => setLowOnly((v) => !v)}>
+            Low or out of stock ({lowCount})
+          </Button>
+        </div>
+      )}
 
-      {/* Edit / Create modal */}
-      <Modal isOpen={modalOpen} onOpenChange={setModalOpen}>
-        <Modal.Backdrop className="z-[100]">
-          <Modal.Container className="pb-24 lg:pb-0" scroll="inside" size="lg">
-            <Modal.Dialog>
-              <Modal.Header>
-                <Modal.Heading>
-                  {editingId
-                    ? "Edit Product Details"
-                    : "Create New Catalog Product"}
-                </Modal.Heading>
-                <Modal.CloseTrigger />
-              </Modal.Header>
-              <Modal.Body className="flex flex-col gap-4">
-                <TextField
-                  isRequired
-                  className="flex flex-col gap-1.5"
-                  value={form.name}
-                  onChange={(v) => updateForm("name", v)}
-                >
-                  <Label>Product Name *</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                  <FieldError />
-                </TextField>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Select
-                    placeholder="Select category"
-                    selectedKey={form.category || null}
-                    onSelectionChange={(key) =>
-                      updateForm("category", String(key))
-                    }
-                  >
-                    <Label>Category *</Label>
-                    <Select.Trigger>
-                      <Select.Value />
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        {categoryListItems.map((item) => (
-                          <ListBox.Item key={item.id} className={item.indent ? "pl-7 text-muted" : ""} id={item.id}>
-                            {item.indent ? `— ${item.label}` : item.label}
-                          </ListBox.Item>
-                        ))}
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
-
-                  <TextField
-                    isRequired
-                    className="flex flex-col gap-1.5"
-                    value={form.sku}
-                    onChange={(v) => updateForm("sku", v)}
-                  >
-                    <Label>SKU Code *</Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                    <FieldError />
-                  </TextField>
+      <div className="ad-only-narrow">
+        {filtered.length === 0 ? <AdminDataTable columns={[]} data={[]} emptyState={empty} rowKey={() => ""} /> : (
+          <div className="ad-cards">
+            {filtered.map((p) => (
+              <article key={p.id} className="ad-mcard">
+                <div className="ad-mcard-top">
+                  <div className="ad-cell-main">{thumb(p)}<div style={{ minWidth: 0 }}><strong style={{ fontWeight: 500, display: "block" }}>{p.name}</strong><code className="ad-code">{p.sku}</code></div></div>
                 </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <TextField
-                    isRequired
-                    className="flex flex-col gap-1.5"
-                    type="number"
-                    value={form.price}
-                    onChange={(v) => updateForm("price", v)}
-                  >
-                    <Label>Selling Price ($) *</Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                    <FieldError />
-                  </TextField>
-                  <TextField
-                    className="flex flex-col gap-1.5"
-                    type="number"
-                    value={form.comparePrice}
-                    onChange={(v) => updateForm("comparePrice", v)}
-                  >
-                    <Label>Compare Price ($)</Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                  </TextField>
-                  <TextField
-                    isRequired
-                    className="flex flex-col gap-1.5"
-                    type="number"
-                    value={form.stock}
-                    onChange={(v) => updateForm("stock", v)}
-                  >
-                    <Label>Stock Units *</Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                    <FieldError />
-                  </TextField>
+                <div className="ad-mcard-grid">
+                  <div><small>Price</small>{priceCell(p)}</div>
+                  <div><small>Stock</small><StockBadge stock={p.stock} /></div>
+                  <div><small>Category</small>{categoryName(p.category)}</div>
+                  <div><small>Visible</small>{visibility(p)}</div>
                 </div>
+                {rowActions(p)}
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="ad-only-wide">
+        <AdminDataTable caption="Products" columns={columns} data={filtered} emptyState={empty} rowKey={(p) => p.id} />
+      </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <TextField
-                    className="flex flex-col gap-1.5"
-                    type="number"
-                    value={String(form.shippingDays.min)}
-                    onChange={(v) =>
-                      updateForm("shippingDays", {
-                        ...form.shippingDays,
-                        min: parseInt(v, 10) || 1,
-                      })
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="ad-dialog-wide" description="Fields marked * are required." title={editingId ? "Edit product" : "New product"}>
+          <div className="ad-form">
+            <Input label="Product name *" required value={form.name} onChange={(e) => updateForm("name", e.target.value)} />
+            <div className="ad-form-2">
+              <Select label="Category *" options={categoryOptions} placeholder="Select category" value={form.category} onValueChange={(v) => updateForm("category", v)} />
+              <Input label="SKU code *" required value={form.sku} onChange={(e) => updateForm("sku", e.target.value)} />
+            </div>
+            <div className="ad-form-3">
+              <Input inputMode="decimal" label="Selling price ($) *" required type="number" value={form.price} onChange={(e) => updateForm("price", e.target.value)} />
+              <Input inputMode="decimal" label="Compare price ($)" type="number" value={form.comparePrice} onChange={(e) => updateForm("comparePrice", e.target.value)} />
+              <Input inputMode="numeric" label="Stock units *" required type="number" value={form.stock} onChange={(e) => updateForm("stock", e.target.value)} />
+            </div>
+            <div className="ad-form-2">
+              <Input label="Est. min shipping days" type="number" value={String(form.shippingDays.min)} onChange={(e) => updateForm("shippingDays", { ...form.shippingDays, min: parseInt(e.target.value, 10) || 1 })} />
+              <Input label="Est. max shipping days" type="number" value={String(form.shippingDays.max)} onChange={(e) => updateForm("shippingDays", { ...form.shippingDays, max: parseInt(e.target.value, 10) || 7 })} />
+            </div>
+            <Textarea label="Product description *" required value={form.description} onChange={(e) => updateForm("description", e.target.value)} />
+            <div className="ad-stack-sm">
+              {form.images.map((imgUrl, idx) => (
+                <div key={idx} className="ad-rowfields">
+                  <Input
+                    label={idx === 0 ? "Primary image URL" : `Additional image URL ${idx + 1}`}
+                    placeholder="https://..."
+                    value={imgUrl}
+                    onChange={(e) =>
+                      updateForm(
+                        "images",
+                        form.images.map((u, i) => (i === idx ? e.target.value : u)),
+                      )
                     }
-                  >
-                    <Label>Est. Min Days</Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                  </TextField>
-                  <TextField
-                    className="flex flex-col gap-1.5"
-                    type="number"
-                    value={String(form.shippingDays.max)}
-                    onChange={(v) =>
-                      updateForm("shippingDays", {
-                        ...form.shippingDays,
-                        max: parseInt(v, 10) || 7,
-                      })
-                    }
-                  >
-                    <Label>Est. Max Days</Label>
-                    <InputGroup>
-                      <InputGroup.Input />
-                    </InputGroup>
-                  </TextField>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="product-description">
-                    Product Description *
-                  </Label>
-                  <TextArea
-                    id="product-description"
-                    placeholder="Detailed specs, compatibility, warranty notes…"
-                    rows={4}
-                    value={form.description}
-                    onChange={(e) => updateForm("description", e.target.value)}
                   />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Label>Product Images</Label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        ref={imageInputRef}
-                        multiple
-                        accept="image/*"
-                        className="hidden"
-                        type="file"
-                        onChange={handleImageFileUpload}
-                      />
-                      <Button
-                        isDisabled={uploadingImg}
-                        size="sm"
-                        variant="outline"
-                        onPress={() => imageInputRef.current?.click()}
-                      >
-                        {uploadingImg ? (
-                          <Spinner size="sm" />
-                        ) : (
-                          <Upload className="size-3.5" />
-                        )}
-                        <span>
-                          {uploadingImg ? "Uploading…" : "Upload Image"}
-                        </span>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onPress={addImageSlot}
-                      >
-                        <Plus className="size-3.5" />
-                        <span>Add URL</span>
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    {form.images.map((imgUrl, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <TextField
-                          aria-label={`Product image URL ${idx + 1}`}
-                          className="flex-1"
-                          value={imgUrl}
-                          onChange={(v) => setImageAt(idx, v)}
-                        >
-                          <InputGroup>
-                            <InputGroup.Input
-                              placeholder={
-                                idx === 0
-                                  ? "Primary image URL (https://…)"
-                                  : `Gallery image ${idx + 1} URL (https://…)`
-                              }
-                            />
-                          </InputGroup>
-                        </TextField>
-                        {(form.images.length > 1 || imgUrl) && (
-                          <Button
-                            isIconOnly
-                            aria-label={`Remove image ${idx + 1}`}
-                            variant="ghost"
-                            onPress={() => removeImageSlot(idx)}
-                          >
-                            <X className="size-4 text-danger" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {form.images.some((u) => u.trim()) && (
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      {form.images
-                        .map((u) => u.trim())
-                        .filter(Boolean)
-                        .map((u, idx) => (
-                          <div
-                            key={`${u}-${idx}`}
-                            className="relative size-16 overflow-hidden rounded-xl border border-border bg-surface-tertiary"
-                          >
-                            <img
-                              alt={`Preview ${idx + 1}`}
-                              className="size-full object-cover"
-                              src={u}
-                            />
-                            {idx === 0 && (
-                              <span className="absolute inset-x-0 bottom-0 bg-black/65 py-0.5 text-center text-[10px] font-bold text-white">
-                                Primary
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                    </div>
+                  {form.images.length > 1 && (
+                    <button
+                      aria-label={`Remove image ${idx + 1}`}
+                      className="ad-iconbtn ad-iconbtn--danger"
+                      type="button"
+                      onClick={() =>
+                        updateForm(
+                          "images",
+                          form.images.filter((_, i) => i !== idx),
+                        )
+                      }
+                    >
+                      <Trash2 aria-hidden="true" size={16} />
+                    </button>
                   )}
                 </div>
-
-                <TextField
-                  className="flex flex-col gap-1.5"
-                  value={form.tags}
-                  onChange={(v) => updateForm("tags", v)}
+              ))}
+              <div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => updateForm("images", [...form.images, ""])}
                 >
-                  <Label>Tags (comma separated)</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                </TextField>
-
-                <div className="flex flex-wrap gap-8 pt-2">
-                  <div className="flex items-center gap-3.5">
-                    <Switch
-                      isSelected={form.active}
-                      onChange={(v) => updateForm("active", v)}
-                    >
-                      <Switch.Content>
-                        <Switch.Control>
-                          <Switch.Thumb />
-                        </Switch.Control>
-                      </Switch.Content>
-                    </Switch>
-                    <div>
-                      <strong className="block text-sm text-foreground">
-                        Active Listing
-                      </strong>
-                      <span className="text-xs text-muted">
-                        Visible to shoppers
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3.5">
-                    <Switch
-                      isSelected={form.featured}
-                      onChange={(v) => updateForm("featured", v)}
-                    >
-                      <Switch.Content>
-                        <Switch.Control>
-                          <Switch.Thumb />
-                        </Switch.Control>
-                      </Switch.Content>
-                    </Switch>
-                    <div>
-                      <strong className="block text-sm text-foreground">
-                        Featured Product
-                      </strong>
-                      <span className="text-xs text-muted">
-                        Highlight on storefront
-                      </span>
-                    </div>
-                  </div>
+                  <Plus aria-hidden="true" size={14} strokeWidth={1.75} />
+                  Add another image
+                </Button>
+              </div>
+            </div>
+            {form.images.some(Boolean) && (
+              <div>
+                <p className="ad-hint">Image preview</p>
+                <div className="ad-actions" style={{ marginTop: 6 }}>
+                  {form.images.filter(Boolean).map((imgUrl, idx) => (
+                    <img
+                      key={idx}
+                      alt={`Preview ${idx + 1}`}
+                      src={imgUrl}
+                      style={{
+                        maxHeight: 96,
+                        borderRadius: "var(--radius-panel)",
+                        border: "1px solid var(--border)",
+                      }}
+                    />
+                  ))}
                 </div>
-              </Modal.Body>
-              <Modal.Footer className="justify-end gap-2">
-                <Button
-                  isDisabled={saving}
-                  variant="outline"
-                  onPress={() => setModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  isDisabled={saving || uploadingImg}
-                  variant="primary"
-                  onPress={handleSave}
-                >
-                  {saving ? <Spinner size="sm" /> : null}
-                  <span>
-                    {saving
-                      ? "Saving…"
-                      : editingId
-                        ? "Save Changes"
-                        : "Publish Product"}
+              </div>
+            )}
+            <Input label="Tags (comma separated)" value={form.tags} onChange={(e) => updateForm("tags", e.target.value)} />
+            <div className="ad-form-2">
+              <div className="ad-cell-main">
+                <Switch aria-label="Active listing" checked={form.active} onCheckedChange={(v) => updateForm("active", v)} />
+                <div><strong style={{ display: "block", fontWeight: 500 }}>Active listing</strong><span className="ad-hint">Visible to shoppers</span></div>
+              </div>
+              <div className="ad-cell-main">
+                <Switch aria-label="Featured product" checked={form.featured} onCheckedChange={(v) => updateForm("featured", v)} />
+                <div><strong style={{ display: "block", fontWeight: 500 }}>Featured product</strong><span className="ad-hint">Highlight on storefront</span></div>
+              </div>
+            </div>
+            <div className="ad-actions ad-actions--end">
+              <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button onClick={handleSave}>{editingId ? "Save changes" : "Publish product"}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {synced && movements.length > 0 && (
+        <section className="ad-card ad-card--flush" aria-label="Recent stock activity">
+          <div className="ad-card-head">
+            <h2 className="ad-h4" style={{ display: "flex", alignItems: "center", gap: 8 }}><History aria-hidden="true" size={16} />Recent stock activity</h2>
+            <span className="ad-hint">Shared with the POS</span>
+          </div>
+          <div>
+            {movements.map((m) => (
+              <div key={m.id} className="ad-card-head" style={{ padding: "var(--space-3) var(--space-5)" }}>
+                <div style={{ minWidth: 0 }}>
+                  <strong style={{ fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.itemName}</strong>
+                  <span className="ad-hint">{REASONS[m.reason] || m.reason}{m.ref ? ` · ${m.ref.slice(0, 12)}` : ""} · {new Date(m.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+                </div>
+                <span className="ad-pill" data-tone={m.delta < 0 ? "warning" : "success"}>{m.delta > 0 ? "+" : ""}{m.delta} → {m.stockAfter}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+        <DialogContent className="ad-dialog-wide" description="Pick items from your POS inventory. They share one stock count with the shop." title="Add from POS inventory">
+          <div className="ad-form">
+            <SearchField label="Search POS items" placeholder="Name, SKU or category" value={posSearch} onValueChange={setPosSearch} />
+            <Select label="Shop category for these products" options={categoryOptions} placeholder="Select category" value={linkCategory} onValueChange={setLinkCategory} />
+            <div className="ad-table-wrap" style={{ maxHeight: "18rem", overflow: "auto" }}>
+              {posLoading ? <p className="ad-hint" style={{ padding: "var(--space-4)" }}>Loading POS inventory…</p> : posVisible.length === 0 ? (
+                <p className="ad-hint" style={{ padding: "var(--space-4)" }}>{posItems.length ? "Everything matching is already in the shop." : "No POS items found."}</p>
+              ) : posVisible.map((i) => (
+                <label key={i.id} className="ad-card-head" style={{ cursor: "pointer" }}>
+                  <span className="ad-cell-main">
+                    <input checked={picked.includes(i.id)} type="checkbox" onChange={(e) => setPicked((a) => (e.target.checked ? [...a, i.id] : a.filter((x) => x !== i.id)))} />
+                    <span style={{ minWidth: 0 }}><strong style={{ fontWeight: 500, display: "block" }}>{i.name}</strong><span className="ad-hint">{i.category} · {i.stock} in stock{i.cost ? ` · cost $${i.cost.toFixed(2)}` : ""}</span></span>
                   </span>
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+                  <strong className="ad-num" style={{ fontWeight: 500 }}>${i.price.toFixed(2)}</strong>
+                </label>
+              ))}
+            </div>
+            <div className="ad-actions ad-actions--end">
+              <Button variant="ghost" onClick={() => setLinkOpen(false)}>Cancel</Button>
+              <Button disabled={picked.length === 0} onClick={handleLink}>Add {picked.length || ""} as drafts</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AdminConfirmDialog
-        description="This product will be permanently removed from your catalog store inventory."
+        description="This product will be permanently removed from your catalog."
         isOpen={!!deleteConfirm}
-        title="Confirm Deletion"
+        title="Delete product?"
         onClose={() => setDeleteConfirm(null)}
         onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
       />

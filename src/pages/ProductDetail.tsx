@@ -1,376 +1,158 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Clock,
-  Minus,
-  PackageX,
-  Plus,
-  RotateCcw,
-  Shield,
-  ShoppingCart,
-  Tag,
-  TriangleAlert,
-  Truck,
-} from "lucide-react";
-import { Button } from "@heroui/react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { RotateCcw, Shield, ShoppingCart, Truck } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
 import { useCartStore, useProductStore, useToastStore } from "@/lib/store";
-import { useSiteStore } from "@/lib/siteStore";
+import { useCopy } from "@/lib/copy";
 import { getEstimatedArrivalWindow, getDispatchCutoff } from "@/lib/shipping";
 import PageMeta from "@/components/PageMeta";
 import ProductCard from "@/components/ProductCard";
 import ProductImage from "@/components/ProductImage";
+import { Alert } from "@/components/arc/alert/alert";
+import { Badge } from "@/components/arc/badge/badge";
+import { Breadcrumb } from "@/components/arc/breadcrumb/breadcrumb";
+import { Button } from "@/components/arc/button/button";
+import { EmptyState } from "@/components/arc/empty-state/empty-state";
+import { NumberField } from "@/components/arc/number-field/number-field";
 
 export default function ProductDetail() {
+  const c = useCopy();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const loading = useProductStore((s) => s.loading);
   const product = useProductStore((s) => s.getProduct(id || ""));
-  const related = useProductStore(
-    useShallow((s) =>
-      s.products
-        .filter((p) => p.active && p.category === product?.category && p.id !== id)
-        .slice(0, 4),
-    ),
-  );
-  const categoryName = useProductStore(
-    (s) => s.categories.find((c) => c.id === product?.category)?.name,
-  );
-  const copy = useSiteStore((s) => s.copy);
+  const related = useProductStore(useShallow((s) => s.products.filter((p) => p.active && p.category === product?.category && p.id !== id).slice(0, 4)));
+  const categoryName = useProductStore((s) => s.categories.find((c) => c.id === product?.category)?.name);
   const addItem = useCartStore((s) => s.addItem);
   const addToast = useToastStore((s) => s.add);
   const [qty, setQty] = useState(1);
-  const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [activeImg, setActiveImg] = useState(0);
 
   useEffect(() => {
     setQty(1);
-    setActiveImageIdx(0);
+    setActiveImg(0);
   }, [id]);
-
-  if (loading && !product) {
-    return (
-      <div
-        aria-busy="true"
-        className="mx-auto max-w-[1400px] px-[clamp(12px,3vw,24px)] py-6 pb-16"
-      >
-        <div className="mb-5 h-10 w-24 animate-pulse rounded-full bg-surface-tertiary" />
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10">
-          <div className="aspect-square w-full animate-pulse rounded-panel bg-surface-tertiary" />
-          <div className="flex flex-col gap-4 pt-2">
-            <div className="h-6 w-32 animate-pulse rounded-full bg-surface-tertiary" />
-            <div className="h-12 w-4/5 animate-pulse rounded-xl bg-surface-tertiary" />
-            <div className="h-8 w-40 animate-pulse rounded-xl bg-surface-tertiary" />
-            <div className="h-24 w-full animate-pulse rounded-2xl bg-surface-tertiary" />
-            <div className="h-14 w-full animate-pulse rounded-full bg-surface-tertiary" />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (!product || !product.active) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-12 text-center">
-        <PageMeta
-          description="The requested product was not found."
-          title="Product Not Found | Mobicare"
+      <div className="mc-page mc-section">
+        <PageMeta description="The requested product was not found." title="Product not found | Mobicare" />
+        <EmptyState
+          action={<Button onClick={() => navigate("/shop")}>Back to the shop</Button>}
+          description="The item you are looking for may have been removed or is unavailable."
+          title="Product not found"
         />
-        <span
-          aria-hidden="true"
-          className="mb-5 flex size-20 items-center justify-center rounded-full bg-surface-secondary text-accent"
-        >
-          <PackageX className="size-10" />
-        </span>
-        <h2 className="m-0 mb-2 text-heading-xl font-extrabold">
-          Product Not Found
-        </h2>
-        <p className="m-0 mb-6 max-w-[400px] text-base text-muted">
-          The item you are looking for may have been removed or is unavailable.
-        </p>
-        <Button variant="primary" onPress={() => navigate("/shop")}>
-          <span>Back to Shop</span>
-          <ArrowRight aria-hidden="true" className="size-4" />
-        </Button>
       </div>
     );
   }
 
-  const images = product.images?.length ? product.images : [];
-  const mainImageSrc = images[activeImageIdx] || images[0];
-
-  const arrival = getEstimatedArrivalWindow(
-    product.shippingDays?.min || 3,
-    product.shippingDays?.max || 5,
-  );
+  const arrival = getEstimatedArrivalWindow(product.shippingDays?.min || 3, product.shippingDays?.max || 5);
   const cutoff = getDispatchCutoff();
-  const discount = product.comparePrice
-    ? Math.round((1 - product.price / product.comparePrice) * 100)
-    : null;
-
+  const discount = product.comparePrice ? Math.round((1 - product.price / product.comparePrice) * 100) : null;
   const handleAddToCart = () => {
     const added = addItem(product, qty);
     if (added) addToast(`${product.name} added to cart`, "success");
     else addToast(`Only ${product.stock} available in stock`, "error");
   };
-
   const trustRows = [
-    {
-      icon: Truck,
-      title: copy?.["product.trust.delivery"] || "Estimated Delivery",
-      sub: arrival.formatted,
-      titleEdit: "copy.product.trust.delivery",
-    },
-    {
-      icon: Shield,
-      title: copy?.["product.trust.secure.title"] || "Secure Checkout",
-      sub:
-        copy?.["product.trust.secure.sub"] ||
-        "Payments are encrypted and handled by Stripe.",
-      titleEdit: "copy.product.trust.secure.title",
-      subEdit: "copy.product.trust.secure.sub",
-    },
-    {
-      icon: RotateCcw,
-      title:
-        copy?.["product.trust.exchange.title"] ||
-        "Returns & Defective Exchange",
-      sub:
-        copy?.["product.trust.exchange.sub"] ||
-        "Unopened items returnable within 30 days; defective items exchanged promptly.",
-      titleEdit: "copy.product.trust.exchange.title",
-      subEdit: "copy.product.trust.exchange.sub",
-    },
+    { icon: Truck, k: "product.trust.delivery", title: c("product.trust.delivery"), sub: arrival.formatted },
+    { icon: Shield, k: "product.trust.secure.title", sk: "product.trust.secure.sub", title: c("product.trust.secure.title"), sub: c("product.trust.secure.sub") },
+    { icon: RotateCcw, k: "product.trust.exchange.title", sk: "product.trust.exchange.sub", title: c("product.trust.exchange.title"), sub: c("product.trust.exchange.sub") },
   ];
 
   return (
-    <div className="mx-auto max-w-[1400px] overflow-x-hidden px-[clamp(12px,3vw,24px)] py-4 pb-16 sm:py-6">
-      <PageMeta
-        description={`${product.name} - ${(product.description || "").slice(0, 150)}... Buy electronic accessories at Mobicare.`}
-        title={`${product.name} | Mobicare Shop`}
-      />
-      <Button
-        aria-label="Go back"
-        className="mb-4 inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-2 font-semibold text-foreground transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:mb-5"
-        variant="ghost"
-        onPress={() => navigate(-1)}
-      >
-        <ArrowLeft aria-hidden="true" className="size-4" />
-        <span>Back</span>
-      </Button>
+    <div className="mc-page mc-section" id="product-page" style={{ paddingTop: "var(--space-6)" }}>
+      <PageMeta description={`${product.name} - ${(product.description || "").slice(0, 150)}... Buy electronic accessories at Mobicare.`} title={`${product.name} | Mobicare Shop`} />
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2 lg:gap-10">
-        <div className="relative min-w-0 lg:sticky lg:top-24">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-1/2 h-4/5 w-4/5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-soft/50 blur-[60px]"
-          />
-          <div className="surface-sunken relative z-[1] aspect-square overflow-hidden rounded-panel">
-            <ProductImage alt={product.name} src={mainImageSrc} />
-            {discount && (
-              <span className="absolute right-3 top-3 rounded-xl bg-accent px-3 py-1.5 font-extrabold text-accent-foreground sm:right-4 sm:top-4">
-                {discount}% OFF
-              </span>
-            )}
+      <div style={{ marginBottom: "var(--space-6)" }}>
+        <Breadcrumb items={[{ label: "Shop", href: "/shop", onClick: (e) => { e.preventDefault(); navigate("/shop"); } }, { label: product.name }]} />
+      </div>
+
+      <div className="mc-grid mc-grid-2" style={{ gap: "clamp(24px, 5vw, 64px)", alignItems: "start" }}>
+        <div className="mc-stack-sm">
+          <div className="mc-media" style={{ position: "relative", borderRadius: "var(--radius-panel)" }}>
+            <ProductImage alt={product.name} src={product.images?.[activeImg] || product.images?.[0]} />
           </div>
-
-          {images.length > 1 && (
-            <div
-              aria-label="Product photo thumbnails"
-              className="relative z-[1] mt-3 flex gap-2.5 overflow-x-auto pb-1"
-            >
-              {images.map((src, idx) => {
-                const selected = idx === activeImageIdx;
-                return (
-                  <button
-                    key={`${src}-${idx}`}
-                    aria-label={`View photo ${idx + 1} of ${images.length}`}
-                    aria-pressed={selected}
-                    className={`relative size-18 shrink-0 overflow-hidden rounded-2xl border-2 transition-all sm:size-20 ${selected ? "border-accent ring-2 ring-accent/30" : "border-border opacity-75 hover:opacity-100"}`}
-                    type="button"
-                    onClick={() => setActiveImageIdx(idx)}
-                  >
-                    <ProductImage
-                      alt={`${product.name} thumbnail ${idx + 1}`}
-                      src={src}
-                    />
-                  </button>
-                );
-              })}
+          {product.images && product.images.length > 1 && (
+            <div className="mc-row-flex" role="group" aria-label="Product photos">
+              {product.images.map((imgSrc, idx) => (
+                <button
+                  key={idx}
+                  aria-label={`View photo ${idx + 1} of ${product.images.length}`}
+                  aria-pressed={activeImg === idx}
+                  className="mc-media"
+                  style={{
+                    width: "4.25rem",
+                    height: "4.25rem",
+                    padding: 0,
+                    cursor: "pointer",
+                    border: activeImg === idx ? "2px solid var(--mc-brand)" : "1px solid var(--border)",
+                  }}
+                  type="button"
+                  onClick={() => setActiveImg(idx)}
+                >
+                  <ProductImage alt={`${product.name} ${idx + 1}`} src={imgSrc} />
+                </button>
+              ))}
             </div>
           )}
         </div>
 
-        <div className="flex min-w-0 flex-col lg:pt-2">
-          <span className="mb-3 inline-flex w-max items-center gap-1.5 self-start rounded-full bg-accent-soft px-3 py-1 text-caption font-bold uppercase tracking-widest text-accent">
-            <Tag aria-hidden="true" className="size-3.5" />
-            {categoryName || product.category.replace(/-/g, " ")}
-          </span>
-          <h1 className="m-0 mb-3 break-words text-display font-extrabold leading-[1.12] tracking-tight text-foreground sm:mb-4">
-            {product.name}
-          </h1>
-          <div className="mb-4 flex flex-wrap items-center gap-2.5 sm:mb-5 sm:gap-3">
-            <strong className="text-heading-xl font-extrabold leading-none text-accent">
-              ${product.price.toFixed(2)}
-            </strong>
-            {product.comparePrice && (
-              <>
-                <span className="text-lg text-muted line-through">
-                  ${product.comparePrice.toFixed(2)}
-                </span>
-                <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                  Save ${(product.comparePrice - product.price).toFixed(2)}
-                </span>
-              </>
-            )}
-          </div>
-          <p className="mb-5 whitespace-pre-line break-words text-body-sm leading-relaxed text-muted sm:mb-6 sm:text-base">
-            {product.description}
-          </p>
-          {product.tags?.length > 0 && (
-            <div className="mb-5 flex flex-wrap gap-2 sm:mb-6">
-              {product.tags.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-pill border border-border bg-surface px-3 py-1 text-label font-semibold"
-                >
-                  #{t}
-                </span>
-              ))}
-            </div>
-          )}
-          <div className="my-1 mb-4 border-t border-border" />
-          <div
-            className="mb-5 flex items-start gap-2.5 rounded-2xl bg-accent-soft p-3 text-sm text-foreground"
-            role="status"
-          >
-            <Clock
-              aria-hidden="true"
-              className="mt-0.5 size-4 shrink-0 text-accent"
-            />
-            <div className="min-w-0">
-              <span className="font-semibold text-accent">{cutoff.text}</span>
-              <span className="text-muted"> — estimated delivery by </span>
-              <strong>{arrival.formatted}</strong>
-            </div>
+        <div className="mc-stack">
+          <div className="mc-stack-sm">
+            <p className="mc-small">{categoryName || product.category.replace("-", " ")}</p>
+            <h1 className="mc-h1" style={{ fontSize: "clamp(1.75rem, 4vw, var(--text-3xl))" }}>{product.name}</h1>
           </div>
 
+          <p className="mc-price" style={{ fontSize: "var(--text-2xl)" }}>
+            ${product.price.toFixed(2)}
+            {product.comparePrice ? <s>${product.comparePrice.toFixed(2)}</s> : null}
+            {discount ? <span style={{ marginLeft: "var(--space-3)" }}><Badge tone="success">Save {discount}%</Badge></span> : null}
+          </p>
+
+          <p className="mc-text">{product.description}</p>
+          {product.tags?.length > 0 && <div className="mc-badge-row">{product.tags.map((t) => <Badge key={t}>{t}</Badge>)}</div>}
+
+          <Alert title={cutoff.text} tone="info">Estimated delivery by {arrival.formatted}.</Alert>
+
           {product.stock > 0 ? (
-            <div className="mb-3 flex w-full flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center">
-              <div
-                aria-label="Quantity"
-                className="flex h-[52px] w-full items-center justify-between rounded-full border border-border bg-surface-secondary px-2 min-[420px]:w-auto min-[420px]:justify-start"
-              >
-                <button
-                  aria-label="Decrease quantity"
-                  className="flex size-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40"
-                  disabled={qty <= 1}
-                  type="button"
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
-                >
-                  <Minus aria-hidden="true" className="size-4" />
-                </button>
-                <span
-                  aria-live="polite"
-                  className="w-10 text-center text-base font-bold text-foreground"
-                >
-                  {qty}
-                </span>
-                <button
-                  aria-label="Increase quantity"
-                  className="flex size-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40"
-                  disabled={qty >= product.stock}
-                  type="button"
-                  onClick={() =>
-                    setQty((q) => Math.min(product.stock, q + 1))
-                  }
-                >
-                  <Plus aria-hidden="true" className="size-4" />
-                </button>
-              </div>
-              <Button
-                className="h-[52px] w-full min-w-0 sm:min-w-[220px]"
-                variant="primary"
-                onPress={handleAddToCart}
-              >
-                <ShoppingCart aria-hidden="true" className="size-[18px]" />
-                <span className="truncate">
-                  Add to Cart — ${(product.price * qty).toFixed(2)}
-                </span>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: "var(--space-3)" }}>
+              <NumberField label="Quantity" max={Math.min(product.stock, 99)} min={1} value={qty} onValueChange={setQty} />
+              <Button size="lg" onClick={handleAddToCart}>
+                <ShoppingCart aria-hidden="true" size={16} strokeWidth={1.75} />
+                Add to cart, ${(product.price * qty).toFixed(2)}
               </Button>
             </div>
           ) : (
-            <div className="mb-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-center font-bold text-rose-600 dark:text-rose-400">
-              Out of Stock — Check Back Soon
-            </div>
+            <Alert title="Out of stock" tone="warning">Check back soon.</Alert>
           )}
+          {product.stock > 0 && product.stock < 5 && <p className="mc-small" style={{ color: "var(--warning)" }}>Only {product.stock} left in stock.</p>}
 
-          {product.stock > 0 && product.stock < 5 && (
-            <p className="mb-4 flex items-center gap-1.5 text-label font-bold text-amber-600 dark:text-amber-400">
-              <TriangleAlert aria-hidden="true" className="size-[18px]" />
-              Only {product.stock} left in stock — order soon
-            </p>
-          )}
-
-          <article className="surface-raised mb-5 mt-4 overflow-hidden rounded-card sm:mt-6">
-            {trustRows.map((row, i) => (
-              <div
-                key={row.title}
-                className={`flex items-center gap-3.5 p-[14px_16px] sm:p-[14px_20px] ${i < trustRows.length - 1 ? "border-b border-border" : ""}`}
-              >
-                <span
-                  aria-hidden="true"
-                  className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent"
-                >
-                  <row.icon className="size-5" />
-                </span>
-                <div className="min-w-0">
-                  <strong
-                    className="block break-words text-sm font-bold text-foreground"
-                    data-edit={row.titleEdit}
-                  >
-                    {row.title}
-                  </strong>
-                  <span
-                    className="break-words text-label text-muted"
-                    data-edit={row.subEdit}
-                  >
-                    {row.sub}
-                  </span>
+          <div className="mc-group">
+            {trustRows.map((row) => (
+              <div key={row.title} className="mc-item" style={{ alignItems: "start" }}>
+                <span className="mc-icon" style={{ flexShrink: 0 }}><row.icon aria-hidden="true" size={18} strokeWidth={1.75} /></span>
+                <div>
+                  <strong className="mc-strong" style={{ display: "block" }} {...c.p(row.k)}>{row.title}</strong>
+                  <span className="mc-small" {...(row.sk ? c.p(row.sk) : {})}>{row.sub}</span>
                 </div>
               </div>
             ))}
-          </article>
-          <p className="m-0 text-xs font-semibold text-muted">
-            SKU: {product.sku}
+          </div>
+
+          <p className="mc-small">
+            SKU {product.sku}. <Link className="mc-link" to="/returns">Returns and exchanges</Link>, <Link className="mc-link" to="/shipping">shipping</Link>, <Link className="mc-link" to="/refunds">refunds</Link>.
           </p>
         </div>
       </div>
 
       {related.length > 0 && (
-        <div className="mt-12 sm:mt-16">
-          <div className="mb-5 flex items-end justify-between sm:mb-6">
-            <div>
-              <p className="m-0 text-caption font-bold uppercase tracking-widest text-accent">
-                Explore More
-              </p>
-              <h3 className="m-0 mt-1 text-heading-lg font-extrabold text-foreground">
-                More in {categoryName || product.category.replace(/-/g, " ")}
-              </h3>
-            </div>
+        <section aria-labelledby="related-title" style={{ marginTop: "var(--space-16)" }}>
+          <h2 className="mc-h2" id="related-title" style={{ marginBottom: "var(--space-6)" }}>More in {categoryName || product.category.replace("-", " ")}</h2>
+          <div className="mc-grid mc-grid-products">
+            {related.map((p) => <ProductCard key={p.id} product={p} onClick={() => navigate(`/product/${p.id}`)} />)}
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            {related.map((p) => (
-              <ProductCard
-                key={p.id}
-                product={p}
-                onClick={() => navigate(`/product/${p.id}`)}
-              />
-            ))}
-          </div>
-        </div>
+        </section>
       )}
     </div>
   );

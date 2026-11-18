@@ -5,23 +5,20 @@ import {
   calculateTax,
   fetchProductsForOrder,
   getShippingCost,
-  getSupabaseServerConfig,
   money,
-  normalizeShippingMethod,
-  resolveBearerUserId,
-  serializeCompactCartItems,
+  resolveUserIdFromAuth,
 } from "./_order-pricing.js";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SHOP_PICKUP_ADDRESS = "920 Commerce Drive, Suite 3";
+const SHOP_PICKUP_CITY = "Fairfield";
+const SHOP_PICKUP_STATE = "IL";
+const SHOP_PICKUP_ZIP = "62837";
 
 // Vercel Serverless Function: /api/create-payment-intent
 // The browser supplies product IDs/quantities and a shipping method. Prices,
 // shipping, tax, and the final amount are calculated server-side.
 export default async function handler(req, res) {
-  applyCors(req, res, {
-    methods: "POST,OPTIONS",
-    headers: "Authorization, Content-Type, Idempotency-Key",
-  });
+  applyCors(req, res);
 
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") {
@@ -36,7 +33,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    const sbConfig = getSupabaseServerConfig();
     const body = req.body || {};
     const items = Array.isArray(body.items) ? body.items : [];
     if (!items.length) return res.status(400).json({ error: "Order has no items." });
@@ -46,10 +42,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "A valid idempotency key is required." });
     }
 
-    const shippingMethod = normalizeShippingMethod(
-      body.shippingMethod || body.shipping_method,
-    );
-    const normalizedItems = await fetchProductsForOrder(items, { enforceStock: true });
+    const shippingMethod = String(body.shippingMethod || body.shipping_method || "standard").trim();
+    const normalizedItems = await fetchProductsForOrder(items);
     const subtotal = calculateSubtotal(normalizedItems);
     const shippingCost = money(getShippingCost(shippingMethod, subtotal));
     const tax = calculateTax(subtotal + shippingCost);
@@ -68,68 +62,80 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Only USD payments are supported." });
     }
 
-    const shipping =
-      body.shipping ||
-      body.shippingAddress ||
-      body.shipping_address ||
-      body.customer ||
-      {};
-
-    const customerName = String(shipping?.name || "").trim().slice(0, 200);
-    const customerEmail = String(shipping?.email || "").trim().slice(0, 320);
-    const customerPhone = String(shipping?.phone || "").trim().slice(0, 40);
-    const streetAddress = String(shipping?.address || shipping?.line1 || "")
-      .trim()
-      .slice(0, 200);
-    const city = String(shipping?.city || "").trim().slice(0, 100);
-    const state = String(shipping?.state || "").trim().slice(0, 100);
-    const zip = String(shipping?.zip || shipping?.postal_code || "")
-      .trim()
-      .slice(0, 20);
-
-    const { userId } = await resolveBearerUserId(req, sbConfig, { strict: false });
+    // Best-effort user linkage for self-healing webhook recovery
+    const { userId } = await resolveUserIdFromAuth(req);
 
     const params = new URLSearchParams({
       amount: String(Math.round(total * 100)),
       currency: "usd",
       "automatic_payment_methods[enabled]": "true",
       description: `Mobicare Order: ${normalizedItems.length} item(s)`,
-      "metadata[shipping_method]": shippingMethod,
-      "metadata[customer_name]": customerName,
-      "metadata[customer_email]": customerEmail,
-      "metadata[customer_phone]": customerPhone,
-      "metadata[shipping_address]": shippingMethod === "pickup" ? "" : streetAddress,
-      "metadata[shipping_city]": shippingMethod === "pickup" ? "" : city,
-      "metadata[shipping_state]": shippingMethod === "pickup" ? "" : state,
-      "metadata[shipping_zip]": shippingMethod === "pickup" ? "" : zip,
-      "metadata[cart_items]": serializeCompactCartItems(normalizedItems),
     });
 
-    if (userId) {
-      params.set("metadata[user_id]", userId);
+    const customer =
+      body.shipping ||
+      body.shippingAddress ||
+      body.shipping_address ||
+      body.customer ||
+      {};
+
+    if (customer && typeof customer === "object") {
+      const email = String(customer.email || "").trim();
+      const name = String(customer.name || "").trim();
+      const phone = String(customer.phone || "").trim();
+      const address = String(customer.address || customer.line1 || "").trim();
+      const city = String(customer.city || "").trim();
+      const state = String(customer.state || "").trim();
+      const zip = String(customer.zip || customer.postal_code || "").trim();
+
+      if (email) params.set("receipt_email", email.slice(0, 320));
+
+      // Only send a physical carrier shipping block to Stripe when shipping to the customer
+      if (shippingMethod !== "pickup" && address) {
+        if (name) params.set("shipping[name]", name.slice(0, 200));
+        if (phone) params.set("shipping[phone]", phone.slice(0, 40));
+        params.set("shipping[address][line1]", address.slice(0, 200));
+        if (city) params.set("shipping[address][city]", city.slice(0, 100));
+        if (state) params.set("shipping[address][state]", state.slice(0, 100));
+        if (zip) params.set("shipping[address][postal_code]", zip.slice(0, 20));
+        params.set("shipping[address][country]", "US");
+      }
+
+      // Attach compact metadata so stripe-webhook.js can self-heal orders if the browser
+      // closes immediately after confirmCardPayment before /api/create-order completes.
+      params.set("metadata[shipping_method]", shippingMethod);
+      if (userId) params.set("metadata[user_id]", userId);
+      if (name) params.set("metadata[customer_name]", name.slice(0, 200));
+      if (email) params.set("metadata[customer_email]", email.slice(0, 320));
+      if (phone) params.set("metadata[customer_phone]", phone.slice(0, 40));
+      params.set(
+        "metadata[shipping_address]",
+        (shippingMethod === "pickup" ? `Fairfield Store Pickup — ${SHOP_PICKUP_ADDRESS}` : address).slice(0, 300),
+      );
+      params.set("metadata[shipping_city]", (shippingMethod === "pickup" ? SHOP_PICKUP_CITY : city).slice(0, 100));
+      params.set("metadata[shipping_state]", (shippingMethod === "pickup" ? SHOP_PICKUP_STATE : state).slice(0, 100));
+      params.set("metadata[shipping_zip]", (shippingMethod === "pickup" ? SHOP_PICKUP_ZIP : zip).slice(0, 20));
+      params.set("metadata[subtotal]", subtotal.toFixed(2));
+      params.set("metadata[shipping_cost]", shippingCost.toFixed(2));
+      params.set("metadata[tax]", tax.toFixed(2));
+
+      const compactCart = JSON.stringify(
+        normalizedItems.map((i) => ({ id: i.product_id, q: i.qty })),
+      );
+      if (compactCart.length <= 500) {
+        params.set("metadata[cart_items]", compactCart);
+      }
     }
 
-    if (customerEmail && EMAIL_RE.test(customerEmail)) {
-      params.set("receipt_email", customerEmail);
-    }
-
-    if (shippingMethod !== "pickup" && streetAddress) {
-      params.set("shipping[name]", customerName || "Customer");
-      if (customerPhone) params.set("shipping[phone]", customerPhone);
-      params.set("shipping[address][line1]", streetAddress);
-      if (city) params.set("shipping[address][city]", city);
-      if (state) params.set("shipping[address][state]", state);
-      if (zip) params.set("shipping[address][postal_code]", zip);
-      params.set("shipping[address][country]", "US");
-    }
+    const headers = {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Idempotency-Key": String(idempotencyKey).slice(0, 255),
+    };
 
     const stripeResponse = await fetch("https://api.stripe.com/v1/payment_intents", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Idempotency-Key": String(idempotencyKey).slice(0, 255),
-      },
+      headers,
       body: params.toString(),
     });
     const stripeData = await stripeResponse.json().catch(() => null);
@@ -150,7 +156,6 @@ export default async function handler(req, res) {
       id: stripeData.id,
       status: stripeData.status,
       amount: stripeData.amount,
-      shippingMethod,
       subtotal,
       shipping: shippingCost,
       tax,

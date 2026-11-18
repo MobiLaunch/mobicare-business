@@ -1,20 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowRight, Info, Key, Lock, Mail, TriangleAlert } from "lucide-react";
-import {
-  Alert,
-  Button,
-  FieldError,
-  Form,
-  InputGroup,
-  Label,
-  Spinner,
-  TextField,
-} from "@heroui/react";
-
 import { useAuth } from "@/lib/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import AuthCardShell from "@/components/auth/AuthCardShell";
+import { Alert } from "@/components/arc/alert/alert";
+import { Button } from "@/components/arc/button/button";
+import { Input } from "@/components/arc/input/input";
+import { PasswordField } from "@/components/arc/password-field/password-field";
+
 
 interface LocationState {
   message?: string;
@@ -80,113 +73,23 @@ export default function Login() {
 
   return (
     <AuthCardShell
-      chipLabel="Mobicare Account"
       description="Sign in to manage your repairs and orders."
-      icon={<Lock className="size-3.5" />}
       metaDescription="Sign in to your Mobicare account to track repairs, review orders, and manage appointments."
-      metaTitle="Sign In — Mobicare Device Recovery"
-      title="Welcome Back"
+      metaTitle="Sign in | Mobicare Device Recovery"
+      title="Welcome back"
     >
-      {notice && (
-        <Alert status="default">
-          <Alert.Indicator>
-            <Info className="size-4" />
-          </Alert.Indicator>
-          <Alert.Content>
-            <Alert.Description>{notice}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
+      {notice && <Alert title={notice} tone="info" />}
+      {error && <Alert title={error} tone="danger" />}
 
-      {error && (
-        <Alert role="alert" status="danger">
-          <Alert.Indicator>
-            <TriangleAlert className="size-4" />
-          </Alert.Indicator>
-          <Alert.Content>
-            <Alert.Description>{error}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
+      <form className="mc-form" onSubmit={submit}>
+        <Input autoComplete="email" disabled={busy} label="Email address" name="email" placeholder="you@example.com" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <PasswordField autoComplete="current-password" disabled={busy} label="Password" name="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Button loading={busy} size="lg" type="submit">Sign in</Button>
+      </form>
 
-      <Form className="flex flex-col gap-4" onSubmit={submit}>
-        <TextField
-          isRequired
-          className="flex flex-col gap-1.5"
-          isDisabled={busy}
-          name="email"
-          type="email"
-          value={email}
-          onChange={setEmail}
-        >
-          <Label>Email address</Label>
-          <InputGroup>
-            <InputGroup.Prefix>
-              <Mail className="size-4" />
-            </InputGroup.Prefix>
-            <InputGroup.Input
-              autoComplete="email"
-              placeholder="you@example.com"
-            />
-          </InputGroup>
-          <FieldError />
-        </TextField>
-
-        <TextField
-          isRequired
-          className="flex flex-col gap-1.5"
-          isDisabled={busy}
-          name="password"
-          type="password"
-          value={password}
-          onChange={setPassword}
-        >
-          <Label>Password</Label>
-          <InputGroup>
-            <InputGroup.Prefix>
-              <Key className="size-4" />
-            </InputGroup.Prefix>
-            <InputGroup.Input
-              autoComplete="current-password"
-              placeholder="••••••••"
-            />
-          </InputGroup>
-          <FieldError />
-        </TextField>
-
-        <Button
-          fullWidth
-          isDisabled={busy}
-          size="lg"
-          type="submit"
-          variant="primary"
-        >
-          {busy ? (
-            <>
-              <Spinner size="sm" />
-              <span>Signing in…</span>
-            </>
-          ) : (
-            <>
-              <span>Sign In</span>
-              <ArrowRight className="size-4" />
-            </>
-          )}
-        </Button>
-      </Form>
-
-      <nav className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <Link className="text-accent hover:underline" to="/forgot-password">
-          Forgot password?
-        </Link>
-
-        <Link
-          className="inline-flex items-center gap-1 text-accent hover:underline"
-          to="/signup"
-        >
-          Create an account
-          <ArrowRight className="size-3.5" />
-        </Link>
+      <nav className="mc-row-flex" style={{ justifyContent: "space-between" }}>
+        <Link className="mc-link" to="/forgot-password">Forgot password?</Link>
+        <Link className="mc-link" to="/signup">Create an account</Link>
       </nav>
     </AuthCardShell>
   );

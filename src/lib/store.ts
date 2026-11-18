@@ -10,10 +10,8 @@ import type { User } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { v4 as uuidv4 } from "uuid";
-import { toast } from "@heroui/react";
+import type { ToastStackApi } from "@/components/arc/toast-stack/toast-stack";
 
-import { SEED_PRODUCTS } from "@/data/seed-products";
-import { SEED_CATEGORIES } from "@/data/seed-categories";
 import {
   isSupabaseConfigured,
   sbFetchProducts,
@@ -27,19 +25,313 @@ import {
   sbFetchOrders,
   sbInsertOrder,
   sbUpdateOrderStatus,
-  sbUpdateBookingStatus,
   sbRefundOrder,
   signInWithEmail,
   signOut as sbSignOut,
-  getSession,
-  checkIsAdmin,
+  verifyAdminSession,
   updatePassword as sbUpdatePassword,
   sendPasswordReset as sbSendPasswordReset,
 } from "./supabase";
 
-export { SEED_PRODUCTS, SEED_CATEGORIES };
+// ─── Seed data (used locally when Supabase not connected) ──────────────────
+// NOTE: These are DEMO/SEED products meant as starting placeholders —
+// replace with real inventory via the admin Products page before launch.
+// The image URLs below point to specific Unsplash photo IDs that have not
+// been individually verified to load correctly or show accurate content
+// for each product (the same class of bug that broke the homepage repair
+// photos — see Home.jsx REPAIR_VISUALS comment). Swap these for verified,
+// self-hosted, or confirmed-working product photos before going live.
+export const SEED_PRODUCTS: Product[] = [
+  {
+    id: "p1",
+    name: "MagSafe Wireless Charger 15W",
+    category: "chargers",
+    price: 34.99,
+    comparePrice: 49.99,
+    stock: 24,
+    sku: "CHG-MAG-15W",
+    images: [
+      "https://images.unsplash.com/photo-1609592179791-5b2f37d4c6e1?w=600&q=80",
+    ],
+    description:
+      "Ultra-fast 15W MagSafe compatible wireless charger with LED indicator. Works with iPhone 12 and later.",
+    tags: ["wireless", "magsafe", "iphone"],
+    featured: true,
+    active: true,
+    weight: 0.2,
+    shippingDays: { min: 3, max: 5 },
+  },
+  {
+    id: "p2",
+    name: "GaN 65W USB-C Wall Charger",
+    category: "chargers",
+    price: 29.99,
+    comparePrice: null,
+    stock: 18,
+    sku: "CHG-GAN-65W",
+    images: [
+      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80",
+    ],
+    description:
+      "Compact GaN technology. Charge laptop, phone, and tablet simultaneously with 3 ports.",
+    tags: ["usb-c", "gan", "fast-charge"],
+    featured: true,
+    active: true,
+    weight: 0.15,
+    shippingDays: { min: 3, max: 5 },
+  },
+  {
+    id: "p3",
+    name: "Tempered Glass Screen Protector — iPhone 15 Pro",
+    category: "screen-protectors",
+    price: 14.99,
+    comparePrice: 24.99,
+    stock: 50,
+    sku: "SP-IP15P-TG",
+    images: [
+      "https://images.unsplash.com/photo-1512499617640-c2f999099c66?w=600&q=80",
+    ],
+    description:
+      "9H hardness, anti-fingerprint coating. Perfect fit with case-friendly edges. Pack of 2.",
+    tags: ["iphone", "glass", "9h"],
+    featured: false,
+    active: true,
+    weight: 0.05,
+    shippingDays: { min: 2, max: 4 },
+  },
+  {
+    id: "p4",
+    name: "Privacy Screen Protector — Samsung Galaxy S24",
+    category: "screen-protectors",
+    price: 18.99,
+    comparePrice: null,
+    stock: 32,
+    sku: "SP-SGS24-PV",
+    images: [
+      "https://images.unsplash.com/photo-1621330396173-e41b1cafd17f?w=600&q=80",
+    ],
+    description:
+      "180° privacy filter with anti-blue light. Compatible with in-screen fingerprint sensor.",
+    tags: ["samsung", "privacy", "galaxy"],
+    featured: false,
+    active: true,
+    weight: 0.05,
+    shippingDays: { min: 2, max: 4 },
+  },
+  {
+    id: "p5",
+    name: "Military-Grade Phone Case — iPhone 15",
+    category: "cases",
+    price: 22.99,
+    comparePrice: 39.99,
+    stock: 15,
+    sku: "CS-IP15-MIL",
+    images: [
+      "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=600&q=80",
+    ],
+    description:
+      "12ft drop protection, wireless charging compatible, raised bezels. MIL-STD-810G certified.",
+    tags: ["iphone", "rugged", "military"],
+    featured: true,
+    active: true,
+    weight: 0.1,
+    shippingDays: { min: 3, max: 6 },
+  },
+  {
+    id: "p6",
+    name: "Clear MagSafe Case — iPhone 15 Pro Max",
+    category: "cases",
+    price: 19.99,
+    comparePrice: null,
+    stock: 28,
+    sku: "CS-IP15PM-CLR",
+    images: [
+      "https://images.unsplash.com/photo-1591337676887-a217a6970a8a?w=600&q=80",
+    ],
+    description:
+      "Ultra-clear polycarbonate with MagSafe ring. Anti-yellowing technology. Slim profile.",
+    tags: ["iphone", "clear", "magsafe"],
+    featured: false,
+    active: true,
+    weight: 0.08,
+    shippingDays: { min: 3, max: 5 },
+  },
+  {
+    id: "p7",
+    name: "USB-C Braided Cable 6ft",
+    category: "cables",
+    price: 12.99,
+    comparePrice: null,
+    stock: 60,
+    sku: "CBL-USBC-6FT",
+    images: [
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=80",
+    ],
+    description:
+      "240W PD fast charging, 40Gbps data transfer. Tangle-resistant braided nylon.",
+    tags: ["usb-c", "cable", "240w"],
+    featured: false,
+    active: true,
+    weight: 0.12,
+    shippingDays: { min: 2, max: 4 },
+  },
+  {
+    id: "p8",
+    name: "MFi Lightning to USB-C Cable 3-Pack",
+    category: "cables",
+    price: 24.99,
+    comparePrice: 34.99,
+    stock: 40,
+    sku: "CBL-LTG-3PK",
+    images: [
+      "https://images.unsplash.com/photo-1605518216938-7c31b7b14ad0?w=600&q=80",
+    ],
+    description:
+      "Apple MFi certified. 3ft, 6ft, 10ft lengths included. Braided nylon construction.",
+    tags: ["lightning", "mfi", "apple", "pack"],
+    featured: true,
+    active: true,
+    weight: 0.18,
+    shippingDays: { min: 3, max: 5 },
+  },
+  {
+    id: "p9",
+    name: "Wireless Earbuds Pro ANC",
+    category: "audio",
+    price: 79.99,
+    comparePrice: 119.99,
+    stock: 12,
+    sku: "AUD-WEB-ANC",
+    images: [
+      "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&q=80",
+    ],
+    description:
+      "Hybrid active noise cancellation, 32hr battery life, multipoint Bluetooth 5.3.",
+    tags: ["wireless", "anc", "earbuds"],
+    featured: true,
+    active: true,
+    weight: 0.25,
+    shippingDays: { min: 4, max: 7 },
+  },
+  {
+    id: "p10",
+    name: "20,000mAh Power Bank",
+    category: "power",
+    price: 44.99,
+    comparePrice: 59.99,
+    stock: 20,
+    sku: "PWR-PB-20K",
+    images: [
+      "https://images.unsplash.com/photo-1609592179791-5b2f37d4c6e1?w=600&q=80",
+    ],
+    description:
+      "65W PD output, charges laptop. 3 USB-C + 2 USB-A ports. LCD display.",
+    tags: ["power-bank", "portable", "20000"],
+    featured: false,
+    active: true,
+    weight: 0.45,
+    shippingDays: { min: 4, max: 7 },
+  },
+  {
+    id: "p11",
+    name: "Phone Stand + Wireless Charger Combo",
+    category: "accessories",
+    price: 38.99,
+    comparePrice: 54.99,
+    stock: 16,
+    sku: "ACC-STND-WC",
+    images: [
+      "https://images.unsplash.com/photo-1563203369-26f2e4a5ccf7?w=600&q=80",
+    ],
+    description:
+      "Adjustable desk stand with built-in 15W wireless charging pad. Aluminum + fabric build.",
+    tags: ["stand", "wireless", "desk"],
+    featured: false,
+    active: true,
+    weight: 0.35,
+    shippingDays: { min: 3, max: 6 },
+  },
+  {
+    id: "p12",
+    name: "Screen Cleaning Kit",
+    category: "accessories",
+    price: 9.99,
+    comparePrice: null,
+    stock: 100,
+    sku: "ACC-CLN-KIT",
+    images: [
+      "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600&q=80",
+    ],
+    description:
+      "Microfiber cloth + spray solution. Safe for all screens. 2oz travel-size bottle.",
+    tags: ["cleaning", "microfiber", "spray"],
+    featured: false,
+    active: true,
+    weight: 0.08,
+    shippingDays: { min: 2, max: 4 },
+  },
+];
 
-// ─── Cart (always local, synced against live catalog on load) ──────────────
+export const SEED_CATEGORIES: Category[] = [
+  {
+    id: "chargers",
+    name: "Chargers",
+    icon: "Zap",
+    description: "Fast charging solutions",
+    sortOrder: 0,
+    parentId: null,
+  },
+  {
+    id: "cases",
+    name: "Cases",
+    icon: "Shield",
+    description: "Protection for every style",
+    sortOrder: 1,
+    parentId: null,
+  },
+  {
+    id: "screen-protectors",
+    name: "Screen Protectors",
+    icon: "Layers",
+    description: "Guard your display",
+    sortOrder: 2,
+    parentId: null,
+  },
+  {
+    id: "cables",
+    name: "Cables",
+    icon: "Cable",
+    description: "Connect everything",
+    sortOrder: 3,
+    parentId: null,
+  },
+  {
+    id: "audio",
+    name: "Audio",
+    icon: "Headphones",
+    description: "Sound without wires",
+    sortOrder: 4,
+    parentId: null,
+  },
+  {
+    id: "power",
+    name: "Power Banks",
+    icon: "Battery",
+    description: "Power on the go",
+    sortOrder: 5,
+    parentId: null,
+  },
+  {
+    id: "accessories",
+    name: "Accessories",
+    icon: "Star",
+    description: "Desk & lifestyle gear",
+    sortOrder: 6,
+    parentId: null,
+  },
+];
+
+// ─── Cart (always local) ───────────────────────────────────────────────────
 interface CartState {
   items: CartItem[];
   cartDrawerOpen: boolean;
@@ -47,7 +339,7 @@ interface CartState {
   addItem: (product: Product, qty?: number) => boolean;
   removeItem: (id: string) => void;
   updateQty: (id: string, qty: number, maxStock?: number) => void;
-  syncWithCatalog: (products: Product[]) => void;
+  syncWithProducts: (products: Product[]) => void;
   clearCart: () => void;
 }
 
@@ -58,8 +350,7 @@ export const useCartStore = create<CartState>()(
       cartDrawerOpen: false,
       setCartDrawerOpen: (open) => set({ cartDrawerOpen: open }),
       addItem: (product, qty = 1) => {
-        if (!product || !product.active || product.stock < 1 || qty < 1)
-          return false;
+        if (!product || product.stock < 1 || qty < 1) return false;
         const { items } = get();
         const existing = items.find((i) => i.id === product.id);
         const currentQty = existing?.qty || 0;
@@ -94,32 +385,44 @@ export const useCartStore = create<CartState>()(
           ),
         });
       },
-      syncWithCatalog: (products) => {
+      syncWithProducts: (products) => {
+        if (!products.length) return;
         const current = get().items;
-        if (!current.length || !products.length) return;
 
+        if (!current.length) return;
+        const byId = new Map(products.map((p) => [p.id, p]));
         let changed = false;
-        const synced: CartItem[] = [];
+        const next: CartItem[] = [];
 
         for (const item of current) {
-          const live = products.find((p) => p.id === item.id);
-          if (!live || !live.active || live.stock < 1) {
+          const live = byId.get(item.id);
+
+          if (!live) {
+            next.push(item);
+            continue;
+          }
+          if (!live.active || live.stock <= 0) {
             changed = true;
             continue;
           }
-          const nextQty = Math.min(item.qty, live.stock);
+          const cappedQty = Math.min(item.qty, live.stock);
+
           if (
-            nextQty !== item.qty ||
+            cappedQty !== item.qty ||
             live.price !== item.price ||
+            live.comparePrice !== item.comparePrice ||
+            live.stock !== item.stock ||
             live.name !== item.name ||
-            live.stock !== item.stock
+            live.images?.[0] !== item.images?.[0]
           ) {
             changed = true;
+            next.push({ ...item, ...live, qty: cappedQty });
+          } else {
+            next.push(item);
           }
-          synced.push({ ...item, ...live, qty: nextQty });
         }
 
-        if (changed) set({ items: synced });
+        if (changed) set({ items: next });
       },
       clearCart: () => set({ items: [] }),
     }),
@@ -131,8 +434,14 @@ export const useCartStore = create<CartState>()(
 );
 
 // ─── Product / order store ─────────────────────────────────────────────────
+// When Supabase is configured:
+//   - reads come from Supabase
+//   - writes go to Supabase AND update local state immediately (optimistic)
+// When not configured:
+//   - everything lives in localStorage via Zustand persist
+//   - identical API surface so the rest of the app never knows the difference
+
 let productStoreInitPromise: Promise<void> | null = null;
-const initialHasSupabase = isSupabaseConfigured();
 
 interface ProductState {
   products: Product[];
@@ -146,54 +455,43 @@ interface ProductState {
   getProduct: (id: string) => Product | undefined;
   getByCategory: (c: string) => Product[];
   getFeatured: () => Product[];
-  addProduct: (data: Partial<Product>) => Promise<Product>;
-  updateProduct: (id: string, data: Partial<Product>) => Promise<void>;
-  deleteProduct: (id: string) => Promise<void>;
-  addCategory: (data: Partial<Category>) => Promise<Category>;
-  updateCategory: (id: string, data: Partial<Category>) => Promise<void>;
-  deleteCategory: (id: string) => Promise<void>;
-  addOrder: (
-    order: Partial<Order>,
-    alreadyPersisted?: boolean,
-  ) => Promise<Order>;
-  updateOrderStatus: (id: string, status: string) => Promise<void>;
-  updateBookingStatus: (
-    id: string | number,
-    status: string,
-  ) => Promise<{ ok: boolean; error?: string }>;
-  refundOrder: (id: string) => Promise<{ ok: boolean; error?: string }>;
+  addProduct: (data: Partial<Product>) => Promise<Product | null>;
+  updateProduct: (id: string, data: Partial<Product>) => Promise<boolean>;
+  deleteProduct: (id: string) => Promise<boolean>;
+  addCategory: (data: Partial<Category>) => Promise<boolean>;
+  updateCategory: (id: string, data: Partial<Category>) => Promise<boolean>;
+  deleteCategory: (id: string) => Promise<boolean>;
+  addOrder: (order: Partial<Order>, alreadyPersisted?: boolean) => Promise<Order>;
+  updateOrderStatus: (id: string, status: string) => Promise<boolean>;
+  refundOrder: (
+    id: string,
+    amount?: number,
+  ) => Promise<{ ok: boolean; error?: string; partial?: boolean }>;
 }
 
 export const useProductStore = create<ProductState>()(
   persist(
     (set, get) => ({
-      products: initialHasSupabase ? [] : SEED_PRODUCTS,
-      categories: initialHasSupabase ? [] : SEED_CATEGORIES,
+      products: SEED_PRODUCTS,
+      categories: SEED_CATEGORIES,
       orders: [],
 
-      loading: initialHasSupabase,
+      // ── loading state ──
+      loading: false,
       loadError: null,
-      usingSupabase: initialHasSupabase,
+      usingSupabase: false,
 
+      // ── bootstrap: called once on app mount ──
       init: async () => {
         if (!productStoreInitPromise) {
           productStoreInitPromise = (async () => {
             if (!isSupabaseConfigured()) {
-              set({
-                usingSupabase: false,
-                loading: false,
-                products: get().products.length
-                  ? get().products
-                  : SEED_PRODUCTS,
-                categories: get().categories.length
-                  ? get().categories
-                  : SEED_CATEGORIES,
-              });
+              set({ usingSupabase: false });
 
               return;
             }
 
-            set({ loading: true, loadError: null, usingSupabase: true });
+            set({ loading: true, loadError: null });
 
             try {
               const [products, categories, orders] = await Promise.all([
@@ -209,13 +507,12 @@ export const useProductStore = create<ProductState>()(
               }
 
               set({
-                products,
-                categories: categories ?? [],
-                orders: orders ?? [],
+                products: products ?? get().products,
+                categories: categories ?? get().categories,
+                orders: orders ?? get().orders,
                 usingSupabase: true,
                 loading: false,
               });
-              useCartStore.getState().syncWithCatalog(products);
             } catch (e) {
               set({
                 loadError: e instanceof Error ? e.message : String(e),
@@ -233,6 +530,7 @@ export const useProductStore = create<ProductState>()(
         }
       },
 
+      // ── refresh from Supabase ──
       refresh: async () => {
         if (!isSupabaseConfigured()) return;
         const [products, categories, orders] = await Promise.all([
@@ -241,142 +539,159 @@ export const useProductStore = create<ProductState>()(
           sbFetchOrders(),
         ]);
 
-        if (products) {
-          set({ products, usingSupabase: true });
-          useCartStore.getState().syncWithCatalog(products);
-        }
+        if (products) set({ products, usingSupabase: true });
         if (categories) set({ categories });
         if (orders) set({ orders });
       },
 
+      // ── selectors ──
       getProduct: (id) => get().products.find((p) => p.id === id),
       getByCategory: (c) =>
         get().products.filter((p) => p.category === c && p.active),
       getFeatured: () => get().products.filter((p) => p.featured && p.active),
 
-      // ── products CRUD (real error checking + rollback) ──
+      // ── products CRUD ──
       addProduct: async (data) => {
-        const product: Product = {
+        const prev = get().products;
+        const product = {
+          active: true,
+          ...data,
           id: data.id || uuidv4(),
-          name: data.name || "",
-          category: data.category || "",
-          price: data.price ?? 0,
-          comparePrice: data.comparePrice ?? null,
-          stock: data.stock ?? 0,
-          sku: data.sku || "",
-          description: data.description || "",
-          images: data.images || [],
-          tags: data.tags || [],
-          featured: data.featured ?? false,
-          active: data.active ?? true,
-          weight: data.weight ?? 0.2,
-          shippingDays: data.shippingDays || { min: 3, max: 7 },
-        };
+        } as Product;
 
+        // optimistic
+        set({ products: [product, ...prev] });
         if (isSupabaseConfigured()) {
-          const { data: saved, error } = await sbInsertProduct(product);
-          if (error || !saved) {
-            throw new Error(error || "Failed to save product to database.");
+          const saved = await sbInsertProduct(product);
+
+          if (!saved) {
+            set({ products: prev });
+
+            return null;
           }
-          set({ products: [saved, ...get().products] });
+          set({
+            products: get().products.map((p) =>
+              p.id === product.id ? saved : p,
+            ),
+          });
+
           return saved;
         }
 
-        set({ products: [product, ...get().products] });
         return product;
       },
 
       updateProduct: async (id, data) => {
         const prev = get().products;
+
+        // optimistic
         set({
           products: prev.map((p) => (p.id === id ? { ...p, ...data } : p)),
         });
-
         if (isSupabaseConfigured()) {
-          const res = await sbUpdateProduct(id, data);
-          if (!res.ok) {
+          const ok = await sbUpdateProduct(id, data);
+
+          if (!ok) {
             set({ products: prev });
-            throw new Error(res.error || "Failed to update product.");
+
+            return false;
           }
         }
+
+        return true;
       },
 
       deleteProduct: async (id) => {
         const prev = get().products;
-        set({ products: prev.filter((p) => p.id !== id) });
 
+        set({ products: prev.filter((p) => p.id !== id) });
         if (isSupabaseConfigured()) {
-          const res = await sbDeleteProduct(id);
-          if (!res.ok) {
+          const ok = await sbDeleteProduct(id);
+
+          if (!ok) {
             set({ products: prev });
-            throw new Error(res.error || "Failed to delete product.");
+
+            return false;
           }
         }
+
+        return true;
       },
 
-      // ── categories CRUD (real error checking + rollback) ──
+      // ── categories CRUD ──
       addCategory: async (data) => {
-        const cat: Category = {
-          id:
-            data.id ||
-            (data.name ?? "")
-              .toLowerCase()
-              .trim()
-              .replace(/[^a-z0-9]+/g, "-")
-              .replace(/^-+|-+$/g, ""),
-          name: data.name || "",
-          description: data.description || "",
-          icon: data.icon || "Shapes",
-          sortOrder: data.sortOrder ?? get().categories.length,
-          parentId: data.parentId ?? null,
-        };
+        const prev = get().categories;
+        const cat = {
+          ...data,
+          id: data.id || (data.name ?? "").toLowerCase().replace(/\s+/g, "-"),
+        } as Category;
 
+        set({ categories: [...prev, cat] });
         if (isSupabaseConfigured()) {
-          const { data: saved, error } = await sbInsertCategory(cat);
-          if (error || !saved) {
-            throw new Error(error || "Failed to create category.");
+          const saved = await sbInsertCategory(cat);
+
+          if (!saved) {
+            set({ categories: prev });
+
+            return false;
           }
-          set({ categories: [...get().categories, saved] });
-          return saved;
+          set({
+            categories: get().categories.map((c) =>
+              c.id === cat.id ? saved : c,
+            ),
+          });
         }
 
-        set({ categories: [...get().categories, cat] });
-        return cat;
+        return true;
       },
 
       updateCategory: async (id, data) => {
         const prev = get().categories;
+
         set({
           categories: prev.map((c) => (c.id === id ? { ...c, ...data } : c)),
         });
-
         if (isSupabaseConfigured()) {
-          const res = await sbUpdateCategory(id, data);
-          if (!res.ok) {
+          const ok = await sbUpdateCategory(id, data);
+
+          if (!ok) {
             set({ categories: prev });
-            throw new Error(res.error || "Failed to update category.");
+
+            return false;
           }
         }
+
+        return true;
       },
 
       deleteCategory: async (id) => {
         const prev = get().categories;
+
+        // Mirrors the DB's `on delete set null`: a deleted category's own
+        // subcategories get promoted to top-level, not orphaned with a
+        // parentId pointing at a row that no longer exists locally.
         set({
           categories: prev
             .filter((c) => c.id !== id)
             .map((c) => (c.parentId === id ? { ...c, parentId: null } : c)),
         });
-
         if (isSupabaseConfigured()) {
-          const res = await sbDeleteCategory(id);
-          if (!res.ok) {
+          const ok = await sbDeleteCategory(id);
+
+          if (!ok) {
             set({ categories: prev });
-            throw new Error(res.error || "Failed to delete category.");
+
+            return false;
           }
         }
+
+        return true;
       },
 
       // ── orders ──
+      // `alreadyPersisted` skips the client-side Supabase insert when the
+      // order was already saved server-side (/api/create-order) — inserting
+      // the same id twice violates the orders_pkey unique constraint.
       addOrder: async (order, alreadyPersisted = false) => {
         const rawStatus = (order.status || "").toLowerCase().trim();
         const validStatuses = [
@@ -411,26 +726,30 @@ export const useProductStore = create<ProductState>()(
 
       updateOrderStatus: async (id, status) => {
         const prev = get().orders;
+
         set({
           orders: prev.map((o) => (o.id === id ? { ...o, status } : o)),
         });
-
         if (isSupabaseConfigured()) {
-          const res = await sbUpdateOrderStatus(id, status);
-          if (!res.ok) {
+          const ok = await sbUpdateOrderStatus(id, status);
+
+          if (!ok) {
             set({ orders: prev });
-            throw new Error(res.error || "Failed to update order status.");
+
+            return false;
           }
         }
+
+        return true;
       },
 
-      updateBookingStatus: async (id, status) => {
-        if (!isSupabaseConfigured()) return { ok: true };
-        return sbUpdateBookingStatus(id, status);
-      },
-
-      refundOrder: async (id) => {
-        const result = await sbRefundOrder(id);
+      // Triggers a real Stripe refund. Does not set status optimistically —
+      // Stripe confirms asynchronously via the stripe-webhook function, so
+      // the order re-fetch below is a best-effort nudge, not the source of
+      // truth (the caller should tell the admin to check back if it hasn't
+      // updated yet).
+      refundOrder: async (id, amount) => {
+        const result = await sbRefundOrder(id, amount);
         if (result.ok) await get().refresh();
 
         return result;
@@ -438,39 +757,18 @@ export const useProductStore = create<ProductState>()(
     }),
     {
       name: "mobicare-store",
-      partialize: (s) =>
-        s.usingSupabase || isSupabaseConfigured()
-          ? {}
-          : {
-              products: s.products,
-              categories: s.categories,
-            },
-      merge: (persistedState, currentState) => {
-        if (isSupabaseConfigured()) {
-          return {
-            ...currentState,
-            products: [],
-            categories: [],
-            loading: true,
-            usingSupabase: true,
-          };
-        }
-        return {
-          ...currentState,
-          ...(persistedState as Partial<ProductState>),
-        };
-      },
-      version: 4,
-      migrate: (persistedState, version) => {
+      // Don't persist transient flags
+      partialize: (s) => ({
+        products: s.products,
+        categories: s.categories,
+      }),
+      version: 2,
+      migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== "object")
           return persistedState;
         const safeState = { ...(persistedState as Record<string, unknown>) };
 
         delete safeState.orders;
-        if (version < 4 || isSupabaseConfigured()) {
-          delete safeState.products;
-          delete safeState.categories;
-        }
 
         return safeState;
       },
@@ -478,55 +776,10 @@ export const useProductStore = create<ProductState>()(
   ),
 );
 
-// ─── Admin auth (staff_users is_admin RPC + persisted brute-force lockout) ─
+// ─── Admin auth ────────────────────────────────────────────────────────────
+
 export const isLocalAuthAvailable =
   import.meta.env.DEV && Boolean(import.meta.env.VITE_LOCAL_ADMIN_PW);
-
-const LOCKOUT_STORAGE_KEY = "mobicare-admin-lockout";
-
-function loadLockoutState(): {
-  loginAttempts: number;
-  lockedUntil: number | null;
-} {
-  try {
-    if (typeof localStorage === "undefined")
-      return { loginAttempts: 0, lockedUntil: null };
-    const raw = localStorage.getItem(LOCKOUT_STORAGE_KEY);
-    if (!raw) return { loginAttempts: 0, lockedUntil: null };
-    const parsed = JSON.parse(raw) as {
-      loginAttempts?: number;
-      lockedUntil?: number | null;
-    };
-    const now = Date.now();
-    const lockedUntil =
-      typeof parsed.lockedUntil === "number" && parsed.lockedUntil > now
-        ? parsed.lockedUntil
-        : null;
-    const loginAttempts =
-      typeof parsed.loginAttempts === "number" && parsed.loginAttempts > 0
-        ? parsed.loginAttempts
-        : 0;
-    return { loginAttempts, lockedUntil };
-  } catch {
-    return { loginAttempts: 0, lockedUntil: null };
-  }
-}
-
-function saveLockoutState(loginAttempts: number, lockedUntil: number | null) {
-  try {
-    if (typeof localStorage === "undefined") return;
-    if (loginAttempts === 0 && !lockedUntil) {
-      localStorage.removeItem(LOCKOUT_STORAGE_KEY);
-    } else {
-      localStorage.setItem(
-        LOCKOUT_STORAGE_KEY,
-        JSON.stringify({ loginAttempts, lockedUntil }),
-      );
-    }
-  } catch {
-    // Ignore storage quota / privacy mode errors
-  }
-}
 
 interface AdminUser {
   email: string;
@@ -557,7 +810,52 @@ interface AdminState {
   sendReset: (email: string) => Promise<{ error?: unknown }>;
 }
 
-const initialLockout = loadLockoutState();
+const ADMIN_LOCKOUT_KEY = "mobicare-admin-lockout";
+
+function readLockout(): { loginAttempts: number; lockedUntil: number | null } {
+  try {
+    if (typeof localStorage === "undefined") {
+      return { loginAttempts: 0, lockedUntil: null };
+    }
+    const raw = localStorage.getItem(ADMIN_LOCKOUT_KEY);
+
+    if (!raw) return { loginAttempts: 0, lockedUntil: null };
+    const parsed = JSON.parse(raw) as {
+      loginAttempts?: number;
+      lockedUntil?: number | null;
+    };
+    const lockedUntil =
+      typeof parsed.lockedUntil === "number" && parsed.lockedUntil > Date.now()
+        ? parsed.lockedUntil
+        : null;
+    const loginAttempts =
+      typeof parsed.loginAttempts === "number" && parsed.loginAttempts > 0
+        ? parsed.loginAttempts
+        : 0;
+
+    return { loginAttempts: lockedUntil ? 0 : loginAttempts, lockedUntil };
+  } catch {
+    return { loginAttempts: 0, lockedUntil: null };
+  }
+}
+
+function writeLockout(loginAttempts: number, lockedUntil: number | null) {
+  try {
+    if (typeof localStorage === "undefined") return;
+    if (!loginAttempts && !lockedUntil) {
+      localStorage.removeItem(ADMIN_LOCKOUT_KEY);
+    } else {
+      localStorage.setItem(
+        ADMIN_LOCKOUT_KEY,
+        JSON.stringify({ loginAttempts, lockedUntil }),
+      );
+    }
+  } catch {
+    // Ignore storage quota / privacy mode errors
+  }
+}
+
+const initialLockout = readLockout();
 
 export const useAdminStore = create<AdminState>((set, get) => ({
   isAuthenticated: false,
@@ -566,15 +864,8 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   lockedUntil: initialLockout.lockedUntil,
   authMode: "supabase",
 
+  // ── Session restore on app load ──
   restoreSession: async () => {
-    const hydrated = loadLockoutState();
-    if (
-      hydrated.loginAttempts !== get().loginAttempts ||
-      hydrated.lockedUntil !== get().lockedUntil
-    ) {
-      set(hydrated);
-    }
-
     if (!isSupabaseConfigured()) {
       set((state) => ({
         authMode: isLocalAuthAvailable ? "local" : "unavailable",
@@ -588,24 +879,14 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set({ authMode: "supabase" });
 
     try {
-      const session = await getSession();
-      if (!session) {
-        set({ isAuthenticated: false, user: null });
-        return;
-      }
-
-      // CRITICAL: Verify staff_users allowlist via is_admin() RPC.
-      // Never sign a regular customer out of AuthContext here — just keep
-      // useAdminStore.isAuthenticated = false so customers cannot access /admin/*.
-      const isAdmin = await checkIsAdmin();
-      if (!isAdmin) {
-        set({ isAuthenticated: false, user: null });
-        return;
-      }
+      // Enforce staff authorization via `is_admin()` RPC so signed-in storefront
+      // customers can never access `/admin/*`. Do NOT sign out non-admin sessions
+      // here so a customer who hits `/admin` accidentally keeps their storefront login.
+      const { isAdmin, session } = await verifyAdminSession();
 
       set({
-        isAuthenticated: true,
-        user: session.user,
+        isAuthenticated: Boolean(isAdmin && session),
+        user: isAdmin && session ? session.user : null,
       });
     } catch (error) {
       console.error("Admin session restore failed:", error);
@@ -616,35 +897,44 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     }
   },
 
+  // ── Login ──
   login: async (emailOrPassword, passwordArg) => {
-    const persisted = loadLockoutState();
-    const loginAttempts = persisted.loginAttempts;
-    const lockedUntil = persisted.lockedUntil;
+    const persisted = readLockout();
+    const loginAttempts = persisted.loginAttempts || get().loginAttempts;
+    const lockedUntil = persisted.lockedUntil || get().lockedUntil;
 
+    // Lockout check
     if (lockedUntil && Date.now() < lockedUntil) {
       const secsLeft = Math.ceil((lockedUntil - Date.now()) / 1000);
-      set({ loginAttempts, lockedUntil });
+
+      set({ loginAttempts: 0, lockedUntil });
+
       return { ok: false, locked: true, secsLeft };
     }
 
-    const recordFailure = (errorMsg?: string): LoginResult => {
+    const recordFailure = (message?: string): LoginResult => {
       const attempts = loginAttempts + 1;
+
       if (attempts >= 5) {
         const until = Date.now() + 30_000;
-        saveLockoutState(0, until);
+
+        writeLockout(0, until);
         set({ loginAttempts: 0, lockedUntil: until });
-        return { ok: false, locked: true, secsLeft: 30, error: errorMsg };
+
+        return { ok: false, locked: true, secsLeft: 30, error: message };
       }
-      saveLockoutState(attempts, null);
+      writeLockout(attempts, null);
       set({ loginAttempts: attempts, lockedUntil: null });
+
       return {
         ok: false,
         locked: false,
         attemptsLeft: 5 - attempts,
-        error: errorMsg,
+        error: message,
       };
     };
 
+    // ── Supabase Auth path ──
     if (isSupabaseConfigured()) {
       const email =
         typeof emailOrPassword === "string" && emailOrPassword.includes("@")
@@ -666,14 +956,15 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         return recordFailure(error.message);
       }
 
-      const isAdmin = await checkIsAdmin();
+      const { isAdmin } = await verifyAdminSession();
+
       if (!isAdmin) {
         await sbSignOut();
-        set({ isAuthenticated: false, user: null });
-        return recordFailure("Administrator privileges required.");
+
+        return recordFailure("This account does not have administrator access.");
       }
 
-      saveLockoutState(0, null);
+      writeLockout(0, null);
       set({
         isAuthenticated: true,
         user: data?.user ?? null,
@@ -684,6 +975,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       return { ok: true };
     }
 
+    // ── Development-only local fallback ──
     if (!isLocalAuthAvailable) {
       return {
         ok: false,
@@ -695,7 +987,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     const localPassword = import.meta.env.VITE_LOCAL_ADMIN_PW as string;
 
     if (password === localPassword) {
-      saveLockoutState(0, null);
+      writeLockout(0, null);
       set({
         isAuthenticated: true,
         user: { email: "local-admin" },
@@ -706,15 +998,17 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       return { ok: true, localMode: true };
     }
 
-    return recordFailure("Incorrect credentials.");
+    return recordFailure();
   },
 
+  // ── Logout ──
   logout: async () => {
     if (isSupabaseConfigured()) await sbSignOut();
     useProductStore.setState({ orders: [] });
     set({ isAuthenticated: false, user: null });
   },
 
+  // ── Change password (Supabase Auth only) ──
   changePassword: async (newPassword) => {
     if (!isSupabaseConfigured()) {
       return {
@@ -726,6 +1020,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     return { error };
   },
 
+  // ── Send password reset email ──
   sendReset: async (email) => {
     if (!isSupabaseConfigured()) {
       return {
@@ -739,22 +1034,22 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 }));
 
 // ─── Toasts ────────────────────────────────────────────────────────────────
+// `add`/`remove` keep the signature every call site already uses
+// (`useToastStore(s => s.add)` → `addToast(message, type)`), but delegate to
+// Arc's toast stack. <ToastBridge /> (components/ToastBridge.tsx) hands this
+// module the live stack API once it mounts; calls made before that are dropped.
+let toastApi: ToastStackApi | null = null;
+
+export function registerToastApi(api: ToastStackApi | null) {
+  toastApi = api;
+}
+
 interface ToastStoreState {
   add: (message: string, type?: ToastType) => string;
   remove: (id: string) => void;
 }
 
-function toToastVariant(
-  type: ToastType,
-): "default" | "success" | "warning" | "danger" {
-  if (type === "error") return "danger";
-  if (type === "info") return "default";
-
-  return type;
-}
-
 export const useToastStore = create<ToastStoreState>(() => ({
-  add: (message, type = "info") =>
-    toast(message, { variant: toToastVariant(type) }),
-  remove: (id) => toast.close(id),
+  add: (message, type = "info") => toastApi?.toast({ title: message, type }) ?? "",
+  remove: (id) => toastApi?.dismiss(id),
 }));

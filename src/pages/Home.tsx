@@ -1,316 +1,200 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowRight, Phone, ShieldCheck } from "lucide-react";
-import { Button, Link, buttonVariants } from "@heroui/react";
+import { Fragment, useState, type CSSProperties, type ReactNode } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, ArrowUpRight, BatteryFull, Camera, CalendarCheck, Droplets, HardDrive, PlugZap, ShieldCheck, Smartphone, Wrench, Zap, type LucideIcon } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
+import { Suspense, lazy } from "react";
 
 import PageMeta from "@/components/PageMeta";
-import BackgroundCanvas from "@/components/BackgroundCanvas";
-import HeroBentoSection from "@/components/home/HeroBentoSection";
-import TrustTicker from "@/components/home/TrustTicker";
-import FeaturedProducts from "@/components/home/FeaturedProducts";
-import CtaStrip from "@/components/home/CtaStrip";
-import BookingWizard from "@/components/BookingWizard";
-import CategoryIcon from "@/components/CategoryIcon";
-import { useSiteStore } from "@/lib/siteStore";
+import ProductCard from "@/components/ProductCard";
+import LocationCard from "@/components/home/LocationCard";
+import { AKKO_CONFIG } from "@/lib/config";
+import { useCopy } from "@/lib/copy";
+import { DEFAULT_SITE_CONTENT, useSiteStore } from "@/lib/siteStore";
+import { useProductStore } from "@/lib/store";
 
-const DEFAULT_HOME_ORDER = [
-  "hero",
-  "services",
-  "how",
-  "featured",
-  "protect",
-  "cta",
-];
+const BookingWizard = lazy(() => import("@/components/BookingWizard"));
+
+// Service icons are stored as admin-editable Material-style names.
+const ICONS: Record<string, LucideIcon> = {
+  smartphone: Smartphone,
+  battery_full: BatteryFull,
+  water_drop: Droplets,
+  ev_station: PlugZap,
+  photo_camera: Camera,
+  storage: HardDrive,
+};
+
+const POINT_ICONS: LucideIcon[] = [ShieldCheck, Zap, Smartphone];
+
+/** Homepage blocks in their default order; the admin can reorder or hide them from the design studio. */
+export const HOME_BLOCKS = ["hero", "services", "how", "featured", "protect", "cta"];
 
 export default function Home() {
   const navigate = useNavigate();
-  const [bookingOpen, setBookingOpen] = useState(false);
-  const [bookingService, setBookingService] = useState<string | null>(null);
+  const c = useCopy();
+  const hero = useSiteStore((s) => s.hero);
+  const services = useSiteStore((s) => s.repairServices);
+  const ctaStrip = useSiteStore((s) => s.ctaStrip);
+  const trustItems = useSiteStore((s) => s.trustItems) || [];
+  const heroPoints = useSiteStore((s) => s.heroPoints) || DEFAULT_SITE_CONTENT.heroPoints;
+  const howItWorks = useSiteStore((s) => s.howItWorks) || DEFAULT_SITE_CONTENT.howItWorks;
+  const featured = useProductStore(useShallow((s) => s.products.filter((p) => p.featured && p.active).slice(0, 4)));
+  // `null` closed; `{ service: null }` open with no preselection; a name opens on that service.
+  const [booking, setBooking] = useState<{ service: string | null } | null>(null);
 
-  const layout = useSiteStore((s) => s.layout);
-  const copy = useSiteStore((s) => s.copy);
-  const repairServices = useSiteStore((s) => s.repairServices);
-  const repairBanner = useSiteStore((s) => s.repairBanner);
-  const howItWorks = useSiteStore((s) => s.howItWorks);
-  const business = useSiteStore((s) => s.business);
+  const layout = useSiteStore((s) => s.layout)?.home;
+  const hidden = new Set(layout?.hidden || []);
+  const order = [...(layout?.order || []).filter((id) => HOME_BLOCKS.includes(id)), ...HOME_BLOCKS.filter((id) => !(layout?.order || []).includes(id))];
+  const blocks: Record<string, ReactNode> = {
+    hero: (
+      <div className="mc-band mc-band--tint" style={hero.mediaUrl && hero.mediaType && hero.mediaType !== "none" ? ({ "--mc-hero-dim": hero.mediaDim ?? 55 } as CSSProperties) : undefined}>
+        {hero.mediaUrl && hero.mediaType === "image" && <div aria-hidden="true" className="mc-hero-media"><img alt="" decoding="async" fetchPriority="high" src={hero.mediaUrl} /></div>}
+        {hero.mediaUrl && hero.mediaType === "video" && <div aria-hidden="true" className="mc-hero-media"><video autoPlay loop muted playsInline poster={hero.mediaPoster || undefined} preload="metadata" src={hero.mediaUrl} /></div>}
+        <div className="mc-page">
+          <section className="mc-hero" id="hero-section">
+            <div className="mc-hero-copy">
+              <span className="mc-hero-pill"><i aria-hidden="true" /><span {...c.p("hero.badgeText")}>{hero.badgeText}</span></span>
+              <h1 className="mc-h1">
+                <span {...c.p("hero.headlineLine1")}>{hero.headlineLine1}</span> <span className="mc-accent" {...c.p("hero.headlineAccent")}>{hero.headlineAccent}</span>
+              </h1>
+              <p className="mc-lead" {...c.p("hero.description")}>{hero.description}</p>
+              <div className="mc-actions">
+                <button className="mc-cta mc-cta--lg" type="button" onClick={() => setBooking({ service: null })}>
+                  <CalendarCheck aria-hidden="true" size={20} strokeWidth={1.75} /><span {...c.p("home.hero.book")}>{c("home.hero.book")}</span>
+                </button>
+                <button className="mc-ghost mc-ghost--lg" type="button" onClick={() => navigate("/shop")}><span {...c.p("home.hero.shop")}>{c("home.hero.shop")}</span></button>
+              </div>
+              <div className="mc-hero-meta">
+                {heroPoints.filter(Boolean).map((point, i) => {
+                  const PointIcon = POINT_ICONS[i % POINT_ICONS.length];
 
-  const openBooking = (serviceId?: string) => {
-    setBookingService(serviceId || null);
-    setBookingOpen(true);
+                  return <span key={i}><PointIcon aria-hidden="true" size={16} strokeWidth={1.75} /><span {...c.p(`heroPoints.${i}`)}>{point}</span></span>;
+                })}
+              </div>
+            </div>
+            <LocationCard />
+          </section>
+          {trustItems.length > 0 && (
+            <div className="mc-strip" style={{ "--strip-cols": trustItems.length } as CSSProperties}>
+              {trustItems.map((item, i) => (
+                <div key={i}><strong {...c.p(`trustItems.${i}.label`)}>{item.label}</strong><span {...c.p(`trustItems.${i}.desc`)}>{item.desc}</span></div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    ),
+    services: (
+      <div className="mc-page">
+        {services.length > 0 && (
+          <section aria-labelledby="services-title" className="mc-section" id="services-section">
+            <div className="mc-section-head">
+              <h2 className="mc-h2" id="services-title" {...c.p("home.services.title")}>{c("home.services.title")}</h2>
+              <p className="mc-lead" {...c.p("home.services.lead")}>{c("home.services.lead")}</p>
+            </div>
+            <div className="mc-grid mc-grid-cards">
+              {services.map((s) => {
+                const Icon = ICONS[s.icon] ?? Wrench;
+
+                return (
+                  <button key={s.id} className="mc-service" type="button" onClick={() => setBooking({ service: s.name })}>
+                    <span className="mc-icon"><Icon aria-hidden="true" size={22} strokeWidth={1.75} /></span>
+                    <ArrowUpRight aria-hidden="true" className="mc-service-go" size={18} strokeWidth={1.75} />
+                    <strong>{s.name}</strong>
+                    <small>{s.priceRange} · {s.duration}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </div>
+    ),
+    how: (
+      <div className="mc-band mc-band--ink">
+        <div className="mc-page">
+          <section aria-labelledby="how-title" className="mc-section" id="how-it-works-section">
+            <div className="mc-section-head">
+              <h2 className="mc-h2" id="how-title" {...c.p("home.how.title")}>{c("home.how.title")}</h2>
+              <p className="mc-lead" {...c.p("home.how.lead")}>{c("home.how.lead")}</p>
+            </div>
+            <ol className="mc-steps">
+              {howItWorks.map((s, i) => (
+                <li key={i}>
+                  <h3 className="mc-h3" {...c.p(`howItWorks.${i}.title`)}>{s.title}</h3>
+                  <p className="mc-text" {...c.p(`howItWorks.${i}.body`)}>{s.body}</p>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
+      </div>
+    ),
+    featured: (
+      <div className="mc-page">
+        {featured.length > 0 && (
+          <section aria-labelledby="featured-title" className="mc-section" id="featured-products-section">
+            <div className="mc-section-head mc-section-head--row">
+              <div>
+                  <h2 className="mc-h2" id="featured-title" {...c.p("home.featured.title")}>{c("home.featured.title")}</h2>
+              </div>
+              <button className="mc-ghost" type="button" onClick={() => navigate("/shop")}>All products<ArrowRight aria-hidden="true" size={16} strokeWidth={1.75} /></button>
+            </div>
+            <div className="mc-grid mc-grid-products">
+              {featured.map((p) => (
+                <ProductCard key={p.id} product={p} onClick={() => navigate(`/product/${p.id}`)} />
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    ),
+    protect: (
+      <div className="mc-page">
+        <section aria-labelledby="protect-title" className="mc-section" id="protection-teaser-section" style={{ paddingTop: 0 }}>
+          <div className="mc-promo">
+            <div className="mc-stack-sm" style={{ flex: "1 1 22rem" }}>
+              <h2 className="mc-h2" id="protect-title" {...c.p("home.protect.title")}>{c("home.protect.title")}</h2>
+              <p className="mc-text" style={{ fontSize: "var(--text-lg)" }}>Device protection plans start at ${AKKO_CONFIG.phonePlanPrice} a month and cover drops, spills and cracked screens.</p>
+            </div>
+            <Link className="mc-cta mc-cta--lg mc-cta--ink" to="/protection"><span {...c.p("home.protect.button")}>{c("home.protect.button")}</span><ArrowRight aria-hidden="true" size={18} strokeWidth={1.75} /></Link>
+          </div>
+        </section>
+      </div>
+    ),
+    cta: (
+      <div className="mc-page">
+        <section aria-labelledby="cta-title" className="mc-section" id="cta-banner-section" style={{ paddingTop: 0 }}>
+          <div className="mc-card mc-card--muted" style={{ display: "grid", justifyItems: "center", textAlign: "center", gap: "var(--space-5)", padding: "clamp(32px, 6vw, 72px)", background: "var(--surface)" }}>
+            <h2 className="mc-h2" id="cta-title" style={{ maxWidth: "20ch" }} {...c.p("ctaStrip.headline")}>{ctaStrip.headline}</h2>
+            <p className="mc-lead" {...c.p("ctaStrip.subtext")}>{ctaStrip.subtext}</p>
+            <div className="mc-actions" style={{ justifyContent: "center" }}>
+              <button className="mc-cta mc-cta--lg" type="button" onClick={() => setBooking({ service: null })}><span {...c.p("home.cta.book")}>{c("home.cta.book")}</span></button>
+              <button className="mc-ghost mc-ghost--lg" type="button" onClick={() => navigate("/shop")}>{ctaStrip.secondaryCta}</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    ),
   };
 
-  const orderedBlocks = useMemo(() => {
-    const customOrder = (layout?.home?.order || []).filter((id) =>
-      DEFAULT_HOME_ORDER.includes(id),
-    );
-    const fullOrder = [
-      ...customOrder,
-      ...DEFAULT_HOME_ORDER.filter((id) => !customOrder.includes(id)),
-    ];
-    const hidden = new Set(layout?.home?.hidden || []);
-    return fullOrder.filter((id) => !hidden.has(id));
-  }, [layout]);
-
-  const phoneDigits = (business?.phone || "").replace(/[^0-9+]/g, "");
-
   return (
-    <div
-      className="relative min-h-screen overflow-x-hidden"
-      id="homepage-main-container"
-    >
+    <div id="homepage-main-container">
       <PageMeta
-        description="Southern Illinois' premier device repair shop. Est. 2019. Same-day screen repairs, battery replacements, water damage recovery, and accessories in Fairfield, IL."
-        title="Mobicare Device Recovery — iPhone & Phone Repair in Fairfield, IL"
+        description="Southern Illinois' preferred device repair shop. Next-day repairs for almost everything. Four years of helping you love your device, longer."
+        title="Mobicare Device Recovery: iPhone and phone repair in Fairfield, IL"
       />
 
-      <BackgroundCanvas />
+      {order.map((id) => {
+        if (hidden.has(id)) return null;
 
-      <div
-        className="relative z-[1] mx-auto max-w-[1400px] px-[clamp(12px,3vw,24px)] pb-8 pt-[clamp(24px,4vh,48px)]"
-        id="homepage-content-wrapper"
-      >
-        {orderedBlocks.map((blockId) => {
-          if (blockId === "hero") {
-            return (
-              <div key="hero" className="mb-6">
-                <div className="mb-8">
-                  <HeroBentoSection onBookRepair={() => openBooking()} />
-                </div>
-                <TrustTicker />
-              </div>
-            );
-          }
+        return <Fragment key={id}>{blocks[id]}</Fragment>;
+      })}
 
-          if (blockId === "services") {
-            return (
-              <section
-                key="services"
-                className="py-8"
-                id="home-services-section"
-              >
-                <div className="mb-5 flex flex-wrap items-end justify-between gap-3 px-1">
-                  <div>
-                    <p className="m-0 text-caption font-bold uppercase tracking-widest text-accent">
-                      {repairBanner?.eyebrow || "Device Repair"}
-                    </p>
-                    <h2
-                      className="m-0 mt-1 text-heading-lg font-extrabold text-foreground"
-                      data-edit="copy.home.services.title"
-                    >
-                      {copy?.["home.services.title"] || "What can we fix?"}
-                    </h2>
-                    <p
-                      className="m-0 mt-1 max-w-xl text-sm text-muted"
-                      data-edit="copy.home.services.lead"
-                    >
-                      {copy?.["home.services.lead"] ||
-                        "Choose a repair to start booking. $35 diagnostic bench fee — 100% credited toward your repair."}
-                    </p>
-                  </div>
-                  <Button variant="ghost" onPress={() => navigate("/repairs")}>
-                    <span>
-                      {repairBanner?.primaryCta || "See Repair Services"}
-                    </span>
-                    <ArrowRight className="size-4" />
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-                  {(repairServices || []).map((svc) => (
-                    <button
-                      key={svc.id}
-                      className="surface-raised lift group flex flex-col justify-between gap-4 rounded-card p-5 text-left transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                      type="button"
-                      onClick={() => openBooking(svc.id)}
-                    >
-                      <div>
-                        <div className="mb-3 flex items-center justify-between gap-2">
-                          <span className="flex size-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
-                            <CategoryIcon
-                              className="size-5"
-                              iconId={svc.icon}
-                            />
-                          </span>
-                          <span className="rounded-full bg-surface-secondary px-2.5 py-1 text-caption font-bold text-accent">
-                            {svc.priceRange}
-                          </span>
-                        </div>
-                        <h3 className="m-0 text-base font-bold text-foreground">
-                          {svc.name}
-                        </h3>
-                        <p className="m-0 mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted">
-                          {svc.description}
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-between border-t border-border pt-3 text-xs font-semibold">
-                        <span className="text-muted">{svc.duration}</span>
-                        <span className="inline-flex items-center gap-1 text-accent group-hover:translate-x-0.5 transition-transform">
-                          Book now <ArrowRight className="size-3.5" />
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {repairBanner?.headline && (
-                  <div className="surface-raised mt-6 flex flex-wrap items-center justify-between gap-4 rounded-panel p-6 sm:p-7">
-                    <div className="min-w-0 max-w-2xl flex-1 basis-64">
-                      <span
-                        className="type-eyebrow text-accent"
-                        data-edit="repairBanner.eyebrow"
-                      >
-                        {repairBanner.eyebrow}
-                      </span>
-                      <h3
-                        className="m-0 mt-1 whitespace-pre-line text-heading font-extrabold text-foreground"
-                        data-edit="repairBanner.headline"
-                      >
-                        {repairBanner.headline}
-                      </h3>
-                      <p
-                        className="m-0 mt-1.5 text-sm leading-relaxed text-muted"
-                        data-edit="repairBanner.description"
-                      >
-                        {repairBanner.description}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2.5">
-                      <Button
-                        variant="primary"
-                        onPress={() => navigate("/repairs")}
-                      >
-                        <span data-edit="repairBanner.primaryCta">
-                          {repairBanner.primaryCta || "See Repair Services"}
-                        </span>
-                        <ArrowRight className="size-4" />
-                      </Button>
-                      {phoneDigits && (
-                        <Link
-                          className={buttonVariants({ variant: "outline" })}
-                          href={`tel:${phoneDigits}`}
-                        >
-                          <Phone className="size-4" />
-                          <span data-edit="repairBanner.secondaryCta">
-                            {repairBanner.secondaryCta || "Call First"}
-                          </span>
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </section>
-            );
-          }
-
-          if (blockId === "how") {
-            return (
-              <section key="how" className="py-6" id="home-how-it-works">
-                <div className="mb-5 px-1">
-                  <p className="m-0 text-caption font-bold uppercase tracking-widest text-accent">
-                    Simple Process
-                  </p>
-                  <h2
-                    className="m-0 mt-1 text-heading font-extrabold text-foreground"
-                    data-edit="copy.home.how.title"
-                  >
-                    {copy?.["home.how.title"] || "How it works"}
-                  </h2>
-                  <p
-                    className="m-0 mt-1 text-sm text-muted"
-                    data-edit="copy.home.how.lead"
-                  >
-                    {copy?.["home.how.lead"] ||
-                      "Three steps from broken to back in your pocket."}
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  {(howItWorks || []).map((step, i) => (
-                    <div
-                      key={i}
-                      className="surface-raised flex flex-col gap-2 rounded-card p-6"
-                    >
-                      <span className="flex size-9 items-center justify-center rounded-full bg-accent text-sm font-extrabold text-accent-foreground">
-                        {i + 1}
-                      </span>
-                      <h3
-                        className="m-0 mt-1 text-base font-bold text-foreground"
-                        data-edit={`howItWorks.${i}.title`}
-                      >
-                        {step.title}
-                      </h3>
-                      <p
-                        className="m-0 text-sm leading-relaxed text-muted"
-                        data-edit={`howItWorks.${i}.body`}
-                      >
-                        {step.body}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            );
-          }
-
-          if (blockId === "featured") {
-            return <FeaturedProducts key="featured" />;
-          }
-
-          if (blockId === "protect") {
-            return (
-              <section key="protect" className="py-6" id="home-protect-promo">
-                <div className="surface-accent flex flex-wrap items-center justify-between gap-5 rounded-panel p-6 sm:p-8">
-                  <div className="flex min-w-0 flex-1 basis-64 items-start gap-4">
-                    <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground shadow-sm">
-                      <ShieldCheck className="size-6" />
-                    </span>
-                    <div>
-                      <span className="type-eyebrow text-accent">
-                        AKKO Device Protection Partner
-                      </span>
-                      <h2
-                        className="m-0 mt-1 text-heading font-extrabold text-foreground"
-                        data-edit="copy.home.protect.title"
-                      >
-                        {copy?.["home.protect.title"] ||
-                          "Never pay full price for a broken phone again"}
-                      </h2>
-                      <p className="m-0 mt-1 text-sm text-muted">
-                        Plans from $5/mo with $29 screen deductibles — repaired
-                        locally right here at Mobicare.
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    size="lg"
-                    variant="primary"
-                    onPress={() => navigate("/protection")}
-                  >
-                    <span data-edit="copy.home.protect.button">
-                      {copy?.["home.protect.button"] || "See plans"}
-                    </span>
-                    <ArrowRight className="size-4" />
-                  </Button>
-                </div>
-              </section>
-            );
-          }
-
-          if (blockId === "cta") {
-            return <CtaStrip key="cta" onBookRepair={() => openBooking()} />;
-          }
-
-          return null;
-        })}
-      </div>
-
-      {bookingOpen && (
-        <BookingWizard
-          defaultService={bookingService}
-          onClose={() => {
-            setBookingOpen(false);
-            setBookingService(null);
-          }}
-        />
+      {booking && (
+        <Suspense fallback={null}>
+          <BookingWizard defaultService={booking.service} onClose={() => setBooking(null)} />
+        </Suspense>
       )}
     </div>
   );

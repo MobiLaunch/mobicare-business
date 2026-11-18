@@ -1,6 +1,7 @@
-import { useSyncExternalStore } from "react";
-
 // ─── Environment variable helpers ─────────────────────────────────────────────
+// All sensitive values come from .env (VITE_ prefix exposes them to the browser).
+// Never hardcode credentials here. See .env.example for required variables.
+
 function requireEnv(key: string): string {
   const value = import.meta.env[key] as string | undefined;
 
@@ -13,85 +14,19 @@ function requireEnv(key: string): string {
   return value || "";
 }
 
-// ─── Shared ShopConfig loaded from site_settings('shop-config') ───────────────
-export interface RuntimeShopConfig {
-  storefrontUrl: string;
-  stripePublishableKey: string;
-  reviewUrl: string;
-  emailjs: {
-    serviceId: string;
-    bookingTemplate: string;
-    orderTemplate: string;
-    publicKey: string;
-  };
-  loyalty?: {
-    enabled: boolean;
-    pointsPerDollar: number;
-    redeemPoints: number;
-    redeemValue: number;
-  };
-}
-
-let _runtimeShopConfig: RuntimeShopConfig = {
-  storefrontUrl: "https://www.shopmobicare.com",
-  stripePublishableKey: "",
-  reviewUrl: "",
-  emailjs: {
-    serviceId: "",
-    bookingTemplate: "",
-    orderTemplate: "",
-    publicKey: "",
-  },
-};
-
-const _listeners = new Set<() => void>();
-function notifyShopConfigListeners() {
-  _listeners.forEach((fn) => fn());
-}
-
-export function setRuntimeShopConfig(partial: Partial<RuntimeShopConfig>) {
-  _runtimeShopConfig = {
-    ..._runtimeShopConfig,
-    ...partial,
-    emailjs: {
-      ..._runtimeShopConfig.emailjs,
-      ...(partial.emailjs || {}),
-    },
-  };
-  notifyShopConfigListeners();
-}
-
-export function getRuntimeShopConfig(): RuntimeShopConfig {
-  return _runtimeShopConfig;
-}
-
-export function subscribeShopConfig(listener: () => void): () => void {
-  _listeners.add(listener);
-  return () => _listeners.delete(listener);
-}
-
-export function useRuntimeShopConfig(): RuntimeShopConfig {
-  return useSyncExternalStore(
-    subscribeShopConfig,
-    getRuntimeShopConfig,
-    getRuntimeShopConfig,
-  );
-}
-
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 export const SUPABASE_URL = requireEnv("VITE_SUPABASE_URL");
 export const SUPABASE_ANON_KEY = requireEnv("VITE_SUPABASE_ANON_KEY");
 
 // ─── Stripe ───────────────────────────────────────────────────────────────────
+// Publishable key for client-side card elements / payment redirects.
+// Can be configured in Admin Settings (stored in localStorage) or via VITE_STRIPE_PUBLISHABLE_KEY.
+// Secret keys stay server-side only in hosting environment variables.
 export function getStripePublishableKey(): string {
-  const lsKey =
-    typeof localStorage !== "undefined"
-      ? localStorage.getItem("stripe_publishable_key")
-      : null;
-
   return (
-    lsKey?.trim() ||
-    _runtimeShopConfig.stripePublishableKey?.trim() ||
+    (typeof localStorage !== "undefined"
+      ? localStorage.getItem("stripe_publishable_key")
+      : null) ||
     (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string) ||
     ""
   );
@@ -102,6 +37,8 @@ export function isStripeConfigured(): boolean {
 }
 
 // ─── EmailJS ──────────────────────────────────────────────────────────────────
+// Can be configured via .env or in Admin Settings (stored in localStorage).
+// Admin-settings values win so post-deployment changes don't require a rebuild.
 export const EMAILJS_CONFIG = {
   serviceId: requireEnv("VITE_EMAILJS_SERVICE_ID"),
   bookingTemplateId: requireEnv("VITE_EMAILJS_BOOKING_TEMPLATE_ID"),
@@ -109,57 +46,27 @@ export const EMAILJS_CONFIG = {
   publicKey: requireEnv("VITE_EMAILJS_PUBLIC_KEY"),
 };
 
+// Backwards-compatible helper used by BookingWizard
 export function getEmailJSConfig() {
-  const lsService =
-    typeof localStorage !== "undefined"
-      ? localStorage.getItem("ejs_service")
-      : null;
-  const lsBooking =
-    typeof localStorage !== "undefined"
-      ? localStorage.getItem("ejs_booking")
-      : null;
-  const lsOrder =
-    typeof localStorage !== "undefined"
-      ? localStorage.getItem("ejs_order")
-      : null;
-  const lsPubkey =
-    typeof localStorage !== "undefined"
-      ? localStorage.getItem("ejs_pubkey")
-      : null;
+  if (typeof localStorage === "undefined") return EMAILJS_CONFIG;
+
+  const lsService = localStorage.getItem("ejs_service");
+  const lsBooking = localStorage.getItem("ejs_booking");
+  const lsOrder = localStorage.getItem("ejs_order");
+  const lsPubkey = localStorage.getItem("ejs_pubkey");
 
   return {
-    serviceId:
-      lsService?.trim() ||
-      _runtimeShopConfig.emailjs.serviceId?.trim() ||
-      EMAILJS_CONFIG.serviceId,
-    bookingTemplateId:
-      lsBooking?.trim() ||
-      _runtimeShopConfig.emailjs.bookingTemplate?.trim() ||
-      EMAILJS_CONFIG.bookingTemplateId,
-    orderTemplateId:
-      lsOrder?.trim() ||
-      _runtimeShopConfig.emailjs.orderTemplate?.trim() ||
-      EMAILJS_CONFIG.orderTemplateId,
-    publicKey:
-      lsPubkey?.trim() ||
-      _runtimeShopConfig.emailjs.publicKey?.trim() ||
-      EMAILJS_CONFIG.publicKey,
+    serviceId: lsService || EMAILJS_CONFIG.serviceId,
+    bookingTemplateId: lsBooking || EMAILJS_CONFIG.bookingTemplateId,
+    orderTemplateId: lsOrder || EMAILJS_CONFIG.orderTemplateId,
+    publicKey: lsPubkey || EMAILJS_CONFIG.publicKey,
   };
-}
-
-export function getReviewUrl(): string {
-  return _runtimeShopConfig.reviewUrl?.trim() || "";
-}
-
-export function getStorefrontUrl(): string {
-  return (
-    _runtimeShopConfig.storefrontUrl?.trim() || "https://www.shopmobicare.com"
-  );
 }
 
 export const GOOGLE_MAPS_API_KEY = requireEnv("VITE_GOOGLE_MAPS_API_KEY");
 
-// ─── Business info defaults ───────────────────────────────────────────────────
+// ─── Business info ────────────────────────────────────────────────────────────
+// Non-sensitive — fine to stay in source code. Edit here to update site defaults.
 export const BUSINESS = {
   name: "Mobicare Device Recovery",
   tagline: "Fix. Protect. Upgrade.",

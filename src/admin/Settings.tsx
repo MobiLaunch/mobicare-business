@@ -8,21 +8,14 @@ import {
   Copy,
   CreditCard,
   Database,
-  Eye,
-  EyeOff,
   KeyRound,
   Mail,
   Save,
-  TriangleAlert,
 } from "lucide-react";
-import {
-  Alert,
-  Button,
-  FieldError,
-  InputGroup,
-  Label,
-  TextField,
-} from "@heroui/react";
+import { Alert } from "@/components/arc/alert/alert";
+import { Button } from "@/components/arc/button/button";
+import { Input } from "@/components/arc/input/input";
+import { PasswordField } from "@/components/arc/password-field/password-field";
 
 import {
   SEED_CATEGORIES,
@@ -31,18 +24,11 @@ import {
   useProductStore,
   useToastStore,
 } from "@/lib/store";
-import {
-  getEmailJSConfig,
-  getStripePublishableKey,
-  isStripeConfigured,
-  setRuntimeShopConfig,
-  useRuntimeShopConfig,
-} from "@/lib/config";
+import { getStripePublishableKey, isStripeConfigured } from "@/lib/config";
 import {
   isSupabaseConfigured,
   resetClient,
   sbSeedInitialData,
-  sbUpsertShopConfig,
   testConnection,
 } from "@/lib/supabase";
 import AdminPageHeader from "@/admin/components/AdminPageHeader";
@@ -58,7 +44,12 @@ export default function Settings() {
   const addToast = useToastStore((s) => s.add);
   const storeRefresh = useProductStore((s) => s.refresh);
   const usingSupabase = useProductStore((s) => s.usingSupabase);
-  const runtimeShopConfig = useRuntimeShopConfig();
+  const storeProducts = useProductStore((s) => s.products);
+  const storeCategories = useProductStore((s) => s.categories);
+  const seedProducts =
+    storeProducts.length > 0 ? storeProducts : SEED_PRODUCTS;
+  const seedCategories =
+    storeCategories.length > 0 ? storeCategories : SEED_CATEGORIES;
 
   // Supabase creds
   const [sbUrl, setSbUrl] = useState(localStorage.getItem("sb_url") || "");
@@ -73,38 +64,20 @@ export default function Settings() {
   const [sqlCopied, setSqlCopied] = useState(false);
 
   // EmailJS
-  const initialEjs = getEmailJSConfig();
   const [emailjs, setEmailjs] = useState({
-    serviceId: initialEjs.serviceId || "",
-    bookingTemplate: initialEjs.bookingTemplateId || "",
-    orderTemplate: initialEjs.orderTemplateId || "",
-    publicKey: initialEjs.publicKey || "",
+    serviceId: localStorage.getItem("ejs_service") || "",
+    bookingTemplate: localStorage.getItem("ejs_booking") || "",
+    orderTemplate: localStorage.getItem("ejs_order") || "",
+    publicKey: localStorage.getItem("ejs_pubkey") || "",
   });
 
   // Stripe
   const [stripePubKey, setStripePubKey] = useState(getStripePublishableKey());
   const [stripeSaved, setStripeSaved] = useState(isStripeConfigured());
 
-  // Sync loaded shop-config values when local overrides aren't present
-  useEffect(() => {
-    const nextStripe = getStripePublishableKey();
-    if (nextStripe && !stripePubKey) {
-      setStripePubKey(nextStripe);
-      setStripeSaved(true);
-    }
-    const ejs = getEmailJSConfig();
-    setEmailjs((prev) => ({
-      serviceId: prev.serviceId || ejs.serviceId || "",
-      bookingTemplate: prev.bookingTemplate || ejs.bookingTemplateId || "",
-      orderTemplate: prev.orderTemplate || ejs.orderTemplateId || "",
-      publicKey: prev.publicKey || ejs.publicKey || "",
-    }));
-  }, [runtimeShopConfig]);
-
   // Password
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
-  const [showPw, setShowPw] = useState(false);
 
   useEffect(() => {
     if (usingSupabase) {
@@ -142,7 +115,7 @@ export default function Settings() {
       setConnStatus("ok");
       setConnMsg("Connection successful!");
       addToast("Supabase connected!", "success");
-      storeRefresh();
+      await storeRefresh();
     } else {
       setConnStatus("error");
       setConnMsg(result.error || "Unknown error");
@@ -157,12 +130,12 @@ export default function Settings() {
       return;
     }
     setSeeding(true);
-    const result = await sbSeedInitialData(SEED_PRODUCTS, SEED_CATEGORIES);
+    const result = await sbSeedInitialData(seedProducts, seedCategories);
 
     setSeeding(false);
     if (result.ok) {
       addToast("Sample data seeded to Supabase!", "success");
-      storeRefresh();
+      await storeRefresh();
     } else {
       addToast(`Seed failed: ${result.error}`, "error");
     }
@@ -180,25 +153,15 @@ export default function Settings() {
       });
   };
 
-  const handleSaveEmailjs = async () => {
-    const cleaned = {
-      serviceId: emailjs.serviceId.trim(),
-      bookingTemplate: emailjs.bookingTemplate.trim(),
-      orderTemplate: emailjs.orderTemplate.trim(),
-      publicKey: emailjs.publicKey.trim(),
-    };
-    localStorage.setItem("ejs_service", cleaned.serviceId);
-    localStorage.setItem("ejs_booking", cleaned.bookingTemplate);
-    localStorage.setItem("ejs_order", cleaned.orderTemplate);
-    localStorage.setItem("ejs_pubkey", cleaned.publicKey);
-    setRuntimeShopConfig({ emailjs: cleaned });
-    if (isSupabaseConfigured()) {
-      await sbUpsertShopConfig({ emailjs: cleaned });
-    }
+  const handleSaveEmailjs = () => {
+    localStorage.setItem("ejs_service", emailjs.serviceId);
+    localStorage.setItem("ejs_booking", emailjs.bookingTemplate);
+    localStorage.setItem("ejs_order", emailjs.orderTemplate);
+    localStorage.setItem("ejs_pubkey", emailjs.publicKey);
     addToast("EmailJS settings saved and ready for bookings.", "success");
   };
 
-  const handleSaveStripeKey = async () => {
+  const handleSaveStripeKey = () => {
     const trimmed = stripePubKey.trim();
 
     if (trimmed && !trimmed.startsWith("pk_")) {
@@ -210,11 +173,7 @@ export default function Settings() {
       return;
     }
     localStorage.setItem("stripe_publishable_key", trimmed);
-    setRuntimeShopConfig({ stripePublishableKey: trimmed });
-    if (isSupabaseConfigured()) {
-      await sbUpsertShopConfig({ stripePublishableKey: trimmed });
-    }
-    setStripeSaved(Boolean(trimmed || getStripePublishableKey()));
+    setStripeSaved(!!trimmed);
     addToast("Stripe publishable key saved", "success");
   };
 
@@ -229,8 +188,8 @@ export default function Settings() {
 
       return;
     }
-    if (newPw.length < 8) {
-      addToast("Password must be at least 8 characters", "error");
+    if (newPw.length < 12) {
+      addToast("Password must be at least 12 characters", "error");
 
       return;
     }
@@ -248,362 +207,156 @@ export default function Settings() {
     }
   };
 
+  const ok = (label: string) => <span className="ad-pill" data-tone="success"><CheckCircle2 aria-hidden="true" size={14} />{label}</span>;
+
   return (
-    <div>
+    <div className="ad-stack">
       <AdminPageHeader
-        description="Manage your cloud database credentials, payment webhooks, notification engines, and admin credentials."
-        eyebrow="System Configuration"
-        title="Store & Integration Settings"
+        description="Database, payments, notifications and admin credentials."
+        title="Settings"
       />
 
-      {/* Supabase */}
       <AdminSettingsCard
-        description="Persist products, categories, orders, and repair bookings in real-time."
+        description="Persist products, categories, orders, and repair bookings in real time."
         icon={Database}
         statusChip={
-          connStatus === "ok" || (!connStatus && usingSupabase) ? (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-success/15 px-3 py-1.5 text-xs font-bold text-success">
-              <CheckCircle2 className="size-4" />{" "}
-              {connStatus === "ok" ? "Connected" : "Supabase Live"}
-            </span>
-          ) : connStatus === "error" ? (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-danger/15 px-3 py-1.5 text-xs font-bold text-danger">
-              <CircleX className="size-4" /> Connection Error
-            </span>
-          ) : null
+          connStatus === "ok" || (!connStatus && usingSupabase)
+            ? ok(connStatus === "ok" ? "Connected" : "Supabase live")
+            : connStatus === "error"
+              ? <span className="ad-pill" data-tone="danger"><CircleX aria-hidden="true" size={14} />Connection error</span>
+              : null
         }
-        title="Supabase Cloud Database"
+        title="Supabase database"
       >
         <SettingsStepItem
-          description={
-            <>
-              Copy the SQL migration script below, navigate to your Supabase{" "}
-              <strong>SQL Editor</strong>, paste, and click <strong>Run</strong>
-              .
-            </>
-          }
+          description={<>Copy the SQL migration script below, open your Supabase <strong>SQL Editor</strong>, paste, and click <strong>Run</strong>.</>}
           number={1}
-          title="Execute Database Schema SQL"
+          title="Run the database schema"
         >
-          <div className="mb-3 flex flex-wrap gap-2">
-            <Button variant="outline" onPress={() => setSqlOpen((o) => !o)}>
-              {sqlOpen ? (
-                <ChevronUp className="size-4" />
-              ) : (
-                <ChevronDown className="size-4" />
-              )}
-              <span>{sqlOpen ? "Collapse SQL Schema" : "View SQL Schema"}</span>
+          <div className="ad-actions">
+            <Button variant="secondary" onClick={() => setSqlOpen((o) => !o)}>
+              {sqlOpen ? <ChevronUp aria-hidden="true" size={16} /> : <ChevronDown aria-hidden="true" size={16} />}
+              {sqlOpen ? "Hide SQL schema" : "View SQL schema"}
             </Button>
-            <Button variant="primary" onPress={handleCopySQL}>
-              <Copy className="size-4" />
-              <span>
-                {sqlCopied ? "Copied to Clipboard!" : "Copy SQL Script"}
-              </span>
+            <Button onClick={handleCopySQL}>
+              <Copy aria-hidden="true" size={16} />
+              {sqlCopied ? "Copied" : "Copy SQL script"}
             </Button>
           </div>
-          {sqlOpen && (
-            <pre className="max-h-80 overflow-y-auto rounded-2xl bg-surface-tertiary p-4 text-xs">
-              {SCHEMA_SQL}
-            </pre>
-          )}
+          {sqlOpen && <pre className="ad-pre">{SCHEMA_SQL}</pre>}
         </SettingsStepItem>
 
         <SettingsStepItem
-          description={
-            <>
-              Located in your Supabase project under{" "}
-              <strong>Project Settings → API</strong>.
-            </>
-          }
+          description={<>Located in your Supabase project under <strong>Project Settings → API</strong>.</>}
           number={2}
-          title="Project API Credentials"
+          title="Project API credentials"
         >
-          <div className="mb-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            <TextField
-              className="flex flex-col gap-1.5"
-              value={sbUrl}
-              onChange={setSbUrl}
-            >
-              <Label>Project URL (https://your-project.supabase.co)</Label>
-              <InputGroup>
-                <InputGroup.Input />
-              </InputGroup>
-            </TextField>
-            <TextField
-              className="flex flex-col gap-1.5"
-              value={sbAnonKey}
-              onChange={setSbAnonKey}
-            >
-              <Label>Anon / Public API Key</Label>
-              <InputGroup>
-                <InputGroup.Input />
-              </InputGroup>
-            </TextField>
+          <div className="ad-stack-sm">
+            <div className="ad-form-2">
+              <Input autoComplete="off" label="Project URL" placeholder="https://your-project.supabase.co" value={sbUrl} onChange={(e) => setSbUrl(e.target.value)} />
+              <Input autoComplete="off" label="Anon / public API key" value={sbAnonKey} onChange={(e) => setSbAnonKey(e.target.value)} />
+            </div>
+            <div className="ad-actions">
+              <Button variant="secondary" onClick={handleSaveSupabase}>
+                <Save aria-hidden="true" size={16} />Save credentials
+              </Button>
+              <Button loading={testing} onClick={handleTestConnection}>
+                <Database aria-hidden="true" size={16} />{testing ? "Testing…" : "Test connection"}
+              </Button>
+            </div>
+            {connStatus === "error" && <Alert role="alert" title="Connection failed" tone="danger">{connMsg}</Alert>}
+            {connStatus === "ok" && <Alert title={connMsg} tone="success" />}
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Button variant="outline" onPress={handleSaveSupabase}>
-              <Save className="size-4" />
-              <span>Save API Credentials</span>
-            </Button>
-            <Button
-              isDisabled={testing}
-              variant="primary"
-              onPress={handleTestConnection}
-            >
-              <Database className="size-4" />
-              <span>{testing ? "Testing Connection…" : "Test Connection"}</span>
-            </Button>
-          </div>
-          {connStatus === "error" && (
-            <Alert className="mt-3" role="alert" status="danger">
-              <Alert.Indicator>
-                <TriangleAlert className="size-4" />
-              </Alert.Indicator>
-              <Alert.Content>
-                <Alert.Description>{connMsg}</Alert.Description>
-              </Alert.Content>
-            </Alert>
-          )}
-          {connStatus === "ok" && (
-            <Alert className="mt-3" status="success">
-              <Alert.Indicator>
-                <CheckCircle2 className="size-4" />
-              </Alert.Indicator>
-              <Alert.Content>
-                <Alert.Description>{connMsg}</Alert.Description>
-              </Alert.Content>
-            </Alert>
-          )}
         </SettingsStepItem>
 
         <SettingsStepItem
-          description="Push MobiCare's starter sample products and categories up to your Supabase database tables."
+          description="Push your local products and categories up to the Supabase tables."
           number={3}
-          title="Seed Initial Catalog Data"
+          title="Seed the catalog"
         >
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              isDisabled={seeding || !isSupabaseConfigured()}
-              variant="primary"
-              onPress={handleSeedData}
-            >
-              <CloudUpload className="size-4" />
-              <span>
-                {seeding
-                  ? "Seeding Catalog…"
-                  : `Seed ${SEED_PRODUCTS.length} Products & ${SEED_CATEGORIES.length} Categories`}
-              </span>
+          <div className="ad-actions">
+            <Button disabled={seeding || !isSupabaseConfigured()} loading={seeding} onClick={handleSeedData}>
+              <CloudUpload aria-hidden="true" size={16} />
+              {seeding ? "Seeding…" : `Seed ${seedProducts.length} products & ${seedCategories.length} categories`}
             </Button>
-            {!isSupabaseConfigured() && (
-              <span className="text-label text-muted">
-                Connect Supabase first
-              </span>
-            )}
+            {!isSupabaseConfigured() && <span className="ad-hint">Connect Supabase first</span>}
           </div>
         </SettingsStepItem>
       </AdminSettingsCard>
 
-      {/* EmailJS */}
       <AdminSettingsCard
-        description="Send automated confirmation emails for new repair bookings and store checkout orders."
+        description="Send automated confirmation emails for new repair bookings and store orders."
         icon={Mail}
-        title="EmailJS Notifications"
+        title="EmailJS notifications"
       >
         <SettingsStepItem
-          description={
-            <>
-              From <strong>dashboard.emailjs.com</strong> — your service,
-              public key, and the two template IDs for booking and order
-              confirmations.
-            </>
-          }
+          description={<>From <strong>dashboard.emailjs.com</strong>: your service, public key, and the two template IDs.</>}
           number={1}
-          title="EmailJS Credentials"
+          title="EmailJS credentials"
         >
-          <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            <TextField
-              className="flex flex-col gap-1.5"
-              value={emailjs.serviceId}
-              onChange={(v) => setEmailjs((s) => ({ ...s, serviceId: v }))}
-            >
-              <Label>EmailJS Service ID</Label>
-              <InputGroup>
-                <InputGroup.Input />
-              </InputGroup>
-            </TextField>
-            <TextField
-              className="flex flex-col gap-1.5"
-              value={emailjs.publicKey}
-              onChange={(v) => setEmailjs((s) => ({ ...s, publicKey: v }))}
-            >
-              <Label>Public Key</Label>
-              <InputGroup>
-                <InputGroup.Input />
-              </InputGroup>
-            </TextField>
-            <TextField
-              className="flex flex-col gap-1.5"
-              value={emailjs.bookingTemplate}
-              onChange={(v) => setEmailjs((s) => ({ ...s, bookingTemplate: v }))}
-            >
-              <Label>Booking Template ID</Label>
-              <InputGroup>
-                <InputGroup.Input />
-              </InputGroup>
-            </TextField>
-            <TextField
-              className="flex flex-col gap-1.5"
-              value={emailjs.orderTemplate}
-              onChange={(v) => setEmailjs((s) => ({ ...s, orderTemplate: v }))}
-            >
-              <Label>Order Template ID</Label>
-              <InputGroup>
-                <InputGroup.Input />
-              </InputGroup>
-            </TextField>
+          <div className="ad-stack-sm">
+            <div className="ad-form-2">
+              <Input autoComplete="off" label="Service ID" value={emailjs.serviceId} onChange={(e) => setEmailjs((s) => ({ ...s, serviceId: e.target.value }))} />
+              <Input autoComplete="off" label="Public key" value={emailjs.publicKey} onChange={(e) => setEmailjs((s) => ({ ...s, publicKey: e.target.value }))} />
+              <Input autoComplete="off" label="Booking template ID" value={emailjs.bookingTemplate} onChange={(e) => setEmailjs((s) => ({ ...s, bookingTemplate: e.target.value }))} />
+              <Input autoComplete="off" label="Order template ID" value={emailjs.orderTemplate} onChange={(e) => setEmailjs((s) => ({ ...s, orderTemplate: e.target.value }))} />
+            </div>
+            <div className="ad-actions">
+              <Button onClick={handleSaveEmailjs}><Save aria-hidden="true" size={16} />Save EmailJS settings</Button>
+            </div>
           </div>
-          <Button variant="primary" onPress={handleSaveEmailjs}>
-            <Save className="size-4" />
-            <span>Save EmailJS Settings</span>
-          </Button>
         </SettingsStepItem>
       </AdminSettingsCard>
 
-      {/* Stripe */}
       <AdminSettingsCard
         description="Publishable key for embedded card checkout, Apple Pay, and Google Pay. Secret keys stay server-side only."
         icon={CreditCard}
-        statusChip={
-          stripeSaved ? (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-success/15 px-3 py-1.5 text-xs font-bold text-success">
-              <CheckCircle2 className="size-4" /> Configured
-            </span>
-          ) : (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-surface-tertiary px-3 py-1.5 text-xs font-bold text-muted">
-              Not Configured
-            </span>
-          )
-        }
-        title="Stripe Payment Integration"
+        statusChip={stripeSaved ? ok("Configured") : <span className="ad-pill" data-tone="neutral">Not configured</span>}
+        title="Stripe payments"
       >
         <SettingsStepItem
-          description={
-            <>
-              From <strong>dashboard.stripe.com/apikeys</strong> — the key
-              starting with <code>pk_</code>. Safe to store here; it&rsquo;s
-              designed to be public.
-            </>
-          }
+          description={<>From <strong>dashboard.stripe.com/apikeys</strong>, the key starting with <code>pk_</code>. Safe to store here; it&rsquo;s designed to be public.</>}
           number={1}
-          title="Publishable Key"
+          title="Publishable key"
         >
-          <TextField
-            className="mb-3 flex flex-col gap-1.5 sm:max-w-md"
-            value={stripePubKey}
-            onChange={setStripePubKey}
-          >
-            <Label>Publishable Key (pk_live_… or pk_test_…)</Label>
-            <InputGroup>
-              <InputGroup.Input />
-            </InputGroup>
-          </TextField>
-          <Button variant="primary" onPress={handleSaveStripeKey}>
-            <Save className="size-4" />
-            <span>Save Publishable Key</span>
-          </Button>
+          <div className="ad-stack-sm" style={{ maxWidth: "28rem" }}>
+            <Input autoComplete="off" label="Publishable key" placeholder="pk_live_… or pk_test_…" value={stripePubKey} onChange={(e) => setStripePubKey(e.target.value)} />
+            <div className="ad-actions">
+              <Button onClick={handleSaveStripeKey}><Save aria-hidden="true" size={16} />Save publishable key</Button>
+            </div>
+          </div>
         </SettingsStepItem>
 
         <SettingsStepItem
-          description="These two never go in this form, and never should — they grant full account access and must live only in your hosting provider's environment variables, never in a browser-reachable database or bundle."
+          description="These never go in this form. They grant full account access and must live only in your hosting provider's environment variables."
           number={2}
-          title="Secret Key & Webhook Secret (server-side only)"
+          title="Secret key & webhook secret (server-side only)"
         >
-          <div className="rounded-2xl bg-surface-tertiary p-5">
-            <p className="m-0 mb-1.5 text-label text-muted">
-              1. Set <code>STRIPE_SECRET_KEY</code> (starts with{" "}
-              <code>sk_</code>) as an environment variable in your hosting
-              platform.
-            </p>
-            <p className="m-0 text-label text-muted">
-              2. Point your Stripe Webhook to <code>/api/stripe-webhook</code>,
-              listening for <code>payment_intent.succeeded</code>,{" "}
-              <code>payment_intent.payment_failed</code>,{" "}
-              <code>payment_intent.canceled</code>, and{" "}
-              <code>charge.refunded</code>, and set{" "}
-              <code>STRIPE_WEBHOOK_SECRET</code> the same way.
-            </p>
+          <div className="ad-note">
+            <p>1. Set <code>STRIPE_SECRET_KEY</code> (starts with <code>sk_</code>) as an environment variable in your hosting platform.</p>
+            <p>2. Point your Stripe webhook to <code>/api/stripe-webhook</code>, listening for <code>payment_intent.succeeded</code>, <code>payment_intent.payment_failed</code>, <code>payment_intent.canceled</code>, and <code>charge.refunded</code>, and set <code>STRIPE_WEBHOOK_SECRET</code> the same way.</p>
           </div>
         </SettingsStepItem>
       </AdminSettingsCard>
 
-      {/* Password */}
       <AdminSettingsCard
-        description={
-          isSupabaseConfigured()
-            ? "Update your administrator account password via Supabase Auth."
-            : "Local fallback access mode active."
-        }
+        description={isSupabaseConfigured() ? "Update your administrator password via Supabase Auth." : "Local fallback access mode active."}
         icon={KeyRound}
-        title="Admin Account Security"
+        title="Admin account security"
       >
         {isSupabaseConfigured() ? (
-          <div>
-            <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-              <TextField
-                className="flex flex-col gap-1.5"
-                type={showPw ? "text" : "password"}
-                value={newPw}
-                onChange={setNewPw}
-              >
-                <Label>New Password (min 8 chars)</Label>
-                <InputGroup>
-                  <InputGroup.Input />
-                  <InputGroup.Suffix>
-                    <button
-                      aria-label={showPw ? "Hide password" : "Show password"}
-                      tabIndex={-1}
-                      type="button"
-                      onClick={() => setShowPw((v) => !v)}
-                    >
-                      {showPw ? (
-                        <EyeOff className="size-4" />
-                      ) : (
-                        <Eye className="size-4" />
-                      )}
-                    </button>
-                  </InputGroup.Suffix>
-                </InputGroup>
-                <FieldError />
-              </TextField>
-              <TextField
-                className="flex flex-col gap-1.5"
-                type="password"
-                value={confirmPw}
-                onChange={setConfirmPw}
-              >
-                <Label>Confirm New Password</Label>
-                <InputGroup>
-                  <InputGroup.Input />
-                </InputGroup>
-                <FieldError />
-              </TextField>
+          <div className="ad-stack-sm">
+            <div className="ad-form-2">
+              <PasswordField autoComplete="new-password" description="At least 12 characters." label="New password" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
+              <PasswordField autoComplete="new-password" label="Confirm new password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
             </div>
-            <Button variant="primary" onPress={handleChangePw}>
-              <KeyRound className="size-4" />
-              <span>Update Password</span>
-            </Button>
+            <div className="ad-actions">
+              <Button onClick={handleChangePw}><KeyRound aria-hidden="true" size={16} />Update password</Button>
+            </div>
           </div>
         ) : (
-          <Alert status="warning">
-            <Alert.Indicator>
-              <TriangleAlert className="size-4" />
-            </Alert.Indicator>
-            <Alert.Content>
-              <Alert.Description>
-                Local development mode active. Set{" "}
-                <code>VITE_LOCAL_ADMIN_PW</code> in your <code>.env</code> file.
-              </Alert.Description>
-            </Alert.Content>
+          <Alert title="Local development mode" tone="warning">
+            Set <code>VITE_LOCAL_ADMIN_PW</code> in your <code>.env</code> file.
           </Alert>
         )}
       </AdminSettingsCard>

@@ -24,6 +24,8 @@ const compat = new FlatCompat({
 
 export default defineConfig([
   globalIgnores([
+    // Vendored Arc UI source (installed with the shadcn CLI); not linted here.
+    "src/components/arc/**",
     ".now/*",
     "**/*.css",
     "**/.changeset",

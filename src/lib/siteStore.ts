@@ -1,11 +1,11 @@
 import type { SiteAppearance, ColorScheme } from "@/types/domain";
+import { applyDesign } from "@/lib/designTokens";
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import {
   getClient,
-  sbFetchSiteSettings,
   sbUpsertSiteSettings,
   isSupabaseConfigured,
 } from "./supabase";
@@ -23,19 +23,20 @@ export interface Hero {
   description: string;
   primaryCta: string;
   secondaryCta: string;
-  mediaType?: "none" | "image" | "video" | string;
+  /** Optional hero background: a photo or a looping video. */
+  mediaType?: "none" | "image" | "video";
   mediaUrl?: string;
   mediaPoster?: string;
   mediaDim?: number;
+}
+export interface HowStep {
+  title: string;
+  body: string;
 }
 export interface TrustItem {
   icon: string;
   label: string;
   desc: string;
-}
-export interface HowItWorksStep {
-  title: string;
-  body: string;
 }
 export interface RepairBanner {
   eyebrow: string;
@@ -116,55 +117,9 @@ export interface CtaStrip {
   primaryCta: string;
   secondaryCta: string;
 }
-export interface AnnouncementBar {
-  enabled: boolean;
-  text: string;
-  link?: string;
-  linkLabel?: string;
-  tone?: "brand" | "dark" | "warning" | string;
-}
-export interface CustomPageBlock {
-  type: string;
-  text?: string;
-  size?: string;
-  url?: string;
-  alt?: string;
-  caption?: string;
-  poster?: string;
-  label?: string;
-  link?: string;
-  [k: string]: unknown;
-}
-export interface CustomPageDef {
-  slug: string;
-  title: string;
-  description?: string;
-  published?: boolean;
-  inMenu?: boolean;
-  blocks: CustomPageBlock[];
-}
-export interface PolicySection {
-  title: string;
-  body: string;
-}
-export interface PolicyContent {
-  title: string;
-  lead?: string;
-  sections: PolicySection[];
-}
-export interface SiteLayoutConfig {
-  home?: { order?: string[]; hidden?: string[] };
-  pages?: Record<string, { order?: string[]; hidden?: string[] }>;
-}
-export interface SiteMenuConfig {
-  order?: string[];
-  hidden?: string[];
-}
-export interface PageMetaOverride {
-  title?: string;
-  description?: string;
-}
-
+// Device taxonomy: Manufacturer → Device Type → Model → Generation(s).
+// Generation is optional per model — a model with no generations listed is
+// bookable on its own (e.g. a one-off product with no year/variant split).
 export interface DeviceModel {
   id: string;
   name: string;
@@ -175,6 +130,12 @@ export interface DeviceCategory {
   name: string;
   models: DeviceModel[];
 }
+/**
+ * Device types, in the order a repair counter meets them rather than
+ * alphabetically. The catalogue is stored brand-first, so the booking wizard
+ * derives its first step from this list and shows only the brands that make
+ * that kind of device.
+ */
 export const DEVICE_KIND_ORDER = [
   "Phone",
   "Tablet",
@@ -201,9 +162,9 @@ export interface HouseCallPricing {
 export interface SiteContent {
   brand: Brand;
   hero: Hero;
-  heroPoints: string[];
   trustItems: TrustItem[];
-  howItWorks: HowItWorksStep[];
+  heroPoints: string[];
+  howItWorks: HowStep[];
   repairBanner: RepairBanner;
   repairServices: SiteRepairService[];
   about: About;
@@ -215,16 +176,24 @@ export interface SiteContent {
   ctaStrip: CtaStrip;
   deviceManufacturers: DeviceManufacturer[];
   houseCallPricing: HouseCallPricing;
-  announcement: AnnouncementBar;
-  pages: CustomPageDef[];
-  copy: Record<string, string>;
-  textMap: Record<string, string>;
-  layout: SiteLayoutConfig;
-  menu: SiteMenuConfig;
-  faqs: Record<string, Array<{ q: string; a: string }>>;
-  policies: Record<string, PolicyContent>;
-  meta: Record<string, PageMetaOverride>;
-  rawExtraConfig: Record<string, unknown>;
+  /** Admin overrides for page text, keyed as in lib/copy.ts. */
+  copy?: Record<string, string>;
+  /** Admin-written replacements for the policy pages, keyed by path (for example "/returns"). */
+  policies?: Record<string, { title?: string; lead?: string; sections?: Array<{ title: string; body: string }> }>;
+  /** Replacement wording for any text on the site, matched by its exact original text. */
+  textMap?: Record<string, string>;
+  /** Which homepage blocks show, in what order, and which sections of other pages are hidden. */
+  layout?: { home?: { order?: string[]; hidden?: string[] }; pages?: Record<string, { hidden?: string[]; order?: string[] }> };
+  /** The banner above the header. */
+  /** Per-page tab titles and search descriptions, keyed by path. */
+  meta?: Record<string, { title?: string; description?: string }>;
+  /** Site menu: hide or reorder the built-in links (by path). */
+  menu?: { order?: string[]; hidden?: string[] };
+  /** Replacement FAQ lists for the Repairs and Protection pages. */
+  faqs?: Record<string, Array<{ q: string; a: string }>>;
+  announcement?: { enabled: boolean; text: string; link?: string; linkLabel?: string; tone?: "brand" | "dark" | "warning" };
+  /** Pages built in the design studio, served at /p/<slug>. */
+  pages?: Array<{ slug: string; title: string; description?: string; published?: boolean; inMenu?: boolean; blocks: Array<Record<string, string | undefined>> }>;
 }
 
 // ─── Default site content ──────────────────────────────────────────────────
@@ -242,15 +211,25 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       "Southern Illinois' premier device repair shop. Cracked screen? Dead battery? Water damage? We fix it fast \u2014 and stock everything you need to keep your devices safe after.",
     primaryCta: "Shop Accessories",
     secondaryCta: "Call 618-204-1497",
-    mediaType: "none",
-    mediaUrl: "",
-    mediaPoster: "",
-    mediaDim: 55,
   },
   heroPoints: [
     "90-day parts warranty",
     "Same-day on most repairs",
     "iPhone, Android and iPad",
+  ],
+  howItWorks: [
+    {
+      title: "Tell us what's wrong",
+      body: "Book online in about a minute, or walk in. The $35 bench fee covers a full diagnostic and is credited toward your repair.",
+    },
+    {
+      title: "Fixed fast",
+      body: "Most screens and batteries are done the same day, often in one to two hours.",
+    },
+    {
+      title: "Backed for 90 days",
+      body: "Every part we install carries a 90-day warranty. We quote before we start.",
+    },
   ],
   trustItems: [
     {
@@ -266,7 +245,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     {
       icon: "schedule",
       label: "$35 Bench Fee",
-      desc: "100% credited toward your repair",
+      desc: "Diagnostic fee credited toward repair",
     },
     {
       icon: "star",
@@ -274,25 +253,11 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       desc: "Hundreds of happy customers in Fairfield",
     },
   ],
-  howItWorks: [
-    {
-      title: "Tell us what's wrong",
-      body: "Book online in about a minute, or walk in. The $35 diagnostic bench fee is 100% credited toward your repair.",
-    },
-    {
-      title: "Fixed fast",
-      body: "Most screens and batteries are done the same day, often in one to two hours.",
-    },
-    {
-      title: "Backed for 90 days",
-      body: "Every part we install carries a 90-day warranty. We quote before we start.",
-    },
-  ],
   repairBanner: {
     eyebrow: "Device Repair",
     headline: "Broken device?\nWe fix it fast.",
     description:
-      "Cracked screens, dead batteries, water damage, charging ports, cameras \u2014 if it's broken, there's a good chance we can fix it same-day. $35 diagnostic bench fee — 100% credited toward your repair.",
+      "Cracked screens, dead batteries, water damage, charging ports, cameras \u2014 if it's broken, there's a good chance we can fix it same-day. $35 bench fee credited toward your repair.",
     primaryCta: "See Repair Services",
     secondaryCta: "Call First",
   },
@@ -373,10 +338,10 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
   about: {
     eyebrow: "About Us",
     headline: "Mobicare Device Recovery",
-    lead: "We're a locally-owned electronics repair shop in Fairfield, Illinois \u2014 serving Wayne County and surrounding areas since 2019 with honest, fast, quality repairs.",
+    lead: "We're a locally-owned electronics repair shop in Fairfield, Illinois \u2014 serving Wayne County and surrounding areas with honest, fast, quality repairs.",
     story: [
-      "Mobicare started in 2019 with a simple belief: your devices should be repaired by someone who actually cares about doing the job right. As a locally-owned shop, we're not chasing volume \u2014 we're building a reputation, one repair at a time.",
-      "We fix what the big-box stores won't touch, and we're honest about what can and can't be done. A $35 diagnostic bench fee covers full diagnostics on every device — and is 100% credited toward your repair — so you'll always know the cost before committing. No surprises, no hidden fees.",
+      "Mobicare started with a simple belief: your devices should be repaired by someone who actually cares about doing the job right. As a locally-owned shop, we're not chasing volume \u2014 we're building a reputation, one repair at a time.",
+      "We fix what the big-box stores won't touch, and we're honest about what can and can't be done. A $35 bench fee covers full diagnostics on every device and is credited toward your repair, so you'll always know the cost before committing. No surprises, no hidden fees.",
       "We're also expanding into accessories and certified pre-owned devices \u2014 making it easier for everyone in southern Illinois to get the gear they need at fair prices.",
     ],
   },
@@ -384,7 +349,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     name: "Mobicare Device Recovery",
     phone: "618-204-1497",
     email: "Mobicarehello@gmail.com",
-    address: "920 Commerce Drive, Suite 3, Fairfield, IL 62837",
+    address: "Fairfield, Illinois",
     city: "Fairfield, IL 62837",
     hours: [
       { days: "Monday \u2013 Friday", hours: "9:00 AM \u2013 6:00 PM" },
@@ -403,12 +368,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     bgElevated: "",
     fontFamily: "system",
     fontUrl: "",
-    colorScheme: "dark",
-    radiusControl: "",
-    radiusSurface: "",
-    texture: "none",
-    motion: "full",
-    spinner: "ring",
+    colorScheme: "light",
   },
   seo: {
     siteTitle: "Mobicare Device Recovery",
@@ -446,22 +406,6 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     primaryCta: "Book Appointment",
     secondaryCta: "Browse Shop",
   },
-  announcement: {
-    enabled: false,
-    text: "",
-    link: "",
-    linkLabel: "",
-    tone: "brand",
-  },
-  pages: [],
-  copy: {},
-  textMap: {},
-  layout: {},
-  menu: {},
-  faqs: {},
-  policies: {},
-  meta: {},
-  rawExtraConfig: {},
   deviceManufacturers: [
     {
       id: "apple",
@@ -1482,7 +1426,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
   },
 };
 
-// ─── Font presets (all 18+ NovaOps DesignStudio presets + custom URL) ───────
+// ─── Font presets ───────────────────────────────────────────────────────────
 export interface FontPreset {
   id: string;
   label: string;
@@ -1504,46 +1448,10 @@ export const FONT_PRESETS: FontPreset[] = [
     url: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
   },
   {
-    id: "geist",
-    label: "Geist",
-    css: '"Geist", system-ui, sans-serif',
-    url: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap",
-  },
-  {
-    id: "dm-sans",
-    label: "DM Sans",
-    css: '"DM Sans", system-ui, sans-serif',
-    url: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap",
-  },
-  {
-    id: "plus-jakarta",
-    label: "Plus Jakarta Sans",
-    css: '"Plus Jakarta Sans", system-ui, sans-serif',
-    url: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
-  },
-  {
-    id: "manrope",
-    label: "Manrope",
-    css: '"Manrope", system-ui, sans-serif',
-    url: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap",
-  },
-  {
-    id: "space-grotesk",
-    label: "Space Grotesk",
-    css: '"Space Grotesk", system-ui, sans-serif',
-    url: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap",
-  },
-  {
     id: "outfit",
     label: "Outfit",
     css: '"Outfit", system-ui, sans-serif',
     url: "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap",
-  },
-  {
-    id: "sora",
-    label: "Sora",
-    css: '"Sora", system-ui, sans-serif',
-    url: "https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap",
   },
   {
     id: "poppins",
@@ -1558,105 +1466,88 @@ export const FONT_PRESETS: FontPreset[] = [
     url: "https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap",
   },
   {
+    id: "dm-sans",
+    label: "DM Sans",
+    css: '"DM Sans", system-ui, sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap",
+  },
+  {
+    id: "geist",
+    label: "Geist",
+    css: '"Geist", system-ui, sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap",
+  },
+  {
+    id: "manrope",
+    label: "Manrope",
+    css: '"Manrope", sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap",
+  },
+  {
+    id: "space-grotesk",
+    label: "Space Grotesk",
+    css: '"Space Grotesk", sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap",
+  },
+  {
+    id: "plus-jakarta",
+    label: "Plus Jakarta Sans",
+    css: '"Plus Jakarta Sans", sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+  },
+  {
+    id: "sora",
+    label: "Sora",
+    css: '"Sora", sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap",
+  },
+  {
     id: "nunito",
     label: "Nunito",
-    css: '"Nunito", system-ui, sans-serif',
-    url: "https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap",
+    css: '"Nunito", sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap",
   },
   {
     id: "raleway",
     label: "Raleway",
-    css: '"Raleway", system-ui, sans-serif',
-    url: "https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap",
-  },
-  {
-    id: "work-sans",
-    label: "Work Sans",
-    css: '"Work Sans", system-ui, sans-serif',
-    url: "https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&display=swap",
-  },
-  {
-    id: "rubik",
-    label: "Rubik",
-    css: '"Rubik", system-ui, sans-serif',
-    url: "https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap",
-  },
-  {
-    id: "instrument-sans",
-    label: "Instrument Sans",
-    css: '"Instrument Sans", system-ui, sans-serif',
-    url: "https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap",
+    css: '"Raleway", sans-serif',
+    url: "https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap",
   },
   {
     id: "playfair",
     label: "Playfair Display (serif)",
-    css: '"Playfair Display", Georgia, serif',
-    url: "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&display=swap",
+    css: '"Playfair Display", serif',
+    url: "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap",
   },
   {
     id: "lora",
     label: "Lora (serif)",
-    css: '"Lora", Georgia, serif',
+    css: '"Lora", serif',
     url: "https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap",
   },
   {
     id: "fraunces",
     label: "Fraunces (serif)",
-    css: '"Fraunces", Georgia, serif',
-    url: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..800&display=swap",
+    css: '"Fraunces", serif',
+    url: "https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&display=swap",
   },
   {
     id: "jetbrains",
     label: "JetBrains Mono (mono)",
-    css: '"JetBrains Mono", ui-monospace, monospace',
+    css: '"JetBrains Mono", monospace',
     url: "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap",
   },
   { id: "custom", label: "Custom URL", css: "", url: "" },
 ];
 
-function extractFontFamilyFromUrl(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    const familyParam = parsed.searchParams.get("family");
-    if (familyParam) {
-      const name = familyParam.split(":")[0].replace(/\+/g, " ").trim();
-      if (name) return `"${name}", system-ui, sans-serif`;
-    }
-  } catch {
-    // Fallback regex for partial URLs
-    const match = /[?&]family=([^&:]+)/i.exec(url);
-    if (match?.[1]) {
-      const name = decodeURIComponent(match[1]).replace(/\+/g, " ").trim();
-      if (name) return `"${name}", system-ui, sans-serif`;
-    }
-  }
-  return null;
-}
-
-const CONTROL_RADIUS_MAP: Record<string, string> = {
-  sharp: "4px",
-  small: "8px",
-  medium: "12px",
-  large: "16px",
-  round: "999px",
-  pill: "999px",
-};
-
-const SURFACE_RADIUS_MAP: Record<string, { card: string; panel: string }> = {
-  sharp: { card: "4px", panel: "6px" },
-  small: { card: "10px", panel: "14px" },
-  medium: { card: "18px", panel: "24px" },
-  large: { card: "26px", panel: "34px", },
-  round: { card: "32px", panel: "40px" },
-};
-
-// ─── Apply appearance → HeroUI v3 & Tailwind CSS custom properties ──────────
+// ─── Apply appearance → HeroUI v3 CSS custom properties ────────────────────
 export function applyAppearance(a: Appearance) {
   if (typeof document === "undefined") return;
 
   const root = document.documentElement;
   const s = root.style;
 
+  // Resolve mode ('system' evaluation vs explicit 'dark' / 'light')
   let scheme = a.colorScheme || "dark";
 
   if (scheme === ("system" as unknown)) {
@@ -1667,23 +1558,13 @@ export function applyAppearance(a: Appearance) {
 
   const isDark = scheme === "dark";
 
+  // Set data-theme on <html> and sync dark/light classes for Hero UI & Tailwind
   root.setAttribute("data-theme", scheme);
   root.classList.toggle("dark", isDark);
   root.classList.toggle("light", !isDark);
   s.setProperty("color-scheme", scheme);
 
-  if (a.texture && a.texture !== "none") {
-    root.setAttribute("data-texture", a.texture);
-  } else {
-    root.removeAttribute("data-texture");
-  }
-
-  if (a.motion && a.motion !== "full") {
-    root.setAttribute("data-motion", a.motion);
-  } else {
-    root.removeAttribute("data-motion");
-  }
-
+  // Update PWA theme-color
   const themeMetaDark = document.querySelector(
     'meta[name="theme-color"][media*="dark"]',
   );
@@ -1696,6 +1577,7 @@ export function applyAppearance(a: Appearance) {
   if (themeMetaLight)
     themeMetaLight.setAttribute("content", !isDark ? "#F8FAF4" : "#09150E");
 
+  // If custom accent color override is provided, apply to Hero UI v3 and custom tokens
   const accent = a.accentColor?.trim();
   const accentDeep = a.accentColorDeep?.trim();
 
@@ -1706,11 +1588,10 @@ export function applyAppearance(a: Appearance) {
 
     s.setProperty("--accent", primaryColor);
     s.setProperty("--accent-foreground", foregroundColor);
-    s.setProperty("--accent-dim", primaryDeepColor);
-    s.setProperty("--accent-bright", primaryColor);
     s.setProperty("--link", primaryColor);
     s.setProperty("--focus", primaryColor);
 
+    // Hero UI v3 primary color mapping
     s.setProperty("--heroui-primary", primaryColor);
     s.setProperty("--heroui-primary-500", primaryColor);
     s.setProperty("--heroui-primary-600", primaryDeepColor);
@@ -1719,13 +1600,15 @@ export function applyAppearance(a: Appearance) {
     s.setProperty("--color-primary", primaryColor);
     s.setProperty("--color-primary-foreground", foregroundColor);
 
+    // Soft/tinted accent (icon chips, badges, hover backgrounds) has no
+    // dedicated admin field — derive it from the custom accent so it
+    // doesn't sit stuck at the stylesheet's default green next to a
+    // customized primary color.
     s.setProperty("--accent-soft", hexToRgba(primaryColor, isDark ? 0.16 : 0.12));
     s.setProperty("--accent-soft-foreground", primaryColor);
   } else {
     s.removeProperty("--accent");
     s.removeProperty("--accent-foreground");
-    s.removeProperty("--accent-dim");
-    s.removeProperty("--accent-bright");
     s.removeProperty("--link");
     s.removeProperty("--focus");
 
@@ -1740,6 +1623,12 @@ export function applyAppearance(a: Appearance) {
     s.removeProperty("--accent-soft-foreground");
   }
 
+  // Handle custom background overrides cleanly. These are picked by an
+  // admin looking at one specific theme, so they only apply in that same
+  // theme — otherwise a light-mode background pick permanently overrides
+  // dark mode's own palette (inline styles beat the stylesheet's
+  // [data-theme="dark"] rules regardless of what data-theme says), leaving
+  // dark-mode text rendered on a stuck-light background.
   if (!isDark && a.bgBase && a.bgBase.trim()) {
     s.setProperty("--background", a.bgBase);
     s.setProperty("--heroui-background", a.bgBase);
@@ -1760,49 +1649,28 @@ export function applyAppearance(a: Appearance) {
     s.removeProperty("--surface-secondary");
   }
 
-  // Radius overrides from NovaOps Design Studio
-  const ctrlRadius = a.radiusControl ? CONTROL_RADIUS_MAP[a.radiusControl] : undefined;
-  if (ctrlRadius) {
-    s.setProperty("--radius-field", ctrlRadius);
-    s.setProperty("--radius-pill", ctrlRadius);
-  } else {
-    s.removeProperty("--radius-field");
-    s.removeProperty("--radius-pill");
-  }
-
-  const surfRadius = a.radiusSurface ? SURFACE_RADIUS_MAP[a.radiusSurface] : undefined;
-  if (surfRadius) {
-    s.setProperty("--radius-card", surfRadius.card);
-    s.setProperty("--radius-panel", surfRadius.panel);
-  } else {
-    s.removeProperty("--radius-card");
-    s.removeProperty("--radius-panel");
-  }
-
   const preset = FONT_PRESETS.find((f) => f.id === a.fontFamily);
 
-  if (a.fontFamily === "custom" && a.fontUrl) {
-    injectFontLink("custom-font", a.fontUrl);
-    const extracted = extractFontFamilyFromUrl(a.fontUrl);
-    if (extracted) {
-      s.setProperty("--font-sans", extracted);
-    } else {
-      s.removeProperty("--font-sans");
-    }
-  } else if (preset && preset.css) {
+  if (preset && preset.css) {
     if (preset.url) injectFontLink(preset.id, preset.url);
     s.setProperty("--font-sans", preset.css);
   } else {
     s.removeProperty("--font-sans");
   }
+
+  if (a.fontFamily === "custom" && a.fontUrl) {
+    injectFontLink("custom-font", a.fontUrl);
+  }
+
+  applyDesign(a);
 }
 
+// The color scheme actually shown: this visitor's local override if they've
+// ever toggled it, otherwise the admin-configured site-wide default.
 export function getEffectiveColorScheme(state: {
   appearance: Appearance;
   viewerColorScheme: ColorScheme | null;
-  isPreview?: boolean;
 }): ColorScheme {
-  if (state.isPreview) return state.appearance.colorScheme;
   return state.viewerColorScheme ?? state.appearance.colorScheme;
 }
 
@@ -1830,11 +1698,7 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 function injectFontLink(id: string, url: string) {
-  const existing = document.getElementById(`font-link-${id}`) as HTMLLinkElement | null;
-  if (existing) {
-    if (existing.href !== url) existing.href = url;
-    return;
-  }
+  if (document.getElementById(`font-link-${id}`)) return;
   const link = document.createElement("link");
 
   link.id = `font-link-${id}`;
@@ -1843,114 +1707,60 @@ function injectFontLink(id: string, url: string) {
   document.head.appendChild(link);
 }
 
-const KNOWN_SITE_KEYS = new Set([
-  "brand",
-  "hero",
-  "heroPoints",
-  "trustItems",
-  "howItWorks",
-  "repairBanner",
-  "repairServices",
-  "about",
-  "business",
-  "appearance",
-  "seo",
-  "social",
-  "footer",
-  "ctaStrip",
-  "deviceManufacturers",
-  "houseCallPricing",
-  "announcement",
-  "pages",
-  "copy",
-  "textMap",
-  "layout",
-  "menu",
-  "faqs",
-  "policies",
-  "meta",
-]);
-
-export function extractRawExtraConfig(
-  dbContent: Record<string, unknown>,
-): Record<string, unknown> {
-  const extra: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(dbContent)) {
-    if (!KNOWN_SITE_KEYS.has(k)) {
-      extra[k] = v;
-    }
-  }
-  return extra;
-}
-
 const syncToSupabase = (state: SiteContent) => {
   const sb = isSupabaseConfigured() ? getClient() : null;
 
-  if (!sb) return;
-
-  void sb.auth.getSession().then(async ({ data }) => {
-    if (!data.session) return;
-    // Fetch latest DB row first so concurrent edits from NovaOps Website tab
-    // (pages, copy, textMap, layout, announcement, menu, faqs, policies, meta, etc.)
-    // are NEVER wiped when saving in MobiCare!
-    const latestDb = (await sbFetchSiteSettings()) || {};
-    const mergedPayload: Record<string, unknown> = {
-      ...latestDb,
-      ...(state.rawExtraConfig || {}),
-      announcement: latestDb.announcement ?? state.announcement,
-      pages: latestDb.pages ?? state.pages,
-      copy: latestDb.copy ?? state.copy,
-      textMap: latestDb.textMap ?? state.textMap,
-      layout: latestDb.layout ?? state.layout,
-      menu: latestDb.menu ?? state.menu,
-      faqs: latestDb.faqs ?? state.faqs,
-      policies: latestDb.policies ?? state.policies,
-      meta: latestDb.meta ?? state.meta,
-      heroPoints: latestDb.heroPoints ?? state.heroPoints,
-      howItWorks: latestDb.howItWorks ?? state.howItWorks,
+  if (sb) {
+    const cleanState: SiteContent = {
       brand: state.brand,
-      hero: {
-        ...((latestDb.hero as Record<string, unknown>) || {}),
-        ...state.hero,
-      },
+      hero: state.hero,
       trustItems: state.trustItems,
+      heroPoints: state.heroPoints,
+      howItWorks: state.howItWorks,
       repairBanner: state.repairBanner,
       repairServices: state.repairServices,
       about: state.about,
       business: state.business,
-      appearance: {
-        ...((latestDb.appearance as Record<string, unknown>) || {}),
-        ...state.appearance,
-      },
+      appearance: state.appearance,
       seo: state.seo,
       social: state.social,
       footer: state.footer,
       ctaStrip: state.ctaStrip,
       deviceManufacturers: state.deviceManufacturers,
       houseCallPricing: state.houseCallPricing,
+      ...(state.copy ? { copy: state.copy } : {}),
+      ...(state.policies ? { policies: state.policies } : {}),
+      ...(state.textMap ? { textMap: state.textMap } : {}),
+      ...(state.layout ? { layout: state.layout } : {}),
+      ...(state.meta ? { meta: state.meta } : {}),
+      ...(state.menu ? { menu: state.menu } : {}),
+      ...(state.faqs ? { faqs: state.faqs } : {}),
+      ...(state.announcement ? { announcement: state.announcement } : {}),
+      ...(state.pages ? { pages: state.pages } : {}),
     };
 
-    void sbUpsertSiteSettings(mergedPayload);
-  });
-};
-
-export function postDesignStudioMessage(payload: Record<string, unknown>) {
-  if (typeof window === "undefined" || window.parent === window) return;
-  try {
-    window.parent.postMessage({ source: "mobicare-site", ...payload }, "*");
-  } catch {
-    // Ignore cross-origin frame errors
+    void sb.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        void sbUpsertSiteSettings(
+          cleanState as unknown as Record<string, unknown>,
+        );
+      }
+    });
   }
-}
+};
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 interface SiteContentState extends SiteContent {
+  // This visitor's own light/dark override, kept ONLY in this browser's
+  // localStorage — never sent to Supabase, never touched by the
+  // site-content fetch/merge on load. `appearance.colorScheme` is the
+  // admin-configured site-wide DEFAULT (synced via Supabase, editable from
+  // Site Editor → Appearance); `viewerColorScheme` is this one visitor's
+  // personal override of that default, or null to just follow it. Without
+  // this split, the public header toggle and the shared site default were
+  // the same field, so every fresh page load re-fetched the site default
+  // from Supabase and silently stomped whatever the visitor had toggled.
   viewerColorScheme: ColorScheme | null;
-  isPreview: boolean;
-  previewMode: "edit" | "browse";
-  revision: number;
-  hydrateFromDb: (dbContent: Record<string, unknown>) => void;
-  applyDesignStudioPreview: (data: Record<string, any>) => void;
   updateBrand: (data: Partial<Brand>) => void;
   updateHero: (data: Partial<Hero>) => void;
   updateRepairBanner: (data: Partial<RepairBanner>) => void;
@@ -1960,6 +1770,7 @@ interface SiteContentState extends SiteContent {
   setColorScheme: (scheme: ColorScheme) => void;
   setViewerColorScheme: (scheme: ColorScheme | null) => void;
   updateTrustItem: (index: number, data: Partial<TrustItem>) => void;
+  setHomeCopy: (data: { heroPoints?: string[]; howItWorks?: HowStep[] }) => void;
   updateRepairService: (id: string, data: Partial<SiteRepairService>) => void;
   addRepairService: (service: SiteRepairService) => void;
   deleteRepairService: (id: string) => void;
@@ -1974,176 +1785,11 @@ interface SiteContentState extends SiteContent {
   resetToDefaults: () => void;
 }
 
-const LEGACY_ACCENTS = ["#13522b", "#0a3318", "#13522B", "#0A3318"];
-function sanitizeAppearance(app: Record<string, unknown>): Appearance {
-  const out = { ...DEFAULT_SITE_CONTENT.appearance, ...app } as Appearance;
-  if (LEGACY_ACCENTS.includes(String(out.accentColor ?? ""))) out.accentColor = "";
-  if (LEGACY_ACCENTS.includes(String(out.accentColorDeep ?? "")))
-    out.accentColorDeep = "";
-  return out;
-}
-
 export const useSiteStore = create<SiteContentState>()(
   persist(
     (set, get) => ({
       ...DEFAULT_SITE_CONTENT,
       viewerColorScheme: null,
-      isPreview: false,
-      previewMode: "browse",
-      revision: 0,
-
-      hydrateFromDb: (dbContent) => {
-        const cur = get();
-        const appearance = sanitizeAppearance({
-          ...(cur.appearance as unknown as Record<string, unknown>),
-          ...((dbContent.appearance as Record<string, unknown>) || {}),
-        });
-        const nextState: Partial<SiteContentState> = {
-          brand: {
-            ...DEFAULT_SITE_CONTENT.brand,
-            ...((dbContent.brand as Partial<Brand>) || {}),
-          },
-          hero: {
-            ...DEFAULT_SITE_CONTENT.hero,
-            ...((dbContent.hero as Partial<Hero>) || {}),
-          },
-          heroPoints: Array.isArray(dbContent.heroPoints)
-            ? (dbContent.heroPoints as string[])
-            : cur.heroPoints,
-          trustItems: Array.isArray(dbContent.trustItems)
-            ? (dbContent.trustItems as TrustItem[])
-            : cur.trustItems,
-          howItWorks: Array.isArray(dbContent.howItWorks)
-            ? (dbContent.howItWorks as HowItWorksStep[])
-            : cur.howItWorks,
-          repairBanner: {
-            ...DEFAULT_SITE_CONTENT.repairBanner,
-            ...((dbContent.repairBanner as Partial<RepairBanner>) || {}),
-          },
-          repairServices: Array.isArray(dbContent.repairServices)
-            ? (dbContent.repairServices as SiteRepairService[])
-            : cur.repairServices,
-          about: {
-            ...DEFAULT_SITE_CONTENT.about,
-            ...((dbContent.about as Partial<About>) || {}),
-          },
-          business: {
-            ...DEFAULT_SITE_CONTENT.business,
-            ...((dbContent.business as Partial<BusinessInfo>) || {}),
-          },
-          appearance,
-          seo: {
-            ...DEFAULT_SITE_CONTENT.seo,
-            ...((dbContent.seo as Partial<Seo>) || {}),
-          },
-          social: {
-            ...DEFAULT_SITE_CONTENT.social,
-            ...((dbContent.social as Partial<Social>) || {}),
-          },
-          footer: {
-            ...DEFAULT_SITE_CONTENT.footer,
-            ...((dbContent.footer as Partial<SiteFooter>) || {}),
-          },
-          ctaStrip: {
-            ...DEFAULT_SITE_CONTENT.ctaStrip,
-            ...((dbContent.ctaStrip as Partial<CtaStrip>) || {}),
-          },
-          deviceManufacturers: Array.isArray(dbContent.deviceManufacturers)
-            ? (dbContent.deviceManufacturers as DeviceManufacturer[])
-            : cur.deviceManufacturers,
-          houseCallPricing: {
-            ...DEFAULT_SITE_CONTENT.houseCallPricing,
-            ...((dbContent.houseCallPricing as Partial<HouseCallPricing>) || {}),
-          },
-          announcement: {
-            ...DEFAULT_SITE_CONTENT.announcement,
-            ...((dbContent.announcement as Partial<AnnouncementBar>) || {}),
-          },
-          pages: Array.isArray(dbContent.pages)
-            ? (dbContent.pages as CustomPageDef[])
-            : [],
-          copy: (dbContent.copy as Record<string, string>) || {},
-          textMap: (dbContent.textMap as Record<string, string>) || {},
-          layout: (dbContent.layout as SiteLayoutConfig) || {},
-          menu: (dbContent.menu as SiteMenuConfig) || {},
-          faqs:
-            (dbContent.faqs as Record<string, Array<{ q: string; a: string }>>) ||
-            {},
-          policies: (dbContent.policies as Record<string, PolicyContent>) || {},
-          meta: (dbContent.meta as Record<string, PageMetaOverride>) || {},
-          rawExtraConfig: extractRawExtraConfig(dbContent),
-          revision: cur.revision + 1,
-        };
-        set(nextState);
-        applyAppearance({
-          ...appearance,
-          colorScheme: getEffectiveColorScheme({
-            appearance,
-            viewerColorScheme: cur.viewerColorScheme,
-            isPreview: cur.isPreview,
-          }),
-        });
-      },
-
-      applyDesignStudioPreview: (data) => {
-        const cur = get();
-        const sec = (data.sections || {}) as Record<string, any>;
-        const nextAppearance = data.appearance
-          ? sanitizeAppearance({ ...cur.appearance, ...data.appearance })
-          : cur.appearance;
-        const nextHero: Hero = {
-          ...cur.hero,
-          ...(sec.hero || {}),
-          ...(data.hero || {}),
-        };
-        set({
-          isPreview: true,
-          previewMode: data.mode === "edit" ? "edit" : "browse",
-          appearance: nextAppearance,
-          hero: nextHero,
-          ...(sec.brand ? { brand: { ...cur.brand, ...sec.brand } } : {}),
-          ...(sec.business
-            ? { business: { ...cur.business, ...sec.business } }
-            : {}),
-          ...(sec.footer ? { footer: { ...cur.footer, ...sec.footer } } : {}),
-          ...(sec.about ? { about: { ...cur.about, ...sec.about } } : {}),
-          ...(sec.ctaStrip
-            ? { ctaStrip: { ...cur.ctaStrip, ...sec.ctaStrip } }
-            : {}),
-          ...(sec.repairBanner
-            ? { repairBanner: { ...cur.repairBanner, ...sec.repairBanner } }
-            : {}),
-          ...(Array.isArray(sec.heroPoints)
-            ? { heroPoints: sec.heroPoints }
-            : {}),
-          ...(Array.isArray(sec.trustItems)
-            ? { trustItems: sec.trustItems }
-            : {}),
-          ...(Array.isArray(sec.howItWorks)
-            ? { howItWorks: sec.howItWorks }
-            : {}),
-          ...(Array.isArray(sec.repairServices)
-            ? { repairServices: sec.repairServices }
-            : {}),
-          ...(data.copy ? { copy: data.copy } : {}),
-          ...(data.policies ? { policies: data.policies } : {}),
-          ...(data.textMap ? { textMap: data.textMap } : {}),
-          ...(data.layout ? { layout: data.layout } : {}),
-          ...(data.announcement
-            ? {
-                announcement: {
-                  ...DEFAULT_SITE_CONTENT.announcement,
-                  ...data.announcement,
-                },
-              }
-            : {}),
-          ...(Array.isArray(data.pages) ? { pages: data.pages } : {}),
-          ...(data.meta ? { meta: data.meta } : {}),
-          ...(data.menu ? { menu: data.menu } : {}),
-          ...(data.faqs ? { faqs: data.faqs } : {}),
-        });
-        applyAppearance(nextAppearance);
-      },
 
       updateBrand: (data) => {
         set({ brand: { ...get().brand, ...data } });
@@ -2169,28 +1815,29 @@ export const useSiteStore = create<SiteContentState>()(
         const next = { ...get().appearance, ...data };
 
         set({ appearance: next });
-        applyAppearance({
-          ...next,
-          colorScheme: get().viewerColorScheme ?? next.colorScheme,
-        });
+        applyAppearance(next);
         syncToSupabase(get());
       },
       setColorScheme: (scheme) => {
         const next = { ...get().appearance, colorScheme: scheme };
 
         set({ appearance: next });
-        applyAppearance({
-          ...next,
-          colorScheme: get().viewerColorScheme ?? scheme,
-        });
+        applyAppearance({ ...next, colorScheme: get().viewerColorScheme ?? scheme });
         syncToSupabase(get());
       },
+      // Purely local — this browser's personal light/dark override. Never
+      // synced to Supabase, so it can never be clobbered by a site-content
+      // fetch and never affects other visitors.
       setViewerColorScheme: (scheme) => {
         set({ viewerColorScheme: scheme });
         applyAppearance({
           ...get().appearance,
           colorScheme: scheme ?? get().appearance.colorScheme,
         });
+      },
+      setHomeCopy: (data) => {
+        set(data);
+        syncToSupabase(get());
       },
       updateTrustItem: (index, data) => {
         const items = [...get().trustItems];
@@ -2253,85 +1900,38 @@ export const useSiteStore = create<SiteContentState>()(
         syncToSupabase(get());
       },
       resetToDefaults: () => {
-        const cur = get();
-        const preserved: SiteContent = {
-          ...DEFAULT_SITE_CONTENT,
-          pages: cur.pages,
-          copy: cur.copy,
-          textMap: cur.textMap,
-          layout: cur.layout,
-          announcement: cur.announcement,
-          menu: cur.menu,
-          faqs: cur.faqs,
-          policies: cur.policies,
-          meta: cur.meta,
-          rawExtraConfig: cur.rawExtraConfig,
-        };
-        set({ ...preserved, revision: cur.revision + 1 });
-        applyAppearance({
-          ...DEFAULT_SITE_CONTENT.appearance,
-          colorScheme:
-            cur.viewerColorScheme ?? DEFAULT_SITE_CONTENT.appearance.colorScheme,
-        });
-        syncToSupabase(preserved);
+        set({ ...DEFAULT_SITE_CONTENT });
+        applyAppearance(DEFAULT_SITE_CONTENT.appearance);
+        syncToSupabase(DEFAULT_SITE_CONTENT);
       },
     }),
     {
       name: "mobicare-site-content",
-      partialize: (s) => {
-        // Never persist ephemeral DesignStudio iframe preview state!
-        if (s.isPreview) return {} as SiteContentState;
-        const {
-          isPreview: _ip,
-          previewMode: _pm,
-          revision: _rev,
-          hydrateFromDb: _h,
-          applyDesignStudioPreview: _a,
-          updateBrand: _u1,
-          updateHero: _u2,
-          updateRepairBanner: _u3,
-          updateAbout: _u4,
-          updateBusiness: _u5,
-          updateAppearance: _u6,
-          setColorScheme: _u7,
-          setViewerColorScheme: _u8,
-          updateTrustItem: _u9,
-          updateRepairService: _u10,
-          addRepairService: _u11,
-          deleteRepairService: _u12,
-          setRepairServices: _u13,
-          setDeviceManufacturers: _u14,
-          updateHouseCallPricing: _u15,
-          updateBusinessHour: _u16,
-          updateSeo: _u17,
-          updateSocial: _u18,
-          updateFooter: _u19,
-          updateCtaStrip: _u20,
-          resetToDefaults: _u21,
-          ...persisted
-        } = s;
-        return persisted as unknown as SiteContentState;
-      },
-      version: 4,
+      version: 3,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== "object")
           return persistedState as SiteContent;
         const state = { ...(persistedState as Record<string, unknown>) };
 
         if (state.appearance && typeof state.appearance === "object") {
-          state.appearance = sanitizeAppearance(
-            state.appearance as Record<string, unknown>,
-          );
-        }
+          const app = { ...(state.appearance as Record<string, unknown>) };
 
-        if (state.business && typeof state.business === "object") {
-          const biz = { ...(state.business as Record<string, unknown>) };
-          if (biz.address === "Fairfield, Illinois" || !biz.address) {
-            biz.address = DEFAULT_SITE_CONTENT.business.address;
+          if (app.accentColor === "#13522B" || app.accentColor === "#0A3318") {
+            app.accentColor = "";
           }
-          state.business = biz;
+          if (
+            app.accentColorDeep === "#0A3318" ||
+            app.accentColorDeep === "#13522B"
+          ) {
+            app.accentColorDeep = "";
+          }
+          state.appearance = app;
         }
 
+        // v2 → v3: deviceTypes (flat 2-level) replaced by deviceManufacturers
+        // (Manufacturer → Category → Model → Generation). Old shape doesn't
+        // convert cleanly, so drop it and let the new default seed data
+        // through instead of leaving orphaned/incompatible data around.
         delete state.deviceTypes;
 
         return state as unknown as SiteContent;
@@ -2343,9 +1943,13 @@ export const useSiteStore = create<SiteContentState>()(
 // Bootstrap initial appearance on module load.
 if (typeof document !== "undefined") {
   const bootstrapState = useSiteStore.getState();
-  const bootstrapAppearance = sanitizeAppearance(
-    bootstrapState.appearance as unknown as Record<string, unknown>,
-  );
+  const bootstrapAppearance = { ...bootstrapState.appearance };
+  const LEGACY = ["#13522B", "#0A3318", "#13522b", "#0a3318"];
+
+  if (LEGACY.includes(bootstrapAppearance.accentColor))
+    bootstrapAppearance.accentColor = "";
+  if (LEGACY.includes(bootstrapAppearance.accentColorDeep))
+    bootstrapAppearance.accentColorDeep = "";
   applyAppearance({
     ...bootstrapAppearance,
     colorScheme: getEffectiveColorScheme(bootstrapState),
