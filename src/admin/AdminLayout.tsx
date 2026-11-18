@@ -37,8 +37,8 @@ export default function AdminLayout() {
         <AdminSidebarContent />
       </aside>
 
-      <Drawer>
-        <Drawer.Backdrop isOpen={mobileOpen} onOpenChange={setMobileOpen}>
+      <Drawer isOpen={mobileOpen} onOpenChange={setMobileOpen}>
+        <Drawer.Backdrop className="z-[100]">
           <Drawer.Content className="w-[min(88vw,320px)]" placement="left">
             <Drawer.Dialog>
               <AdminSidebarContent onNavigate={() => setMobileOpen(false)} />

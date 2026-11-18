@@ -2,7 +2,7 @@ import { ExternalLink, MapPin, Navigation } from "lucide-react";
 import { Button, Modal } from "@heroui/react";
 
 const STORE_ADDRESS = "920 Commerce Drive, Suite 3, Fairfield, IL 62837";
-const GOOGLE_MAPS_URL = "https://www.google.com/maps/search/?api=1&query=Mobicare+Fairfield+IL";
+const GOOGLE_MAPS_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(STORE_ADDRESS)}`;
 const APPLE_MAPS_URL = `https://maps.apple.com/?address=${encodeURIComponent(STORE_ADDRESS)}`;
 
 interface LocationDirectionsDialogProps {
@@ -15,29 +15,27 @@ export default function LocationDirectionsDialog({
   onOpenChange,
 }: LocationDirectionsDialogProps) {
   return (
-    <Modal>
-      <Modal.Backdrop
-        isOpen={isOpen}
-        onOpenChange={onOpenChange}
-        className="z-[120]"
-      >
-        <Modal.Container size="md">
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+      <Modal.Backdrop className="z-[120]">
+        <Modal.Container className="pb-24 lg:pb-0" scroll="inside" size="md">
           <Modal.Dialog>
             <Modal.Header>
               <div>
                 <Modal.Heading>Get Directions</Modal.Heading>
-                <p className="m-0 text-sm text-muted">Mobicare Device Recovery</p>
+                <p className="m-0 text-sm text-muted">
+                  Mobicare Device Recovery
+                </p>
               </div>
               <Modal.CloseTrigger />
             </Modal.Header>
             <Modal.Body className="flex flex-col gap-4">
               <div className="overflow-hidden rounded-2xl border border-border bg-surface-secondary">
                 <iframe
-                  title="Mobicare Fairfield map"
-                  src="https://www.google.com/maps?q=Mobicare+Fairfield+IL&output=embed"
                   className="h-56 w-full border-0"
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
+                  src="https://www.google.com/maps?q=920+Commerce+Drive+Suite+3+Fairfield+IL+62837&output=embed"
+                  title="Mobicare Fairfield map"
                 />
               </div>
               <div className="rounded-2xl bg-surface-secondary p-4">
@@ -57,7 +55,9 @@ export default function LocationDirectionsDialog({
                 <Button
                   fullWidth
                   variant="primary"
-                  onPress={() => window.open(GOOGLE_MAPS_URL, "_blank", "noopener,noreferrer")}
+                  onPress={() =>
+                    window.open(GOOGLE_MAPS_URL, "_blank", "noopener,noreferrer")
+                  }
                 >
                   <Navigation className="size-4" />
                   Google Maps
@@ -65,7 +65,9 @@ export default function LocationDirectionsDialog({
                 <Button
                   fullWidth
                   variant="outline"
-                  onPress={() => window.open(APPLE_MAPS_URL, "_blank", "noopener,noreferrer")}
+                  onPress={() =>
+                    window.open(APPLE_MAPS_URL, "_blank", "noopener,noreferrer")
+                  }
                 >
                   <ExternalLink className="size-4" />
                   Apple Maps

@@ -58,10 +58,17 @@ export default function Orders() {
   const attentionOrders = orders.filter((o) => ["cancelled", "refunded", "payment_failed"].includes(o.status)).length;
   const grossTotal = orders.filter((o) => !["cancelled", "refunded", "payment_failed"].includes(o.status)).reduce((sum, o) => sum + (o.total || 0), 0);
 
-  const handleStatusChange = (orderId: string, status: string) => {
-    updateOrderStatus(orderId, status);
-    addToast(`Order #${orderId.slice(0, 8).toUpperCase()} updated to "${status}"`, "success");
-    if (selected?.id === orderId) setSelected((s) => (s ? { ...s, status } : s));
+  const handleStatusChange = async (orderId: string, status: string) => {
+    try {
+      await updateOrderStatus(orderId, status);
+      addToast(`Order #${orderId.slice(0, 8).toUpperCase()} updated to "${status}"`, "success");
+      if (selected?.id === orderId) setSelected((s) => (s ? { ...s, status } : s));
+    } catch (err) {
+      addToast(
+        err instanceof Error ? err.message : "Could not update order status.",
+        "error",
+      );
+    }
   };
 
   const StatusSelect = ({ order }: { order: Order }) => {
@@ -136,7 +143,7 @@ export default function Orders() {
       </div>
 
       <Modal isOpen={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <Modal.Backdrop><Modal.Container scroll="inside" size="lg"><Modal.Dialog>{selected && <>
+        <Modal.Backdrop className="z-[100]"><Modal.Container className="pb-24 lg:pb-0" scroll="inside" size="lg"><Modal.Dialog>{selected && <>
           <Modal.Header><div><Chip className="mb-1.5" color="accent" size="sm" variant="soft"><Chip.Label>Order Inspector</Chip.Label></Chip><Modal.Heading>Order #{selected.id.slice(0, 8).toUpperCase()}</Modal.Heading><p className="m-0 text-sm text-muted">Placed on {selected.createdAt ? new Date(selected.createdAt).toLocaleString() : "—"}</p></div><Modal.CloseTrigger><X className="size-4" /></Modal.CloseTrigger></Modal.Header>
           <Modal.Body className="flex flex-col gap-6">
             <div className="max-w-[260px]"><StatusSelect order={selected} /></div>

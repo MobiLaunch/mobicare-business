@@ -35,6 +35,7 @@ import {
   Share2,
   Shield,
   Smartphone,
+  Sparkles,
   Tablet,
   Trash2,
   Tv,
@@ -47,6 +48,7 @@ import {
   Zap,
 } from "lucide-react";
 import {
+  Alert,
   Button,
   Chip,
   ColorField,
@@ -70,7 +72,9 @@ import {
   FONT_PRESETS,
   useSiteStore,
 } from "@/lib/siteStore";
+import { iconFor } from "@/lib/icons";
 import { useToastStore } from "@/lib/store";
+import { isSupabaseConfigured, sbUploadSiteMedia } from "@/lib/supabase";
 import AdminPageHeader from "@/admin/components/AdminPageHeader";
 import AdminConfirmDialog from "@/admin/components/AdminConfirmDialog";
 
@@ -133,7 +137,7 @@ const SERVICE_ICONS: { id: string; icon: LucideIcon }[] = [
   { id: "memory", icon: MemoryStick },
 ];
 const serviceIconFor = (id: string) =>
-  SERVICE_ICONS.find((o) => o.id === id)?.icon || Wrench;
+  SERVICE_ICONS.find((o) => o.id === id)?.icon || iconFor(id);
 
 // ─── Small shared building blocks ──────────────────────────────────────────
 function TabIntro({
@@ -227,20 +231,30 @@ function BrandTab() {
   const [la, setLa] = useState({ ...appearance });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleLogoUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
 
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      addToast("Logo must be under 2MB", "error");
+    if (file.size > 4 * 1024 * 1024) {
+      addToast("Logo must be under 4MB", "error");
 
       return;
+    }
+    if (isSupabaseConfigured()) {
+      const res = await sbUploadSiteMedia(file);
+      if (res.url) {
+        setLa((a) => ({ ...a, logoUrl: res.url || "" }));
+        addToast("Logo uploaded to cloud media — save to apply", "success");
+        return;
+      }
+      addToast(res.error || "Cloud upload unavailable, falling back to inline image", "info");
     }
     const reader = new FileReader();
 
     reader.onload = (ev) => {
       setLa((a) => ({ ...a, logoUrl: String(ev.target?.result || "") }));
-      addToast("Logo loaded", "info");
+      addToast("Logo loaded — save to apply", "info");
     };
     reader.readAsDataURL(file);
   };
@@ -1722,14 +1736,24 @@ function AppearanceTab() {
     setL((p) => ({ ...p, [k]: v }));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleLogoUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
 
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      addToast("Logo must be under 2MB", "error");
+    if (file.size > 4 * 1024 * 1024) {
+      addToast("Logo must be under 4MB", "error");
 
       return;
+    }
+    if (isSupabaseConfigured()) {
+      const res = await sbUploadSiteMedia(file);
+      if (res.url) {
+        set("logoUrl", res.url);
+        addToast("Logo uploaded to cloud media — save to apply", "success");
+        return;
+      }
+      addToast(res.error || "Cloud upload unavailable, falling back to inline image", "info");
     }
     const reader = new FileReader();
 
@@ -2472,9 +2496,9 @@ function DevicesTab() {
       <Divider />
       <SaveButton label="Save Devices" onClick={save} />
 
-      <Modal>
-        <Modal.Backdrop isOpen={modalOpen} onOpenChange={setModalOpen}>
-          <Modal.Container size="sm">
+      <Modal isOpen={modalOpen} onOpenChange={setModalOpen}>
+        <Modal.Backdrop className="z-[100]">
+          <Modal.Container className="pb-24 lg:pb-0" scroll="inside" size="sm">
             <Modal.Dialog>
               <Modal.Header>
                 <Modal.Heading>
@@ -2527,6 +2551,7 @@ function DevicesTab() {
 // ─── Main ───────────────────────────────────────────────────────────────
 export default function SiteContent() {
   const resetToDefaults = useSiteStore((s) => s.resetToDefaults);
+  const revision = useSiteStore((s) => s.revision);
   const addToast = useToastStore((s) => s.add);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(TABS[0].id);
@@ -2549,6 +2574,25 @@ export default function SiteContent() {
         eyebrow="Storefront Customizer"
         title="Live Site Content & Branding"
       />
+
+      <Alert
+        className="mb-6 rounded-2xl border border-accent/20 bg-accent-soft/40"
+        status="default"
+      >
+        <Alert.Indicator>
+          <Sparkles className="size-4 text-accent" />
+        </Alert.Indicator>
+        <Alert.Content>
+          <Alert.Description>
+            <strong>Unified with NovaOps Website Studio:</strong> Theme presets,
+            section ordering, announcement bars, custom pages (
+            <code>/p/:slug</code>), policies, and live click-to-edit preview
+            sync directly with NovaOps&rsquo;s <strong>Website</strong> tab via{" "}
+            <code>site_settings(&apos;mobicare-config&apos;)</code>. Saving in
+            either app preserves all settings non-destructively.
+          </Alert.Description>
+        </Alert.Content>
+      </Alert>
 
       {/* Mobile section picker — the sidebar tab rail below only works at
           lg+ width (see Tabs.ListContainer's lg:flex below); on narrow
@@ -2600,18 +2644,20 @@ export default function SiteContent() {
 
         {TABS.map((tab) => (
           <Tabs.Panel key={tab.id} className="flex-1 p-4 sm:p-6 lg:p-8" id={tab.id}>
-            {tab.id === "brand" && <BrandTab />}
-            {tab.id === "hero" && <HeroTab />}
-            {tab.id === "trust" && <TrustTab />}
-            {tab.id === "cta" && <CtaTab />}
-            {tab.id === "services" && <ServicesTab />}
-            {tab.id === "devices" && <DevicesTab />}
-            {tab.id === "about" && <AboutTab />}
-            {tab.id === "business" && <BusinessTab />}
-            {tab.id === "footer" && <FooterTab />}
-            {tab.id === "social" && <SocialTab />}
-            {tab.id === "seo" && <SeoTab />}
-            {tab.id === "appearance" && <AppearanceTab />}
+            <div key={`${tab.id}-${revision}`}>
+              {tab.id === "brand" && <BrandTab />}
+              {tab.id === "hero" && <HeroTab />}
+              {tab.id === "trust" && <TrustTab />}
+              {tab.id === "cta" && <CtaTab />}
+              {tab.id === "services" && <ServicesTab />}
+              {tab.id === "devices" && <DevicesTab />}
+              {tab.id === "about" && <AboutTab />}
+              {tab.id === "business" && <BusinessTab />}
+              {tab.id === "footer" && <FooterTab />}
+              {tab.id === "social" && <SocialTab />}
+              {tab.id === "seo" && <SeoTab />}
+              {tab.id === "appearance" && <AppearanceTab />}
+            </div>
           </Tabs.Panel>
         ))}
       </Tabs>

@@ -24,12 +24,25 @@ import {
   TextField,
 } from "@heroui/react";
 
-import { useAdminStore, useProductStore, useToastStore } from "@/lib/store";
-import { getStripePublishableKey, isStripeConfigured } from "@/lib/config";
+import {
+  SEED_CATEGORIES,
+  SEED_PRODUCTS,
+  useAdminStore,
+  useProductStore,
+  useToastStore,
+} from "@/lib/store";
+import {
+  getEmailJSConfig,
+  getStripePublishableKey,
+  isStripeConfigured,
+  setRuntimeShopConfig,
+  useRuntimeShopConfig,
+} from "@/lib/config";
 import {
   isSupabaseConfigured,
   resetClient,
   sbSeedInitialData,
+  sbUpsertShopConfig,
   testConnection,
 } from "@/lib/supabase";
 import AdminPageHeader from "@/admin/components/AdminPageHeader";
@@ -45,8 +58,7 @@ export default function Settings() {
   const addToast = useToastStore((s) => s.add);
   const storeRefresh = useProductStore((s) => s.refresh);
   const usingSupabase = useProductStore((s) => s.usingSupabase);
-  const storeProducts = useProductStore((s) => s.products);
-  const storeCategories = useProductStore((s) => s.categories);
+  const runtimeShopConfig = useRuntimeShopConfig();
 
   // Supabase creds
   const [sbUrl, setSbUrl] = useState(localStorage.getItem("sb_url") || "");
@@ -61,16 +73,33 @@ export default function Settings() {
   const [sqlCopied, setSqlCopied] = useState(false);
 
   // EmailJS
+  const initialEjs = getEmailJSConfig();
   const [emailjs, setEmailjs] = useState({
-    serviceId: localStorage.getItem("ejs_service") || "",
-    bookingTemplate: localStorage.getItem("ejs_booking") || "",
-    orderTemplate: localStorage.getItem("ejs_order") || "",
-    publicKey: localStorage.getItem("ejs_pubkey") || "",
+    serviceId: initialEjs.serviceId || "",
+    bookingTemplate: initialEjs.bookingTemplateId || "",
+    orderTemplate: initialEjs.orderTemplateId || "",
+    publicKey: initialEjs.publicKey || "",
   });
 
   // Stripe
   const [stripePubKey, setStripePubKey] = useState(getStripePublishableKey());
   const [stripeSaved, setStripeSaved] = useState(isStripeConfigured());
+
+  // Sync loaded shop-config values when local overrides aren't present
+  useEffect(() => {
+    const nextStripe = getStripePublishableKey();
+    if (nextStripe && !stripePubKey) {
+      setStripePubKey(nextStripe);
+      setStripeSaved(true);
+    }
+    const ejs = getEmailJSConfig();
+    setEmailjs((prev) => ({
+      serviceId: prev.serviceId || ejs.serviceId || "",
+      bookingTemplate: prev.bookingTemplate || ejs.bookingTemplateId || "",
+      orderTemplate: prev.orderTemplate || ejs.orderTemplateId || "",
+      publicKey: prev.publicKey || ejs.publicKey || "",
+    }));
+  }, [runtimeShopConfig]);
 
   // Password
   const [newPw, setNewPw] = useState("");
@@ -128,7 +157,7 @@ export default function Settings() {
       return;
     }
     setSeeding(true);
-    const result = await sbSeedInitialData(storeProducts, storeCategories);
+    const result = await sbSeedInitialData(SEED_PRODUCTS, SEED_CATEGORIES);
 
     setSeeding(false);
     if (result.ok) {
@@ -151,15 +180,25 @@ export default function Settings() {
       });
   };
 
-  const handleSaveEmailjs = () => {
-    localStorage.setItem("ejs_service", emailjs.serviceId);
-    localStorage.setItem("ejs_booking", emailjs.bookingTemplate);
-    localStorage.setItem("ejs_order", emailjs.orderTemplate);
-    localStorage.setItem("ejs_pubkey", emailjs.publicKey);
+  const handleSaveEmailjs = async () => {
+    const cleaned = {
+      serviceId: emailjs.serviceId.trim(),
+      bookingTemplate: emailjs.bookingTemplate.trim(),
+      orderTemplate: emailjs.orderTemplate.trim(),
+      publicKey: emailjs.publicKey.trim(),
+    };
+    localStorage.setItem("ejs_service", cleaned.serviceId);
+    localStorage.setItem("ejs_booking", cleaned.bookingTemplate);
+    localStorage.setItem("ejs_order", cleaned.orderTemplate);
+    localStorage.setItem("ejs_pubkey", cleaned.publicKey);
+    setRuntimeShopConfig({ emailjs: cleaned });
+    if (isSupabaseConfigured()) {
+      await sbUpsertShopConfig({ emailjs: cleaned });
+    }
     addToast("EmailJS settings saved and ready for bookings.", "success");
   };
 
-  const handleSaveStripeKey = () => {
+  const handleSaveStripeKey = async () => {
     const trimmed = stripePubKey.trim();
 
     if (trimmed && !trimmed.startsWith("pk_")) {
@@ -171,7 +210,11 @@ export default function Settings() {
       return;
     }
     localStorage.setItem("stripe_publishable_key", trimmed);
-    setStripeSaved(!!trimmed);
+    setRuntimeShopConfig({ stripePublishableKey: trimmed });
+    if (isSupabaseConfigured()) {
+      await sbUpsertShopConfig({ stripePublishableKey: trimmed });
+    }
+    setStripeSaved(Boolean(trimmed || getStripePublishableKey()));
     addToast("Stripe publishable key saved", "success");
   };
 
@@ -186,8 +229,8 @@ export default function Settings() {
 
       return;
     }
-    if (newPw.length < 12) {
-      addToast("Password must be at least 12 characters", "error");
+    if (newPw.length < 8) {
+      addToast("Password must be at least 8 characters", "error");
 
       return;
     }
@@ -243,7 +286,7 @@ export default function Settings() {
           title="Execute Database Schema SQL"
         >
           <div className="mb-3 flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setSqlOpen((o) => !o)}>
+            <Button variant="outline" onPress={() => setSqlOpen((o) => !o)}>
               {sqlOpen ? (
                 <ChevronUp className="size-4" />
               ) : (
@@ -251,7 +294,7 @@ export default function Settings() {
               )}
               <span>{sqlOpen ? "Collapse SQL Schema" : "View SQL Schema"}</span>
             </Button>
-            <Button variant="primary" onClick={handleCopySQL}>
+            <Button variant="primary" onPress={handleCopySQL}>
               <Copy className="size-4" />
               <span>
                 {sqlCopied ? "Copied to Clipboard!" : "Copy SQL Script"}
@@ -298,14 +341,14 @@ export default function Settings() {
             </TextField>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <Button variant="outline" onClick={handleSaveSupabase}>
+            <Button variant="outline" onPress={handleSaveSupabase}>
               <Save className="size-4" />
               <span>Save API Credentials</span>
             </Button>
             <Button
               isDisabled={testing}
               variant="primary"
-              onClick={handleTestConnection}
+              onPress={handleTestConnection}
             >
               <Database className="size-4" />
               <span>{testing ? "Testing Connection…" : "Test Connection"}</span>
@@ -334,7 +377,7 @@ export default function Settings() {
         </SettingsStepItem>
 
         <SettingsStepItem
-          description="Push your local products and categories up to Supabase database tables."
+          description="Push MobiCare's starter sample products and categories up to your Supabase database tables."
           number={3}
           title="Seed Initial Catalog Data"
         >
@@ -342,13 +385,13 @@ export default function Settings() {
             <Button
               isDisabled={seeding || !isSupabaseConfigured()}
               variant="primary"
-              onClick={handleSeedData}
+              onPress={handleSeedData}
             >
               <CloudUpload className="size-4" />
               <span>
                 {seeding
                   ? "Seeding Catalog…"
-                  : `Seed ${storeProducts.length} Products & ${storeCategories.length} Categories`}
+                  : `Seed ${SEED_PRODUCTS.length} Products & ${SEED_CATEGORIES.length} Categories`}
               </span>
             </Button>
             {!isSupabaseConfigured() && (
@@ -419,7 +462,7 @@ export default function Settings() {
               </InputGroup>
             </TextField>
           </div>
-          <Button variant="primary" onClick={handleSaveEmailjs}>
+          <Button variant="primary" onPress={handleSaveEmailjs}>
             <Save className="size-4" />
             <span>Save EmailJS Settings</span>
           </Button>
@@ -464,7 +507,7 @@ export default function Settings() {
               <InputGroup.Input />
             </InputGroup>
           </TextField>
-          <Button variant="primary" onClick={handleSaveStripeKey}>
+          <Button variant="primary" onPress={handleSaveStripeKey}>
             <Save className="size-4" />
             <span>Save Publishable Key</span>
           </Button>
@@ -512,7 +555,7 @@ export default function Settings() {
                 value={newPw}
                 onChange={setNewPw}
               >
-                <Label>New Password (min 12 chars)</Label>
+                <Label>New Password (min 8 chars)</Label>
                 <InputGroup>
                   <InputGroup.Input />
                   <InputGroup.Suffix>
@@ -545,7 +588,7 @@ export default function Settings() {
                 <FieldError />
               </TextField>
             </div>
-            <Button variant="primary" onClick={handleChangePw}>
+            <Button variant="primary" onPress={handleChangePw}>
               <KeyRound className="size-4" />
               <span>Update Password</span>
             </Button>
