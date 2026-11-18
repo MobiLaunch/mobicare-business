@@ -45,6 +45,9 @@ export default function Categories() {
 
   const topLevel = categories.filter((c) => !c.parentId);
   const subcategoriesOf = (id: string) => categories.filter((c) => c.parentId === id);
+  const editingHasChildren = editingId
+    ? subcategoriesOf(editingId).length > 0
+    : false;
   const iconResults = searchIcons(iconQuery);
 
   const openAdd = (parentId: string | null = null) => {
@@ -60,43 +63,69 @@ export default function Categories() {
     setModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (!form.name) {
+  const handleSave = async () => {
+    if (!form.name.trim()) {
       addToast("Category name is required", "error");
 
       return;
     }
-    if (editingId) {
-      updateCategory(editingId, form);
-      addToast("Category updated successfully", "success");
-    } else {
-      const newId =
-        form.id || form.name.toLowerCase().replace(/\s+/g, "-");
-
-      if (categories.some((c) => c.id === newId)) {
-        addToast(`A category with id "${newId}" already exists`, "error");
-
-        return;
-      }
-      addCategory(form);
-      addToast(form.parentId ? "New subcategory created" : "New category created", "success");
-    }
-    setModalOpen(false);
-  };
-
-  const handleDelete = (id: string) => {
-    const count = products.filter((p) => p.category === id).length;
-
-    if (count > 0) {
+    if (editingHasChildren && form.parentId) {
       addToast(
-        `Cannot delete — ${count} products rely on this category`,
+        "A category that already has subcategories cannot be nested under another category.",
         "error",
       );
 
       return;
     }
-    deleteCategory(id);
-    addToast("Category removed", "info");
+
+    try {
+      if (editingId) {
+        await updateCategory(editingId, { ...form, name: form.name.trim() });
+        addToast("Category updated successfully", "success");
+      } else {
+        const newId =
+          form.id?.trim() || form.name.trim().toLowerCase().replace(/\s+/g, "-");
+
+        if (categories.some((c) => c.id === newId)) {
+          addToast(`A category with id "${newId}" already exists`, "error");
+
+          return;
+        }
+        await addCategory({ ...form, id: newId, name: form.name.trim() });
+        addToast(
+          form.parentId ? "New subcategory created" : "New category created",
+          "success",
+        );
+      }
+      setModalOpen(false);
+    } catch (err) {
+      addToast(
+        err instanceof Error ? err.message : "Failed to save category.",
+        "error",
+      );
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const count = products.filter((p) => p.category === id).length;
+
+    if (count > 0) {
+      addToast(
+        `Cannot delete — ${count} product${count !== 1 ? "s" : ""} rely on this category`,
+        "error",
+      );
+
+      return;
+    }
+    try {
+      await deleteCategory(id);
+      addToast("Category removed", "info");
+    } catch (err) {
+      addToast(
+        err instanceof Error ? err.message : "Failed to delete category.",
+        "error",
+      );
+    }
   };
 
   return (
@@ -115,11 +144,14 @@ export default function Categories() {
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {topLevel.map((cat) => {
+          const subs = subcategoriesOf(cat.id);
+          const childIds = subs.map((s) => s.id);
           const count = products.filter(
-            (p) => p.category === cat.id && p.active,
+            (p) =>
+              (p.category === cat.id || childIds.includes(p.category)) &&
+              p.active,
           ).length;
           const CatIcon = iconFor(cat.icon);
-          const subs = subcategoriesOf(cat.id);
 
           return (
             <div
@@ -162,6 +194,9 @@ export default function Categories() {
                   <div className="mb-4 flex flex-col gap-1.5 border-t border-border pt-3">
                     {subs.map((sub) => {
                       const SubIcon = iconFor(sub.icon);
+                      const subCount = products.filter(
+                        (p) => p.category === sub.id && p.active,
+                      ).length;
 
                       return (
                         <div key={sub.id} className="flex items-center gap-2 rounded-xl px-1 py-1">
@@ -169,6 +204,11 @@ export default function Categories() {
                             <SubIcon className="size-3.5" />
                           </span>
                           <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{sub.name}</span>
+                          {subCount > 0 && (
+                            <span className="rounded-full bg-surface-tertiary px-2 py-0.5 text-[11px] font-semibold text-muted">
+                              {subCount}
+                            </span>
+                          )}
                           <Button
                             isIconOnly
                             aria-label={`Edit ${sub.name}`}
@@ -218,9 +258,9 @@ export default function Categories() {
       </div>
 
       {/* Editor modal */}
-      <Modal>
-        <Modal.Backdrop isOpen={modalOpen} onOpenChange={setModalOpen}>
-          <Modal.Container size="md">
+      <Modal isOpen={modalOpen} onOpenChange={setModalOpen}>
+        <Modal.Backdrop className="z-[100]">
+          <Modal.Container className="pb-24 lg:pb-0" scroll="inside" size="md">
             <Modal.Dialog>
               <Modal.Header>
                 <Modal.Heading>
@@ -271,6 +311,7 @@ export default function Categories() {
                 <div className="flex flex-col gap-1.5">
                   <Label>Parent Category</Label>
                   <Select
+                    isDisabled={editingHasChildren}
                     selectedKey={form.parentId || NONE_PARENT}
                     onSelectionChange={(key) =>
                       setForm((f) => ({
@@ -294,7 +335,9 @@ export default function Categories() {
                     </Select.Popover>
                   </Select>
                   <p className="m-0 text-caption text-muted">
-                    Categories only nest one level deep — a subcategory can&rsquo;t have its own subcategories.
+                    {editingHasChildren
+                      ? "This category already contains subcategories, so it must stay top-level."
+                      : "Categories only nest one level deep — a subcategory can’t have its own subcategories."}
                   </p>
                 </div>
 

@@ -1,23 +1,27 @@
 import {
+  applyCors,
   assertClose,
   calculateSubtotal,
   calculateTax,
   fetchProductsForOrder,
   getShippingCost,
+  getSupabaseServerConfig,
   money,
+  normalizeShippingMethod,
+  resolveBearerUserId,
+  serializeCompactCartItems,
 } from "./_order-pricing.js";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Vercel Serverless Function: /api/create-payment-intent
 // The browser supplies product IDs/quantities and a shipping method. Prices,
 // shipping, tax, and the final amount are calculated server-side.
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Authorization, Content-Type, Idempotency-Key",
-  );
+  applyCors(req, res, {
+    methods: "POST,OPTIONS",
+    headers: "Authorization, Content-Type, Idempotency-Key",
+  });
 
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") {
@@ -32,6 +36,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    const sbConfig = getSupabaseServerConfig();
     const body = req.body || {};
     const items = Array.isArray(body.items) ? body.items : [];
     if (!items.length) return res.status(400).json({ error: "Order has no items." });
@@ -41,17 +46,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "A valid idempotency key is required." });
     }
 
-    const normalizedItems = await fetchProductsForOrder(items);
-    const subtotal = calculateSubtotal(normalizedItems);
-    const shippingCost = money(
-      getShippingCost(body.shippingMethod || body.shipping_method, subtotal),
+    const shippingMethod = normalizeShippingMethod(
+      body.shippingMethod || body.shipping_method,
     );
+    const normalizedItems = await fetchProductsForOrder(items, { enforceStock: true });
+    const subtotal = calculateSubtotal(normalizedItems);
+    const shippingCost = money(getShippingCost(shippingMethod, subtotal));
     const tax = calculateTax(subtotal + shippingCost);
     const total = money(subtotal + shippingCost + tax);
 
     if (total <= 0) return res.status(400).json({ error: "Order total must be positive." });
-    // Stripe declines any USD charge under $0.50 — check ourselves so the
-    // customer sees a clear reason instead of a generic "payment failed".
     if (total < 0.5) {
       return res.status(400).json({
         error: `Order total must be at least $0.50 to check out (currently $${total.toFixed(2)}). Please add another item.`,
@@ -59,40 +63,73 @@ export default async function handler(req, res) {
     }
     if (body.total != null) assertClose(body.total, total, "Order total");
 
-    // Mobicare currently settles all commerce transactions in USD. Do not let
-    // the browser select another currency while the order/webhook layer assumes USD.
     const currency = String(body.currency || "usd").toLowerCase();
     if (currency !== "usd") {
       return res.status(400).json({ error: "Only USD payments are supported." });
     }
+
+    const shipping =
+      body.shipping ||
+      body.shippingAddress ||
+      body.shipping_address ||
+      body.customer ||
+      {};
+
+    const customerName = String(shipping?.name || "").trim().slice(0, 200);
+    const customerEmail = String(shipping?.email || "").trim().slice(0, 320);
+    const customerPhone = String(shipping?.phone || "").trim().slice(0, 40);
+    const streetAddress = String(shipping?.address || shipping?.line1 || "")
+      .trim()
+      .slice(0, 200);
+    const city = String(shipping?.city || "").trim().slice(0, 100);
+    const state = String(shipping?.state || "").trim().slice(0, 100);
+    const zip = String(shipping?.zip || shipping?.postal_code || "")
+      .trim()
+      .slice(0, 20);
+
+    const { userId } = await resolveBearerUserId(req, sbConfig, { strict: false });
 
     const params = new URLSearchParams({
       amount: String(Math.round(total * 100)),
       currency: "usd",
       "automatic_payment_methods[enabled]": "true",
       description: `Mobicare Order: ${normalizedItems.length} item(s)`,
+      "metadata[shipping_method]": shippingMethod,
+      "metadata[customer_name]": customerName,
+      "metadata[customer_email]": customerEmail,
+      "metadata[customer_phone]": customerPhone,
+      "metadata[shipping_address]": shippingMethod === "pickup" ? "" : streetAddress,
+      "metadata[shipping_city]": shippingMethod === "pickup" ? "" : city,
+      "metadata[shipping_state]": shippingMethod === "pickup" ? "" : state,
+      "metadata[shipping_zip]": shippingMethod === "pickup" ? "" : zip,
+      "metadata[cart_items]": serializeCompactCartItems(normalizedItems),
     });
 
-    const shipping = body.shippingAddress || body.shipping_address || body.customer;
-    if (shipping && typeof shipping === "object") {
-      if (shipping.email) params.set("receipt_email", String(shipping.email).slice(0, 320));
-      if (shipping.name) params.set("shipping[name]", String(shipping.name).slice(0, 200));
-      if (shipping.address) params.set("shipping[address][line1]", String(shipping.address).slice(0, 200));
-      if (shipping.city) params.set("shipping[address][city]", String(shipping.city).slice(0, 100));
-      if (shipping.state) params.set("shipping[address][state]", String(shipping.state).slice(0, 100));
-      if (shipping.zip) params.set("shipping[address][postal_code]", String(shipping.zip).slice(0, 20));
+    if (userId) {
+      params.set("metadata[user_id]", userId);
+    }
+
+    if (customerEmail && EMAIL_RE.test(customerEmail)) {
+      params.set("receipt_email", customerEmail);
+    }
+
+    if (shippingMethod !== "pickup" && streetAddress) {
+      params.set("shipping[name]", customerName || "Customer");
+      if (customerPhone) params.set("shipping[phone]", customerPhone);
+      params.set("shipping[address][line1]", streetAddress);
+      if (city) params.set("shipping[address][city]", city);
+      if (state) params.set("shipping[address][state]", state);
+      if (zip) params.set("shipping[address][postal_code]", zip);
       params.set("shipping[address][country]", "US");
     }
 
-    const headers = {
-      Authorization: `Bearer ${secretKey}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Idempotency-Key": String(idempotencyKey).slice(0, 255),
-    };
-
     const stripeResponse = await fetch("https://api.stripe.com/v1/payment_intents", {
       method: "POST",
-      headers,
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Idempotency-Key": String(idempotencyKey).slice(0, 255),
+      },
       body: params.toString(),
     });
     const stripeData = await stripeResponse.json().catch(() => null);
@@ -113,6 +150,7 @@ export default async function handler(req, res) {
       id: stripeData.id,
       status: stripeData.status,
       amount: stripeData.amount,
+      shippingMethod,
       subtotal,
       shipping: shippingCost,
       tax,

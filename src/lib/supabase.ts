@@ -7,14 +7,13 @@ import type {
   BookingRecord,
   CustomerChatMessage,
 } from "@/types/domain";
+import type { RuntimeShopConfig } from "./config";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config";
 
-// ─── Input sanitization (XSS prevention) ──────────────────────────────────
-// NOTE: React already escapes interpolated text, so this is only needed for
-// values that end up in non-React contexts (e.g. the EmailJS email body).
+// ─── Input sanitization (only for raw HTML/email contexts, NOT DB text) ────
 export function sanitizeInput(str: unknown): unknown {
   if (typeof str !== "string") return str;
 
@@ -27,19 +26,19 @@ export function sanitizeInput(str: unknown): unknown {
 }
 
 // ─── Supabase client ───────────────────────────────────────────────────────
-// Priority: .env vars → localStorage (set via Settings page) → empty
-// The Settings page lets admins configure credentials post-deployment without
-// redeployment, by storing them in localStorage. Env vars take precedence.
-
 let _client: SupabaseClient | null = null;
 let _clientUrl: string | null = null;
 let _clientKey: string | null = null;
 
 export function getSupabaseConfig() {
-  // Env vars win; fall back to localStorage for settings-page-configured creds
-  const url = SUPABASE_URL || localStorage.getItem("sb_url") || "";
-  const anonKey =
-    SUPABASE_ANON_KEY || localStorage.getItem("sb_anon_key") || "";
+  const lsUrl =
+    typeof localStorage !== "undefined" ? localStorage.getItem("sb_url") : "";
+  const lsKey =
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem("sb_anon_key")
+      : "";
+  const url = SUPABASE_URL || lsUrl || "";
+  const anonKey = SUPABASE_ANON_KEY || lsKey || "";
 
   return { url, anonKey };
 }
@@ -59,7 +58,6 @@ export function getClient(): SupabaseClient | null {
   if (!isSupabaseConfigured()) return null;
   const { url, anonKey } = getSupabaseConfig();
 
-  // Re-create only when credentials actually change
   if (_client && _clientUrl === url && _clientKey === anonKey) return _client;
 
   _client = createClient(url, anonKey, {
@@ -81,12 +79,35 @@ export function resetClient() {
   _clientKey = null;
 }
 
+// ─── Admin Authorization Check (staff_users allowlist via RPC) ─────────────
+export async function checkIsAdmin(): Promise<boolean> {
+  const sb = getClient();
+
+  if (!sb) return false;
+  try {
+    const { data, error } = await sb.rpc("is_admin");
+
+    if (error) {
+      console.warn("is_admin RPC check failed:", error.message);
+
+      return false;
+    }
+
+    return data === true;
+  } catch (e) {
+    console.warn("is_admin RPC exception:", e);
+
+    return false;
+  }
+}
+
 // ─── Supabase Auth (General / Admin) ───────────────────────────────────────
 export async function signInWithEmail(email: string, password: string) {
   const sb = getClient();
 
   if (!sb)
     return {
+      data: null,
       error: {
         message:
           "Supabase not configured — enter credentials in Settings first.",
@@ -135,9 +156,12 @@ export async function sendPasswordReset(email: string) {
   const sb = getClient();
 
   if (!sb) return { error: { message: "Supabase not configured" } };
-  const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/admin/reset-password`,
-  });
+  const { error } = await sb.auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+    {
+      redirectTo: `${window.location.origin}/reset-password`,
+    },
+  );
 
   return { error };
 }
@@ -180,6 +204,19 @@ export async function getCurrentUser() {
   return data?.user ?? null;
 }
 
+function isMissingTableError(err: { code?: string; message?: string } | null) {
+  if (!err) return false;
+  const msg = (err.message || "").toLowerCase();
+
+  return (
+    err.code === "42P01" ||
+    err.code === "PGRST205" ||
+    err.code === "42703" ||
+    msg.includes("does not exist") ||
+    msg.includes("schema cache")
+  );
+}
+
 export async function getCustomerProfile(
   userId: string,
 ): Promise<{ data: CustomerProfile | null; error: unknown }> {
@@ -188,17 +225,36 @@ export async function getCustomerProfile(
   if (!sb || !userId) return { data: null, error: null };
 
   const { data, error } = await sb
-    .from("profiles")
+    .from("customer_profiles")
     .select("id, full_name, phone, created_at, updated_at")
     .eq("id", userId)
     .maybeSingle();
 
-  return { data: data as CustomerProfile | null, error };
+  if (!error && data) {
+    return { data: data as CustomerProfile, error: null };
+  }
+
+  if (error && !isMissingTableError(error)) {
+    return { data: null, error };
+  }
+
+  // Fallback when customer_profiles table hasn't been migrated yet
+  const { data: userRes } = await sb.auth.getUser();
+  const meta = userRes?.user?.user_metadata || {};
+
+  return {
+    data: {
+      id: userId,
+      full_name: String(meta.full_name || ""),
+      phone: String(meta.phone || ""),
+    },
+    error: null,
+  };
 }
 
 export async function updateCustomerProfile(
   userId: string,
-  updates: { full_name?: string; phone?: string },
+  updates: { full_name?: string; phone?: string; email?: string },
 ) {
   const sb = getClient();
 
@@ -206,19 +262,37 @@ export async function updateCustomerProfile(
     return { data: null, error: { message: "Supabase not configured." } };
   }
 
-  const payload = {
-    full_name: updates.full_name?.trim() || "",
-    phone: updates.phone?.trim() || "",
+  const fullName = updates.full_name?.trim() || "";
+  const phone = updates.phone?.trim() || "";
+
+  // Always keep auth user_metadata in sync
+  await sb.auth
+    .updateUser({
+      data: { full_name: fullName, phone },
+    })
+    .catch(() => null);
+
+  const payload: Record<string, unknown> = {
+    id: userId,
+    full_name: fullName,
+    phone,
+    updated_at: new Date().toISOString(),
   };
 
   const { data, error } = await sb
-    .from("profiles")
-    .update(payload)
-    .eq("id", userId)
+    .from("customer_profiles")
+    .upsert(payload, { onConflict: "id" })
     .select()
-    .single();
+    .maybeSingle();
 
-  return { data, error };
+  if (error && isMissingTableError(error)) {
+    return {
+      data: { id: userId, full_name: fullName, phone } as CustomerProfile,
+      error: null,
+    };
+  }
+
+  return { data: (data as CustomerProfile | null) ?? null, error };
 }
 
 export async function sbFetchCustomerBookings(userId: string) {
@@ -232,10 +306,12 @@ export async function sbFetchCustomerBookings(userId: string) {
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
-  return { data: data || [], error };
+  return { data: (data as BookingRecord[]) || [], error };
 }
 
-export async function sbFetchCustomerOrders(userId: string) {
+export async function sbFetchCustomerOrders(
+  userId: string,
+): Promise<{ data: Order[]; error: unknown }> {
   const sb = getClient();
 
   if (!sb || !userId) return { data: [], error: null };
@@ -246,14 +322,10 @@ export async function sbFetchCustomerOrders(userId: string) {
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
-  return { data: data || [], error };
+  return { data: (data || []).map(dbToOrder), error };
 }
 
-// ─── Customer <-> shop chat (NovaOps Messages -> Customer Chat) ────────────
-// customer_messages lives in the NovaOps repo's migrations; RLS there lets a
-// signed-in customer read/insert only their own thread (direction must be
-// 'inbound' on insert — the shop is the only side allowed to post 'outbound').
-
+// ─── Customer <-> Shop Chat (shared public.messages with NovaOps Messages) ─
 export async function sbFetchCustomerChat(
   userId: string,
 ): Promise<{ data: CustomerChatMessage[]; error: unknown }> {
@@ -262,12 +334,31 @@ export async function sbFetchCustomerChat(
   if (!sb || !userId) return { data: [], error: null };
 
   const { data, error } = await sb
-    .from("customer_messages")
+    .from("messages")
     .select("*")
-    .eq("customer_user_id", userId)
+    .eq("channel", "chat")
+    .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
-  return { data: (data as CustomerChatMessage[] | null) || [], error };
+  if (!error) {
+    return { data: (data as CustomerChatMessage[] | null) || [], error: null };
+  }
+
+  // Graceful fallback to legacy customer_messages if messages.user_id isn't migrated yet
+  if (isMissingTableError(error)) {
+    const legacy = await sb
+      .from("customer_messages")
+      .select("*")
+      .eq("customer_user_id", userId)
+      .order("created_at", { ascending: true });
+
+    return {
+      data: (legacy.data as CustomerChatMessage[] | null) || [],
+      error: legacy.error,
+    };
+  }
+
+  return { data: [], error };
 }
 
 export async function sbSendCustomerChatMessage(
@@ -275,29 +366,101 @@ export async function sbSendCustomerChatMessage(
   customerName: string,
   customerEmail: string,
   body: string,
+  customerPhone?: string,
 ): Promise<{ data: CustomerChatMessage | null; error: unknown }> {
   const sb = getClient();
 
-  if (!sb) return { data: null, error: { message: "Supabase not configured." } };
+  if (!sb)
+    return { data: null, error: { message: "Supabase not configured." } };
 
-  // profile_id (the shop's NovaOps account) is intentionally omitted — a
-  // database trigger on the NovaOps side (customer_messages_fill_profile_id,
-  // supabase/migrations/20260906_customer_messages_auto_profile.sql in the
-  // novaops-updated repo) fills it in from staff_users, so the website never
-  // needs to know or configure the shop's internal Supabase Auth user id.
+  const cleanBody = body.trim();
+  const subject = customerPhone?.trim()
+    ? `Website Chat · ${customerPhone.trim()}`
+    : "Website Chat";
+
   const { data, error } = await sb
-    .from("customer_messages")
+    .from("messages")
     .insert({
-      customer_user_id: userId,
-      customer_name: customerName,
-      customer_email: customerEmail,
+      user_id: userId,
+      customer_name: customerName.trim(),
+      customer_email: customerEmail.trim(),
+      channel: "chat",
       direction: "inbound",
-      body: sanitizeInput(body) as string,
+      subject,
+      body: cleanBody,
+      read: false,
     })
     .select()
     .single();
 
-  return { data: data as CustomerChatMessage | null, error };
+  if (error && isMissingTableError(error)) {
+    const legacy = await sb
+      .from("customer_messages")
+      .insert({
+        customer_user_id: userId,
+        customer_name: customerName.trim(),
+        customer_email: customerEmail.trim(),
+        direction: "inbound",
+        body: cleanBody,
+      })
+      .select()
+      .single();
+
+    return {
+      data: (legacy.data as CustomerChatMessage | null) ?? null,
+      error: legacy.error,
+    };
+  }
+
+  return { data: (data as CustomerChatMessage | null) ?? null, error };
+}
+
+export async function sbMarkCustomerChatRead(
+  userId: string,
+  messageIds: number[],
+): Promise<void> {
+  const sb = getClient();
+
+  if (!sb || !userId || messageIds.length === 0) return;
+
+  await sb
+    .from("messages")
+    .update({ read: true })
+    .eq("user_id", userId)
+    .eq("direction", "outbound")
+    .in("id", messageIds);
+}
+
+export function subscribeCustomerChat(
+  userId: string,
+  onEvent: (msg: CustomerChatMessage, eventType: string) => void,
+): () => void {
+  const sb = getClient();
+
+  if (!sb || !userId) return () => {};
+
+  const channel = sb
+    .channel(`customer-chat-${userId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "messages",
+        filter: `user_id=eq.${userId}`,
+      },
+      (payload) => {
+        const row = (payload.new || payload.old) as CustomerChatMessage | null;
+        if (row && (!row.channel || row.channel === "chat")) {
+          onEvent(row, payload.eventType);
+        }
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void sb.removeChannel(channel);
+  };
 }
 
 export async function sendCustomerPasswordReset(email: string) {
@@ -346,6 +509,44 @@ export async function testConnection(): Promise<{
   }
 }
 
+// ─── Media Upload (site-media bucket shared with NovaOps) ──────────────────
+export async function sbUploadSiteMedia(
+  file: File,
+): Promise<{ url: string | null; error?: string }> {
+  const sb = getClient();
+
+  if (!sb) return { url: null, error: "Supabase is not configured." };
+  if (!file.type.startsWith("image/")) {
+    return { url: null, error: "Please select a valid image file." };
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    return { url: null, error: "Images must be 8 MB or smaller." };
+  }
+
+  try {
+    const ext = (file.name.split(".").pop() || "jpg")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+    const path = `${new Date().getFullYear()}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+    const { error } = await sb.storage.from("site-media").upload(path, file, {
+      contentType: file.type,
+      cacheControl: "31536000",
+      upsert: false,
+    });
+
+    if (error) return { url: null, error: error.message };
+
+    const { data } = sb.storage.from("site-media").getPublicUrl(path);
+
+    return { url: data.publicUrl };
+  } catch (e) {
+    return {
+      url: null,
+      error: e instanceof Error ? e.message : "Upload failed.",
+    };
+  }
+}
+
 // ─── Products ──────────────────────────────────────────────────────────────
 export async function sbFetchProducts(): Promise<Product[] | null> {
   const sb = getClient();
@@ -367,10 +568,10 @@ export async function sbFetchProducts(): Promise<Product[] | null> {
 
 export async function sbInsertProduct(
   product: Partial<Product>,
-): Promise<Product | null> {
+): Promise<{ data: Product | null; error?: string }> {
   const sb = getClient();
 
-  if (!sb) return null;
+  if (!sb) return { data: null, error: "Supabase is not configured." };
   const { data, error } = await sb
     .from("products")
     .insert(productToDb(product))
@@ -380,19 +581,19 @@ export async function sbInsertProduct(
   if (error) {
     console.error("sbInsertProduct:", error);
 
-    return null;
+    return { data: null, error: error.message };
   }
 
-  return dbToProduct(data);
+  return { data: dbToProduct(data) };
 }
 
 export async function sbUpdateProduct(
   id: string,
   updates: Partial<Product>,
-): Promise<boolean | null> {
+): Promise<{ ok: boolean; error?: string }> {
   const sb = getClient();
 
-  if (!sb) return null;
+  if (!sb) return { ok: false, error: "Supabase is not configured." };
   const { error } = await sb
     .from("products")
     .update(productToDb(updates))
@@ -401,25 +602,27 @@ export async function sbUpdateProduct(
   if (error) {
     console.error("sbUpdateProduct:", error);
 
-    return null;
+    return { ok: false, error: error.message };
   }
 
-  return true;
+  return { ok: true };
 }
 
-export async function sbDeleteProduct(id: string): Promise<boolean | null> {
+export async function sbDeleteProduct(
+  id: string,
+): Promise<{ ok: boolean; error?: string }> {
   const sb = getClient();
 
-  if (!sb) return null;
+  if (!sb) return { ok: false, error: "Supabase is not configured." };
   const { error } = await sb.from("products").delete().eq("id", id);
 
   if (error) {
     console.error("sbDeleteProduct:", error);
 
-    return null;
+    return { ok: false, error: error.message };
   }
 
-  return true;
+  return { ok: true };
 }
 
 // ─── Categories ────────────────────────────────────────────────────────────
@@ -443,10 +646,10 @@ export async function sbFetchCategories(): Promise<Category[] | null> {
 
 export async function sbInsertCategory(
   cat: Partial<Category>,
-): Promise<Category | null> {
+): Promise<{ data: Category | null; error?: string }> {
   const sb = getClient();
 
-  if (!sb) return null;
+  if (!sb) return { data: null, error: "Supabase is not configured." };
   const { data, error } = await sb
     .from("categories")
     .insert(categoryToDb(cat))
@@ -456,19 +659,19 @@ export async function sbInsertCategory(
   if (error) {
     console.error("sbInsertCategory:", error);
 
-    return null;
+    return { data: null, error: error.message };
   }
 
-  return dbToCategory(data);
+  return { data: dbToCategory(data) };
 }
 
 export async function sbUpdateCategory(
   id: string,
   updates: Partial<Category>,
-): Promise<boolean | null> {
+): Promise<{ ok: boolean; error?: string }> {
   const sb = getClient();
 
-  if (!sb) return null;
+  if (!sb) return { ok: false, error: "Supabase is not configured." };
   const { error } = await sb
     .from("categories")
     .update(categoryToDb(updates))
@@ -477,25 +680,27 @@ export async function sbUpdateCategory(
   if (error) {
     console.error("sbUpdateCategory:", error);
 
-    return null;
+    return { ok: false, error: error.message };
   }
 
-  return true;
+  return { ok: true };
 }
 
-export async function sbDeleteCategory(id: string): Promise<boolean | null> {
+export async function sbDeleteCategory(
+  id: string,
+): Promise<{ ok: boolean; error?: string }> {
   const sb = getClient();
 
-  if (!sb) return null;
+  if (!sb) return { ok: false, error: "Supabase is not configured." };
   const { error } = await sb.from("categories").delete().eq("id", id);
 
   if (error) {
     console.error("sbDeleteCategory:", error);
 
-    return null;
+    return { ok: false, error: error.message };
   }
 
-  return true;
+  return { ok: true };
 }
 
 // ─── Orders ────────────────────────────────────────────────────────────────
@@ -537,9 +742,6 @@ export async function sbInsertOrder(order: Order): Promise<Order | null> {
     ? rawStatus
     : "paid";
 
-  // Stamp the signed-in user's id so RLS ("Customers can view own orders")
-  // and the Account page's user_id lookup can find this order. Without this,
-  // every order gets a NULL user_id and is invisible to customer accounts.
   let userId: string | null = null;
 
   try {
@@ -599,10 +801,10 @@ export async function sbInsertOrder(order: Order): Promise<Order | null> {
 export async function sbUpdateOrderStatus(
   id: string,
   status: string,
-): Promise<boolean | null> {
+): Promise<{ ok: boolean; error?: string }> {
   const sb = getClient();
 
-  if (!sb) return null;
+  if (!sb) return { ok: false, error: "Supabase is not configured." };
 
   const rawStatus = (status || "").toLowerCase().trim();
   const safeStatus = VALID_ORDER_STATUSES.includes(rawStatus)
@@ -617,16 +819,12 @@ export async function sbUpdateOrderStatus(
   if (error) {
     console.error("sbUpdateOrderStatus:", error);
 
-    return null;
+    return { ok: false, error: error.message };
   }
 
-  return true;
+  return { ok: true };
 }
 
-// Issues a real Stripe refund via /api/refund-payment-intent. Unlike
-// sbUpdateOrderStatus, this never writes the order row directly — the
-// stripe-webhook function's "charge.refunded" handler is what actually
-// flips the status once Stripe confirms.
 export async function sbRefundOrder(
   orderId: string,
 ): Promise<{ ok: boolean; error?: string; alreadyRefunded?: boolean }> {
@@ -636,7 +834,10 @@ export async function sbRefundOrder(
     : { data: { session: null } };
 
   if (!session?.access_token) {
-    return { ok: false, error: "You must be signed in as an admin to issue a refund." };
+    return {
+      ok: false,
+      error: "You must be signed in as an admin to issue a refund.",
+    };
   }
 
   try {
@@ -692,13 +893,7 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
 
       return data.ok === true;
     }
-
-    // Non-JSON response (e.g. SPA rewrite returned index.html) → fall through
-    // to the direct-Supabase fallback below.
   } catch (err) {
-    // Network/HTTP failures from the API route are real errors — surface them
-    // instead of silently pretending nothing happened. Only fall through when
-    // the endpoint is genuinely unreachable (TypeError from fetch itself).
     if (!(err instanceof TypeError)) {
       throw err;
     }
@@ -708,8 +903,6 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
     );
   }
 
-  // Fallback: If /api/create-booking serverless function is missing or returns HTML (SPA rewrite),
-  // insert directly via client if Supabase is configured
   if (sb) {
     const payload = {
       customer_name:
@@ -727,9 +920,9 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
         "",
       issue: (booking.issue as string) || "",
       appt_date:
-        (booking.date as string) || (booking.appt_date as string) || "",
+        (booking.appt_date as string) || (booking.date as string) || "",
       appt_time:
-        (booking.time as string) || (booking.appt_time as string) || "",
+        (booking.appt_time as string) || (booking.time as string) || "",
       notes: (booking.notes as string) || "",
       visit_type:
         (booking.visit_type as string) ||
@@ -743,6 +936,7 @@ export async function sbInsertBooking(booking: Booking): Promise<boolean> {
         (booking.home_address as string) ||
         (booking.homeAddress as string) ||
         "",
+      ...(session?.user?.id ? { user_id: session.user.id } : {}),
       status: "pending",
     };
 
@@ -791,10 +985,10 @@ const VALID_BOOKING_STATUSES = [
 export async function sbUpdateBookingStatus(
   id: string | number,
   status: string,
-): Promise<boolean | null> {
+): Promise<{ ok: boolean; error?: string }> {
   const sb = getClient();
 
-  if (!sb) return null;
+  if (!sb) return { ok: false, error: "Supabase is not configured." };
 
   const rawStatus = (status || "").toLowerCase().trim();
   const safeStatus = VALID_BOOKING_STATUSES.includes(rawStatus)
@@ -809,31 +1003,188 @@ export async function sbUpdateBookingStatus(
   if (error) {
     console.error("sbUpdateBookingStatus:", error);
 
-    return null;
+    return { ok: false, error: error.message };
   }
 
-  return true;
+  return { ok: true };
 }
 
 export async function sbUpdateBooking(
   id: string | number,
   updates: Partial<BookingRecord>,
-): Promise<boolean | null> {
+): Promise<{ ok: boolean; error?: string }> {
   const sb = getClient();
 
-  if (!sb) return null;
+  if (!sb) return { ok: false, error: "Supabase is not configured." };
   const { error } = await sb.from("bookings").update(updates).eq("id", id);
 
   if (error) {
     console.error("sbUpdateBooking:", error);
 
-    return null;
+    return { ok: false, error: error.message };
   }
 
-  return true;
+  return { ok: true };
 }
 
-// ─── Site settings ─────────────────────────────────────────────────────────
+// ─── Master Catalog Sync (services, device_brands, device_models) ──────────
+export interface LivePosService {
+  id: number | string;
+  name: string;
+  category?: string;
+  description?: string;
+  price?: number;
+  estimated_minutes?: number;
+  duration?: number;
+  active?: boolean;
+}
+
+export interface LiveDeviceBrand {
+  id: number | string;
+  name: string;
+  icon_url?: string | null;
+}
+
+export interface LiveDeviceModel {
+  id: number | string;
+  brand: string;
+  category: string;
+  name: string;
+}
+
+export async function sbFetchLiveCatalog(): Promise<{
+  services: LivePosService[];
+  brands: LiveDeviceBrand[];
+  models: LiveDeviceModel[];
+}> {
+  const sb = getClient();
+
+  if (!sb) return { services: [], brands: [], models: [] };
+
+  try {
+    const [svcRes, brandRes, modelRes] = await Promise.all([
+      sb
+        .from("services")
+        .select("*")
+        .eq("active", true)
+        .order("name", { ascending: true }),
+      sb.from("device_brands").select("*").order("name", { ascending: true }),
+      sb
+        .from("device_models")
+        .select("*")
+        .order("brand", { ascending: true })
+        .order("name", { ascending: true }),
+    ]);
+
+    return {
+      services: (svcRes.error ? [] : (svcRes.data as LivePosService[])) || [],
+      brands: (brandRes.error ? [] : (brandRes.data as LiveDeviceBrand[])) || [],
+      models: (modelRes.error ? [] : (modelRes.data as LiveDeviceModel[])) || [],
+    };
+  } catch {
+    return { services: [], brands: [], models: [] };
+  }
+}
+
+// ─── Public Guest Repair Ticket & Order Status Lookups ─────────────────────
+export async function sbLookupTicketStatus(
+  ticketIdInput: string,
+  phoneLast4: string,
+): Promise<{ data: Record<string, unknown> | null; error?: string }> {
+  const sb = getClient();
+
+  if (!sb) return { data: null, error: "Database connection is not configured." };
+
+  const cleanedTicket = ticketIdInput
+    .trim()
+    .replace(/^(tkt-|mc-|#)+/i, "")
+    .trim();
+  const cleanedPhone = phoneLast4.replace(/\D/g, "").slice(-4);
+
+  if (!cleanedTicket) {
+    return { data: null, error: "Please enter your repair ticket number." };
+  }
+  if (cleanedPhone.length !== 4) {
+    return {
+      data: null,
+      error: "Please enter the last 4 digits of your phone number.",
+    };
+  }
+
+  try {
+    const { data, error } = await sb.rpc("lookup_ticket_status", {
+      p_ticket_id: cleanedTicket,
+      p_phone_last4: cleanedPhone,
+    });
+
+    if (error) return { data: null, error: error.message };
+    const record = Array.isArray(data) ? data[0] : data;
+
+    if (!record || (typeof record === "object" && Object.keys(record).length === 0)) {
+      return {
+        data: null,
+        error:
+          "No matching repair ticket found. Double-check your ticket number and the last 4 digits of your phone number.",
+      };
+    }
+
+    return { data: record as Record<string, unknown> };
+  } catch (e) {
+    return {
+      data: null,
+      error: e instanceof Error ? e.message : "Unable to look up ticket status.",
+    };
+  }
+}
+
+export async function sbLookupOrderStatus(
+  orderIdInput: string,
+  verifyInput: string,
+): Promise<{ data: Record<string, unknown> | null; error?: string }> {
+  const sb = getClient();
+
+  if (!sb) return { data: null, error: "Database connection is not configured." };
+
+  const cleanedOrder = orderIdInput.trim().replace(/^#/, "").trim();
+  const cleanedVerify = verifyInput.trim();
+
+  if (!cleanedOrder) {
+    return { data: null, error: "Please enter your Order ID." };
+  }
+  if (!cleanedVerify) {
+    return {
+      data: null,
+      error: "Please enter your checkout email address or ZIP code to verify.",
+    };
+  }
+
+  try {
+    const { data, error } = await sb.rpc("lookup_order_status", {
+      p_order_id: cleanedOrder,
+      p_verify: cleanedVerify,
+    });
+
+    if (error) return { data: null, error: error.message };
+    const record = Array.isArray(data) ? data[0] : data;
+
+    if (!record || (typeof record === "object" && Object.keys(record).length === 0)) {
+      return {
+        data: null,
+        error:
+          "No matching order found. Please check your Order ID and email/ZIP.",
+      };
+    }
+
+    return { data: record as Record<string, unknown> };
+  } catch (e) {
+    return {
+      data: null,
+      error: e instanceof Error ? e.message : "Unable to look up order status.",
+    };
+  }
+}
+
+// ─── Site settings ('mobicare-config' & 'shop-config') ─────────────────────
 export async function sbFetchSiteSettings(): Promise<Record<
   string,
   unknown
@@ -889,6 +1240,72 @@ export async function sbUpsertSiteSettings(
   }
 }
 
+export async function sbFetchShopConfig(): Promise<Partial<RuntimeShopConfig> | null> {
+  const sb = getClient();
+
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb
+      .from("site_settings")
+      .select("content")
+      .eq("id", "shop-config")
+      .maybeSingle();
+
+    if (error) {
+      console.warn("sbFetchShopConfig:", error.message);
+
+      return null;
+    }
+
+    return (data?.content as Partial<RuntimeShopConfig>) || null;
+  } catch (e) {
+    console.warn("sbFetchShopConfig:", e instanceof Error ? e.message : e);
+
+    return null;
+  }
+}
+
+export async function sbUpsertShopConfig(
+  patch: Partial<RuntimeShopConfig>,
+): Promise<boolean> {
+  const sb = getClient();
+
+  if (!sb) return false;
+  try {
+    const existing = (await sbFetchShopConfig()) || {};
+    const merged = {
+      storefrontUrl: "https://www.shopmobicare.com",
+      stripePublishableKey: "",
+      reviewUrl: "",
+      loyalty: {
+        enabled: false,
+        pointsPerDollar: 1,
+        redeemPoints: 100,
+        redeemValue: 5,
+      },
+      ...existing,
+      ...patch,
+      emailjs: {
+        serviceId: "",
+        bookingTemplate: "",
+        orderTemplate: "",
+        publicKey: "",
+        ...(existing.emailjs || {}),
+        ...(patch.emailjs || {}),
+      },
+    };
+    const { error } = await sb.from("site_settings").upsert({
+      id: "shop-config",
+      content: merged,
+      updated_at: new Date().toISOString(),
+    });
+
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 // ─── Seed ──────────────────────────────────────────────────────────────────
 export async function sbSeedInitialData(
   products: Product[],
@@ -922,8 +1339,6 @@ export async function sbSeedInitialData(
 }
 
 // ─── Shape converters ──────────────────────────────────────────────────────
-// Raw DB rows are treated as `any` at this boundary on purpose — see the
-// note at the top of this file.
 function productToDb(p: Partial<Product>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
 
@@ -945,13 +1360,14 @@ function productToDb(p: Partial<Product>): Record<string, unknown> {
   return out;
 }
 
-function dbToProduct(row: any): Product {
+function dbToProduct(row: Record<string, any>): Product {
   return {
     id: row.id,
     name: row.name,
     category: row.category,
     price: parseFloat(row.price),
-    comparePrice: row.compare_price ? parseFloat(row.compare_price) : null,
+    comparePrice:
+      row.compare_price != null ? parseFloat(row.compare_price) : null,
     stock: row.stock,
     sku: row.sku,
     description: row.description,
@@ -973,14 +1389,12 @@ function categoryToDb(c: Partial<Category>): Record<string, unknown> {
   if (c.description !== undefined) out.description = c.description;
   if (c.icon !== undefined) out.icon = c.icon;
   if (c.sortOrder !== undefined) out.sort_order = c.sortOrder;
-  // !== undefined (not a truthy check) — parentId: null is a real value
-  // meaning "clear this subcategory back to top-level", not "unset".
   if (c.parentId !== undefined) out.parent_id = c.parentId;
 
   return out;
 }
 
-function dbToCategory(row: any): Category {
+function dbToCategory(row: Record<string, any>): Category {
   return {
     id: row.id,
     name: row.name,
@@ -991,26 +1405,39 @@ function dbToCategory(row: any): Category {
   };
 }
 
-function dbToOrder(row: any): Order {
+export function dbToOrder(row: Record<string, any>): Order {
   return {
     id: row.id,
     status: row.status,
     createdAt: row.created_at,
+    shippingMethod: row.shipping_method || undefined,
+    trackingNumber: row.tracking_number || undefined,
+    trackingUrl: row.tracking_url || undefined,
     customer: {
-      name: row.customer_name,
-      email: row.customer_email,
-      phone: row.customer_phone,
-      address: row.shipping_address,
-      city: row.shipping_city,
-      state: row.shipping_state,
-      zip: row.shipping_zip,
+      name: row.customer_name || "",
+      email: row.customer_email || "",
+      phone: row.customer_phone || "",
+      address: row.shipping_address || "",
+      city: row.shipping_city || "",
+      state: row.shipping_state || "",
+      zip: row.shipping_zip || "",
     },
-
-    items: (row.order_items || []).map((i: any) => ({
-      id: i.product_id,
+    items: (row.order_items || []).map((i: Record<string, any>) => ({
+      id: i.product_id || String(i.id || ""),
       name: i.name,
       price: parseFloat(i.price),
       qty: i.qty,
+      category: "",
+      comparePrice: null,
+      stock: 0,
+      sku: "",
+      description: "",
+      images: [],
+      tags: [],
+      featured: false,
+      active: true,
+      weight: 0,
+      shippingDays: { min: 3, max: 5 },
     })),
     subtotal: parseFloat(row.subtotal || 0),
     shipping: parseFloat(row.shipping_cost || 0),

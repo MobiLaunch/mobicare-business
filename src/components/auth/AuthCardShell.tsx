@@ -15,13 +15,6 @@ interface AuthCardShellProps {
   children: ReactNode;
 }
 
-// Shared layout for every auth page (Login, Signup, ForgotPassword,
-// ResetPassword) — background, centered card, icon chip + heading. Pulled
-// out because all four pages were otherwise identical wrapper markup around
-// different form content. Header (icon/chip/title/description) is optional:
-// the "success" state of Signup/ForgotPassword/ResetPassword shows a single
-// standalone icon+heading of its own (see AuthSuccessPanel) instead of this
-// header, so passing no `title` skips it rather than showing both.
 export default function AuthCardShell({
   metaTitle,
   metaDescription,
@@ -32,11 +25,11 @@ export default function AuthCardShell({
   children,
 }: AuthCardShellProps) {
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-[calc(100vh-3.5rem)]">
       <PageMeta description={metaDescription} title={metaTitle} />
       <BackgroundCanvas />
 
-      <main className="mx-auto flex min-h-screen max-w-md items-center px-4 py-12">
+      <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md items-center px-4 py-12">
         <Card className="w-full p-6 sm:p-8">
           {title && (
             <Card.Header className="flex flex-col items-center gap-2 pb-2 text-center">
@@ -58,7 +51,7 @@ export default function AuthCardShell({
             {children}
           </Card.Content>
         </Card>
-      </main>
+      </div>
     </div>
   );
 }

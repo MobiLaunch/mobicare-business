@@ -1,27 +1,14 @@
-// Lightweight half of the icon-resolution logic — deliberately has NO
-// import of lucide-react's `icons` dictionary (~1,767 components, ~120KB
-// gzipped). Split out from lib/icons.ts so public pages (e.g. Shop.tsx,
-// via components/CategoryIcon.tsx) can resolve a legacy icon id without
-// any possibility of pulling that dictionary into their bundle — the two
-// earlier attempts at this both leaked it through a shared module that
-// merely *offered* the heavy exports, even when unused. This file
-// physically cannot: nothing here references lucide-react at all.
-
-// NOTE (HeroUI v3 rebuild): the icon field used to be a plain <select>
-// listing raw Material-Symbols-style name strings (e.g. "battery_full")
-// with no visual preview, later rebuilt as a searchable grid over
-// lucide-react's full icon set (see lib/icons.ts) keyed by each icon's
-// PascalCase component name. New selections store that PascalCase name
-// directly (e.g. "BatteryFull") so no lookup table is needed going
-// forward — LEGACY_ICON_MAP only exists to translate ids saved before
-// that change.
+// Maps legacy Material-Symbols / NovaOps icon slugs to Lucide component names.
 export const LEGACY_ICON_MAP: Record<string, string> = {
   bolt: "Zap",
   shield: "Shield",
+  shield_check: "ShieldCheck",
   smartphone: "Smartphone",
   power: "Plug",
+  ev_station: "PlugZap",
   star: "Star",
   battery_full: "BatteryFull",
+  battery: "Battery",
   headphones: "Headphones",
   photo_camera: "Camera",
   inventory_2: "Package",
@@ -29,6 +16,19 @@ export const LEGACY_ICON_MAP: Record<string, string> = {
   layers: "Layers",
   cable: "Cable",
   category: "Shapes",
+  water_drop: "Droplets",
+  sd_card: "HardDrive",
+  storage: "HardDrive",
+  tablet_mac: "Tablet",
+  laptop_mac: "Laptop",
+  tv: "Tv",
+  watch: "Watch",
+  sports_esports: "Gamepad2",
+  speaker: "Volume2",
+  build: "Wrench",
+  wrench: "Wrench",
+  memory: "Cpu",
+  schedule: "Clock",
 };
 
 export const readableIconName = (name: string) =>

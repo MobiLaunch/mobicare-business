@@ -1,8 +1,11 @@
-import { useNavigate, useSearchParams } from "react-router-dom";
+import type { Order } from "@/types/domain";
+
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   CheckCircle2,
   Mail,
+  MapPin,
   Package,
   Phone,
   Printer,
@@ -13,32 +16,40 @@ import { Button } from "@heroui/react";
 
 import { useProductStore } from "@/lib/store";
 import { useSiteStore } from "@/lib/siteStore";
-import { getEstimatedArrivalWindow } from "@/lib/shipping";
+import { getEstimatedArrivalWindow, getShopOpenStatus } from "@/lib/shipping";
 import PageMeta from "@/components/PageMeta";
+import ProductImage from "@/components/ProductImage";
 
 export default function OrderSuccess() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const orderIdParam = searchParams.get("order_id") || searchParams.get("id");
 
+  const stateOrder = (location.state as { order?: Order } | null)?.order;
   const orders = useProductStore((s) => s.orders);
   const business = useSiteStore((s) => s.business);
 
-  // Find order from query param. Only fall back to the most recent order
-  // when no explicit id was supplied — never show a different order for an
-  // unknown id.
-  const order = orderIdParam
-    ? orders.find((o) => o.id === orderIdParam)
-    : orders[0];
+  const order =
+    stateOrder && (!orderIdParam || stateOrder.id === orderIdParam)
+      ? stateOrder
+      : orderIdParam
+        ? orders.find((o) => o.id === orderIdParam)
+        : orders[0];
+
+  const isPickup =
+    order?.shippingMethod === "pickup" ||
+    Boolean(order?.customer?.address?.toLowerCase().includes("pickup"));
 
   const arrival = getEstimatedArrivalWindow(3, 5);
+  const shopStatus = getShopOpenStatus();
 
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <main
+    <div
       className="mx-auto max-w-[1000px] px-4 py-12 pb-24"
       id="order-success-page"
     >
@@ -48,9 +59,8 @@ export default function OrderSuccess() {
       />
 
       <div className="flex flex-col items-center text-center">
-        {/* Animated celebration icon */}
         <div className="mb-6 flex size-24 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xl shadow-accent/25">
-          <CheckCircle2 className="size-12 animate-pulse" />
+          <CheckCircle2 className="size-12" />
         </div>
 
         <span className="rounded-full bg-accent-soft px-4 py-1 text-xs font-bold uppercase tracking-wider text-accent">
@@ -80,7 +90,7 @@ export default function OrderSuccess() {
         id="delivery-timeline"
       >
         <h3 className="m-0 mb-6 text-lg font-bold text-foreground">
-          Delivery Status &amp; Timeline
+          {isPickup ? "Pickup Status & Timeline" : "Delivery Status & Timeline"}
         </h3>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
@@ -93,7 +103,7 @@ export default function OrderSuccess() {
                 1. Order Placed
               </strong>
               <span className="text-xs text-muted">
-                Payment authorized via Stripe
+                Payment confirmed via Stripe
               </span>
             </div>
           </div>
@@ -107,21 +117,25 @@ export default function OrderSuccess() {
                 2. Quality Check
               </strong>
               <span className="text-xs text-muted">
-                Packaging at Fairfield facility
+                Preparing at 920 Commerce Dr, Suite 3
               </span>
             </div>
           </div>
 
           <div className="flex items-start gap-3.5">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-              <Truck className="size-5" />
+              {isPickup ? (
+                <MapPin className="size-5" />
+              ) : (
+                <Truck className="size-5" />
+              )}
             </span>
             <div>
               <strong className="block text-sm font-bold text-foreground">
-                3. Estimated Delivery
+                {isPickup ? "3. Store Pickup" : "3. Estimated Delivery"}
               </strong>
               <span className="text-xs font-bold text-accent">
-                {arrival.formatted}
+                {isPickup ? shopStatus.pickupText : arrival.formatted}
               </span>
             </div>
           </div>
@@ -131,7 +145,6 @@ export default function OrderSuccess() {
       {/* Order Details & Summary */}
       {order ? (
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
-          {/* Items Summary */}
           <section
             className="surface-raised rounded-panel p-6 sm:p-8"
             id="order-items"
@@ -146,14 +159,9 @@ export default function OrderSuccess() {
                   className="flex items-center justify-between py-3.5"
                 >
                   <div className="flex items-center gap-3.5">
-                    <img
-                      alt={item.name}
-                      className="size-14 rounded-xl object-cover"
-                      src={
-                        item.images?.[0] ||
-                        "https://images.unsplash.com/photo-1609592179791-5b2f37d4c6e1?w=120&q=80"
-                      }
-                    />
+                    <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-surface-secondary">
+                      <ProductImage alt={item.name} src={item.images?.[0]} />
+                    </div>
                     <div>
                       <h4 className="m-0 text-sm font-semibold text-foreground">
                         {item.name}
@@ -181,7 +189,7 @@ export default function OrderSuccess() {
                 <span>Shipping</span>
                 <span className="text-foreground">
                   {order.shipping === 0
-                    ? "FREE"
+                    ? "Free"
                     : `$${order.shipping.toFixed(2)}`}
                 </span>
               </div>
@@ -199,24 +207,39 @@ export default function OrderSuccess() {
             </div>
           </section>
 
-          {/* Delivery & Customer Info */}
           <section className="flex flex-col gap-6" id="delivery-info">
             <div className="surface-raised rounded-panel p-6">
               <h3 className="m-0 mb-3 text-sm font-bold text-foreground">
-                Shipping Destination
+                {isPickup ? "In-Store Pickup Location" : "Shipping Destination"}
               </h3>
-              <p className="m-0 text-sm leading-relaxed text-foreground">
-                <strong>{order.customer?.name || "Customer"}</strong>
-                <br />
-                {order.customer?.address}
-                <br />
-                {order.customer?.city}, {order.customer?.state}{" "}
-                {order.customer?.zip}
-                <br />
-                <span className="text-xs text-muted">
-                  {order.customer?.email}
-                </span>
-              </p>
+              {isPickup ? (
+                <p className="m-0 text-sm leading-relaxed text-foreground">
+                  <strong>{order.customer?.name || "Customer"}</strong>
+                  <br />
+                  Mobicare Device Recovery
+                  <br />
+                  920 Commerce Drive, Suite 3
+                  <br />
+                  Fairfield, IL 62837
+                  <br />
+                  <span className="text-xs text-muted">
+                    {order.customer?.email}
+                  </span>
+                </p>
+              ) : (
+                <p className="m-0 text-sm leading-relaxed text-foreground">
+                  <strong>{order.customer?.name || "Customer"}</strong>
+                  <br />
+                  {order.customer?.address}
+                  <br />
+                  {order.customer?.city}, {order.customer?.state}{" "}
+                  {order.customer?.zip}
+                  <br />
+                  <span className="text-xs text-muted">
+                    {order.customer?.email}
+                  </span>
+                </p>
+              )}
             </div>
 
             <div className="surface-accent rounded-panel p-6">
@@ -224,14 +247,14 @@ export default function OrderSuccess() {
                 Need Help with Your Order?
               </h3>
               <p className="m-0 text-xs text-foreground">
-                Contact our shop anytime. We’re open Monday through Saturday in
-                Fairfield.
+                Track anytime on our Status Tracker or contact our shop Monday
+                through Saturday in Fairfield.
               </p>
               <div className="mt-3 flex flex-col gap-2 text-xs font-semibold">
                 {business.phone && (
                   <a
                     className="inline-flex items-center gap-2 text-foreground hover:text-accent"
-                    href={`tel:${business.phone}`}
+                    href={`tel:${business.phone.replace(/[^0-9+]/g, "")}`}
                   >
                     <Phone className="size-3.5 text-accent" />
                     <span>{business.phone}</span>
@@ -259,20 +282,19 @@ export default function OrderSuccess() {
         </div>
       )}
 
-      {/* Action Buttons */}
       <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
         <Button variant="primary" onPress={() => navigate("/shop")}>
           <span>Continue Shopping</span>
           <ArrowRight className="size-4" />
         </Button>
-        <Button variant="outline" onPress={() => navigate("/account")}>
-          View in My Account
+        <Button variant="outline" onPress={() => navigate("/repair-status")}>
+          Track Order Status
         </Button>
         <Button variant="ghost" onPress={handlePrint}>
           <Printer className="size-4" />
           <span>Print Receipt</span>
         </Button>
       </div>
-    </main>
+    </div>
   );
 }

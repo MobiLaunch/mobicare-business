@@ -28,7 +28,8 @@ const STATUS_STYLES: Record<string, string> = {
   processing: "bg-accent-soft text-accent",
   shipped: "bg-surface-tertiary text-foreground",
   cancelled: "bg-danger/15 text-danger",
-  refunded: "bg-danger/15 text-danger",
+  refunded: "bg-warning/15 text-warning",
+  payment_failed: "bg-danger/15 text-danger",
 };
 
 const QUICK_ACTIONS = [
@@ -51,8 +52,8 @@ export default function Dashboard() {
   const outOfStock = products.filter((p) => p.stock === 0).length;
   const activeOrders = orders.filter((o) => ACTIVE_STATUSES.includes(o.status)).length;
   const completedOrders = orders.filter((o) => o.status === "delivered").length;
-  const attentionOrders = orders.filter((o) => ["cancelled", "refunded"].includes(o.status)).length;
-  const totalRevenue = orders.filter((o) => !["cancelled", "refunded"].includes(o.status)).reduce((s, o) => s + (o.total || 0), 0);
+  const attentionOrders = orders.filter((o) => ["cancelled", "refunded", "payment_failed"].includes(o.status)).length;
+  const totalRevenue = orders.filter((o) => !["cancelled", "refunded", "payment_failed"].includes(o.status)).reduce((s, o) => s + (o.total || 0), 0);
   const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
 
   const columns: AdminDataTableColumn<Order>[] = [

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   CircleAlert,
   Eye,
@@ -36,9 +36,23 @@ export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState("");
+  const [lockSecs, setLockSecs] = useState(() => {
+    const lockedUntil = useAdminStore.getState().lockedUntil || 0;
+
+    return lockedUntil > Date.now()
+      ? Math.ceil((lockedUntil - Date.now()) / 1000)
+      : 0;
+  });
+  const [error, setError] = useState(() => {
+    const lockedUntil = useAdminStore.getState().lockedUntil || 0;
+    const secs =
+      lockedUntil > Date.now()
+        ? Math.ceil((lockedUntil - Date.now()) / 1000)
+        : 0;
+
+    return secs > 0 ? `Too many attempts. Try again in ${secs}s.` : "";
+  });
   const [loading, setLoading] = useState(false);
-  const [lockSecs, setLockSecs] = useState(0);
 
   const supabaseReady = isSupabaseConfigured();
   const localAuthReady = !supabaseReady && isLocalAuthAvailable;
@@ -234,11 +248,21 @@ export default function AdminLogin() {
             </Form>
 
             <p className="m-0 text-center text-sm text-muted">
-              {supabaseReady
-                ? "Forgot password? Reset via Supabase Dashboard → Authentication."
-                : localAuthReady
-                  ? "Development-only local access is disabled in production."
-                  : "Admin access requires a configured Supabase Auth project."}
+              {supabaseReady ? (
+                <>
+                  Forgot password?{" "}
+                  <Link
+                    className="font-semibold text-accent hover:underline"
+                    to="/forgot-password"
+                  >
+                    Send a reset link
+                  </Link>
+                </>
+              ) : localAuthReady ? (
+                "Development-only local access is disabled in production."
+              ) : (
+                "Admin access requires a configured Supabase Auth project."
+              )}
             </p>
           </Card.Content>
         </Card>

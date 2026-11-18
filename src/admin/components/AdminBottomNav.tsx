@@ -34,7 +34,7 @@ export default function AdminBottomNav({
   return (
     <nav
       aria-label="Admin mobile navigation"
-      className="fixed inset-x-0 bottom-0 z-40 flex h-[70px] items-center justify-around bg-surface pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-1px_0_var(--border)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex min-h-[70px] h-auto items-center justify-around bg-surface py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-1px_0_var(--border)] lg:hidden"
     >
       {BOTTOM_NAV_ITEMS.map(({ path, icon: Icon, label }) => {
         const active = isActive(path);

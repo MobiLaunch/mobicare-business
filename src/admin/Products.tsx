@@ -1,6 +1,6 @@
 import type { Product } from "@/types/domain";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   ImageOff,
@@ -10,6 +10,8 @@ import {
   Search,
   Star,
   Trash2,
+  Upload,
+  X,
 } from "lucide-react";
 import {
   Button,
@@ -19,12 +21,15 @@ import {
   ListBox,
   Modal,
   Select,
+  Spinner,
   Switch,
+  TextArea,
   TextField,
   ToggleButton,
 } from "@heroui/react";
 
 import { useProductStore, useToastStore } from "@/lib/store";
+import { isSupabaseConfigured, sbUploadSiteMedia } from "@/lib/supabase";
 import AdminPageHeader from "@/admin/components/AdminPageHeader";
 import AdminDataTable, {
   type AdminDataTableColumn,
@@ -83,7 +88,7 @@ function StockBadge({ stock }: { stock: number }) {
 }
 
 export default function Products() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const products = useProductStore((s) => s.products);
   const categories = useProductStore((s) => s.categories);
   const topLevelCategories = categories.filter((c) => !c.parentId);
@@ -111,23 +116,32 @@ export default function Products() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductFormState>(EMPTY_PRODUCT);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploadingImg, setUploadingImg] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ ...EMPTY_PRODUCT });
+    setForm({ ...EMPTY_PRODUCT, images: [""] });
     setModalOpen(true);
   };
 
   useEffect(() => {
     if (searchParams.get("action") === "add") {
       setEditingId(null);
-      setForm({ ...EMPTY_PRODUCT });
+      setForm({ ...EMPTY_PRODUCT, images: [""] });
       setModalOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("action");
+      setSearchParams(next, { replace: true });
     }
-  }, [searchParams]);
+  }, [searchParams, setSearchParams]);
 
   const filtered = products.filter((p) => {
-    const matchesCat = catFilter === "all" || p.category === catFilter;
+    const matchesCat =
+      catFilter === "all" ||
+      p.category === catFilter ||
+      categories.some((c) => c.id === p.category && c.parentId === catFilter);
     const matchesSearch =
       !search ||
       p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -154,10 +168,69 @@ export default function Products() {
     v: ProductFormState[K],
   ) => setForm((f) => ({ ...f, [k]: v }));
 
-  const handleSave = () => {
+  const setImageAt = (index: number, url: string) =>
+    setForm((f) => ({
+      ...f,
+      images: f.images.map((img, i) => (i === index ? url : img)),
+    }));
+
+  const addImageSlot = () =>
+    setForm((f) => ({ ...f, images: [...f.images, ""] }));
+
+  const removeImageSlot = (index: number) =>
+    setForm((f) => {
+      const next = f.images.filter((_, i) => i !== index);
+
+      return { ...f, images: next.length ? next : [""] };
+    });
+
+  const handleImageFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+
+    setUploadingImg(true);
+    const uploadedUrls: string[] = [];
+
+    for (const file of files) {
+      if (isSupabaseConfigured()) {
+        const res = await sbUploadSiteMedia(file);
+
+        if (res.url) {
+          uploadedUrls.push(res.url);
+        } else {
+          addToast(res.error || `Failed to upload ${file.name}`, "error");
+        }
+      } else {
+        const dataUrl = await new Promise<string | null>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(file);
+        });
+
+        if (dataUrl) uploadedUrls.push(dataUrl);
+      }
+    }
+
+    setUploadingImg(false);
+    if (uploadedUrls.length > 0) {
+      setForm((f) => {
+        const existing = f.images.map((s) => s.trim()).filter(Boolean);
+
+        return { ...f, images: [...existing, ...uploadedUrls] };
+      });
+      addToast(
+        `Uploaded ${uploadedUrls.length} image${uploadedUrls.length !== 1 ? "s" : ""}`,
+        "success",
+      );
+    }
+  };
+
+  const handleSave = async () => {
     const { name, category, price, stock, sku, description } = form;
 
-    if (!name || !category || !price || !stock || !sku || !description) {
+    if (!name.trim() || !category || !price || !stock || !sku.trim() || !description.trim()) {
       addToast("Please fill in all required fields (*)", "error");
 
       return;
@@ -192,6 +265,9 @@ export default function Products() {
 
     const data: Partial<Product> = {
       ...form,
+      name: name.trim(),
+      sku: sku.trim(),
+      description: description.trim(),
       price: priceNum,
       comparePrice: compareNum,
       stock: stockNum,
@@ -199,34 +275,66 @@ export default function Products() {
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
-      images: form.images.filter(Boolean),
+      images: form.images.map((u) => u.trim()).filter(Boolean),
     };
 
-    if (editingId) {
-      updateProduct(editingId, data);
-      addToast("Product saved successfully", "success");
-    } else {
-      addProduct(data);
-      addToast("New product added to catalog", "success");
+    setSaving(true);
+    try {
+      if (editingId) {
+        await updateProduct(editingId, data);
+        addToast("Product saved successfully", "success");
+      } else {
+        await addProduct(data);
+        addToast("New product added to catalog", "success");
+      }
+      setModalOpen(false);
+    } catch (err) {
+      addToast(
+        err instanceof Error ? err.message : "Failed to save product.",
+        "error",
+      );
+    } finally {
+      setSaving(false);
     }
-    setModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    deleteProduct(id);
-    addToast("Product removed from catalog", "info");
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteProduct(id);
+      addToast("Product removed from catalog", "info");
+    } catch (err) {
+      addToast(
+        err instanceof Error ? err.message : "Failed to delete product.",
+        "error",
+      );
+    }
   };
 
-  const handleToggleActive = (product: Product) => {
-    updateProduct(product.id, { active: !product.active });
-    addToast(
-      `Product ${product.active ? "hidden from" : "published on"} live store`,
-      "info",
-    );
+  const handleToggleActive = async (product: Product) => {
+    const nextActive = !product.active;
+    try {
+      await updateProduct(product.id, { active: nextActive });
+      addToast(
+        `Product ${nextActive ? "published on" : "hidden from"} live store`,
+        "info",
+      );
+    } catch (err) {
+      addToast(
+        err instanceof Error ? err.message : "Could not update product visibility.",
+        "error",
+      );
+    }
   };
 
-  const handleToggleFeatured = (product: Product) => {
-    updateProduct(product.id, { featured: !product.featured });
+  const handleToggleFeatured = async (product: Product) => {
+    try {
+      await updateProduct(product.id, { featured: !product.featured });
+    } catch (err) {
+      addToast(
+        err instanceof Error ? err.message : "Could not update featured status.",
+        "error",
+      );
+    }
   };
 
   const columns: AdminDataTableColumn<Product>[] = [
@@ -404,9 +512,9 @@ export default function Products() {
       />
 
       {/* Edit / Create modal */}
-      <Modal>
-        <Modal.Backdrop isOpen={modalOpen} onOpenChange={setModalOpen}>
-          <Modal.Container scroll="inside" size="lg">
+      <Modal isOpen={modalOpen} onOpenChange={setModalOpen}>
+        <Modal.Backdrop className="z-[100]">
+          <Modal.Container className="pb-24 lg:pb-0" scroll="inside" size="lg">
             <Modal.Dialog>
               <Modal.Header>
                 <Modal.Heading>
@@ -542,42 +650,115 @@ export default function Products() {
                   </TextField>
                 </div>
 
-                <TextField
-                  isRequired
-                  className="flex flex-col gap-1.5"
-                  value={form.description}
-                  onChange={(v) => updateForm("description", v)}
-                >
-                  <Label>Product Description *</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                  <FieldError />
-                </TextField>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="product-description">
+                    Product Description *
+                  </Label>
+                  <TextArea
+                    id="product-description"
+                    placeholder="Detailed specs, compatibility, warranty notes…"
+                    rows={4}
+                    value={form.description}
+                    onChange={(e) => updateForm("description", e.target.value)}
+                  />
+                </div>
 
-                <TextField
-                  className="flex flex-col gap-1.5"
-                  value={form.images[0] || ""}
-                  onChange={(v) => updateForm("images", [v])}
-                >
-                  <Label>Image URL</Label>
-                  <InputGroup>
-                    <InputGroup.Input />
-                  </InputGroup>
-                </TextField>
-
-                {form.images[0] && (
-                  <div>
-                    <span className="mb-1 block text-xs text-muted">
-                      Image Preview:
-                    </span>
-                    <img
-                      alt="Preview"
-                      className="max-h-[110px] rounded-xl border border-border"
-                      src={form.images[0]}
-                    />
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Label>Product Images</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={imageInputRef}
+                        multiple
+                        accept="image/*"
+                        className="hidden"
+                        type="file"
+                        onChange={handleImageFileUpload}
+                      />
+                      <Button
+                        isDisabled={uploadingImg}
+                        size="sm"
+                        variant="outline"
+                        onPress={() => imageInputRef.current?.click()}
+                      >
+                        {uploadingImg ? (
+                          <Spinner size="sm" />
+                        ) : (
+                          <Upload className="size-3.5" />
+                        )}
+                        <span>
+                          {uploadingImg ? "Uploading…" : "Upload Image"}
+                        </span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onPress={addImageSlot}
+                      >
+                        <Plus className="size-3.5" />
+                        <span>Add URL</span>
+                      </Button>
+                    </div>
                   </div>
-                )}
+
+                  <div className="flex flex-col gap-2">
+                    {form.images.map((imgUrl, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <TextField
+                          aria-label={`Product image URL ${idx + 1}`}
+                          className="flex-1"
+                          value={imgUrl}
+                          onChange={(v) => setImageAt(idx, v)}
+                        >
+                          <InputGroup>
+                            <InputGroup.Input
+                              placeholder={
+                                idx === 0
+                                  ? "Primary image URL (https://…)"
+                                  : `Gallery image ${idx + 1} URL (https://…)`
+                              }
+                            />
+                          </InputGroup>
+                        </TextField>
+                        {(form.images.length > 1 || imgUrl) && (
+                          <Button
+                            isIconOnly
+                            aria-label={`Remove image ${idx + 1}`}
+                            variant="ghost"
+                            onPress={() => removeImageSlot(idx)}
+                          >
+                            <X className="size-4 text-danger" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {form.images.some((u) => u.trim()) && (
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {form.images
+                        .map((u) => u.trim())
+                        .filter(Boolean)
+                        .map((u, idx) => (
+                          <div
+                            key={`${u}-${idx}`}
+                            className="relative size-16 overflow-hidden rounded-xl border border-border bg-surface-tertiary"
+                          >
+                            <img
+                              alt={`Preview ${idx + 1}`}
+                              className="size-full object-cover"
+                              src={u}
+                            />
+                            {idx === 0 && (
+                              <span className="absolute inset-x-0 bottom-0 bg-black/65 py-0.5 text-center text-[10px] font-bold text-white">
+                                Primary
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
 
                 <TextField
                   className="flex flex-col gap-1.5"
@@ -635,11 +816,26 @@ export default function Products() {
                 </div>
               </Modal.Body>
               <Modal.Footer className="justify-end gap-2">
-                <Button variant="outline" onPress={() => setModalOpen(false)}>
+                <Button
+                  isDisabled={saving}
+                  variant="outline"
+                  onPress={() => setModalOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button variant="primary" onPress={handleSave}>
-                  {editingId ? "Save Changes" : "Publish Product"}
+                <Button
+                  isDisabled={saving || uploadingImg}
+                  variant="primary"
+                  onPress={handleSave}
+                >
+                  {saving ? <Spinner size="sm" /> : null}
+                  <span>
+                    {saving
+                      ? "Saving…"
+                      : editingId
+                        ? "Save Changes"
+                        : "Publish Product"}
+                  </span>
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>
